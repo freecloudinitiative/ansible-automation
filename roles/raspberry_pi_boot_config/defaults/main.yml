@@ -1,0 +1,22 @@
+---
+# Fan Control (values in milliCelsius)
+rpi_fan_temp0: 40000
+rpi_fan_temp0_hyst: 5000
+rpi_fan_temp1: 50000
+rpi_fan_temp1_hyst: 5000
+
+# Hardware Interfaces
+rpi_audio: "on"
+rpi_i2c: "off"
+rpi_spi: "off"
+
+# Display and Camera
+rpi_camera_auto_detect: 1
+rpi_display_auto_detect: 1
+
+# System Performance
+rpi_arm_64bit: 1
+rpi_arm_boost: 1
+
+# USB Mode for CM4
+rpi_cm4_otg_mode: 1
