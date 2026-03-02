@@ -1,0 +1,8 @@
+---
+- name: Configure Raspberry Pi's config.txt
+  hosts: all
+  gather_facts: false
+  become: true
+
+  roles:
+    - raspberry_pi_boot_config

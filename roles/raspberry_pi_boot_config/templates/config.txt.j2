@@ -45,11 +45,6 @@ dtparam=fan_temp0_hyst={{ rpi_fan_temp0_hyst }}
 dtparam=fan_temp1={{ rpi_fan_temp1 }}
 dtparam=fan_temp1_hyst={{ rpi_fan_temp1_hyst }}
 
-{% if fan | int == 2 %}
-# Second fan on GPIO 14 (Sync with main fan at 35°C)
-dtoverlay=gpio-fan,gpiopin=14,temp=35000
-{% endif %}
-
 # Disable compensation for displays with overscan
 disable_overscan=1
 
