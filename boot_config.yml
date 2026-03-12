@@ -5,4 +5,4 @@
   become: true
 
   roles:
-    - raspberry_pi_boot_config
+    - raspberry-pi-boot-config

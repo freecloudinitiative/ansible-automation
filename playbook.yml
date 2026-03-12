@@ -1,0 +1,16 @@
+---
+- name: Ensure master node is configured
+  hosts: master
+  gather_facts: false
+  become: true
+
+  roles:
+    - k8s-master-node-setup
+
+- name: Ensure worker nodes are configured
+  hosts: workers
+  gather_facts: false
+  become: true
+
+  roles:
+    - k8s-worker-node-setup
