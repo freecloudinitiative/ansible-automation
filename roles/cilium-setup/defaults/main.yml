@@ -1,0 +1,6 @@
+---
+cilium_k8s_service_host: "master1.local"
+cilium_k8s_service_port: "6443"
+cilium_encryption_type: "wireguard"
+cilium_hubble_relay: true
+cilium_hubble_ui: true

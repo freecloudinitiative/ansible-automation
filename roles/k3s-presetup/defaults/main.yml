@@ -1,0 +1,6 @@
+---
+k3s_presetup_packages:
+  - wireguard-tools
+  - open-iscsi
+  - nfs-common
+  - python3-bcrypt

@@ -1,0 +1,62 @@
+---
+- name: Label high-memory nodes (worker5, worker6)
+  ansible.builtin.command: |
+    kubectl label nodes {{ item }} node-tier=high-memory --overwrite
+  loop:
+    - worker5.local
+    - worker6.local
+  delegate_to: "{{ groups['masters'][0] }}"
+  run_once: true
+  changed_when: true
+
+- name: Label mid-memory nodes (worker1, worker2, worker4)
+  ansible.builtin.command: |
+    kubectl label nodes {{ item }} node-tier=mid-memory --overwrite
+  loop:
+    - worker1.local
+    - worker2.local
+    - worker4.local
+  delegate_to: "{{ groups['masters'][0] }}"
+  run_once: true
+  changed_when: true
+
+- name: Label low-memory node (worker3)
+  ansible.builtin.command: |
+    kubectl label nodes worker3.local node-tier=low-memory --overwrite
+  delegate_to: "{{ groups['masters'][0] }}"
+  run_once: true
+  changed_when: true
+
+- name: Taint low-memory node (worker3)
+  ansible.builtin.command: |
+    kubectl taint nodes worker3.local memory=limited:NoSchedule --overwrite
+  delegate_to: "{{ groups['masters'][0] }}"
+  run_once: true
+  changed_when: true
+
+- name: Taint master node
+  ansible.builtin.command: |
+    kubectl taint nodes master1.local node-role.kubernetes.io/master=:NoSchedule --overwrite
+  delegate_to: "{{ groups['masters'][0] }}"
+  run_once: true
+  changed_when: true
+
+- name: Label low-memory node for Longhorn exclusion
+  ansible.builtin.command: |
+    kubectl label nodes worker3.local node.longhorn.io/create-default-disk=false --overwrite
+  delegate_to: "{{ groups['masters'][0] }}"
+  run_once: true
+  changed_when: true
+
+- name: Get node labels and taints
+  ansible.builtin.command: |
+    kubectl get nodes -o custom-columns=NAME:.metadata.name,LABELS:.metadata.labels,TAINTS:.spec.taints
+  register: nodes_info
+  changed_when: false
+  delegate_to: "{{ groups['masters'][0] }}"
+  run_once: true
+
+- name: Display node configuration
+  ansible.builtin.debug:
+    msg: "{{ nodes_info.stdout }}"
+  run_once: true

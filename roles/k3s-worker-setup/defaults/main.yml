@@ -1,0 +1,6 @@
+---
+k3s_master_url: "https://master1.local:6443"
+
+k3s_password_file: "/etc/rancher/node/password"
+
+k3s_kubelet_port: 10250

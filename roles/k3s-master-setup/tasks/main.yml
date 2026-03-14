@@ -1,0 +1,71 @@
+- name: Download k3s install script
+  ansible.builtin.get_url:
+    url: https://get.k3s.io
+    dest: /tmp/k3s-install.sh
+    mode: '0755'
+    checksum: "sha256:{{ k3s_install_script_sha256 | default('') }}"
+  become: true
+  register: k3s_script_download
+
+- name: Check if k3s is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Install k3s server with cluster-init
+  ansible.builtin.command: |
+    /tmp/k3s-install.sh server \
+      --cluster-init \
+      --token-file /etc/k3s-bootstrap-token \
+      --flannel-backend=none \
+      --disable-network-policy \
+      --disable=traefik \
+      --disable=servicelb \
+      --tls-san=master1.local \
+      --node-name=master1 \
+      --etcd-snapshot-schedule-cron="0 */6 * * *" \
+      --etcd-snapshot-retention=10 \
+      --node-taint node-role.kubernetes.io/master=:NoSchedule \
+      --write-kubeconfig-mode=640 \
+      --kube-apiserver-arg=authorization-mode=Node,RBAC
+  environment:
+    INSTALL_K3S_SKIP_DOWNLOAD: "true"
+  become: true
+  when: not k3s_binary.stat.exists or k3s_script_download.changed
+  register: k3s_install
+  changed_when: "'k3s' in k3s_install.stdout"
+
+- name: Wait for k3s to be ready
+  ansible.builtin.wait_for:
+    port: 6443
+    host: localhost
+    delay: 5
+    timeout: 60
+  when: k3s_install.changed
+
+- name: Verify k3s installation
+  ansible.builtin.command: /usr/local/bin/k3s --version
+  register: k3s_version
+  changed_when: false
+
+- name: Display k3s version
+  ansible.builtin.debug:
+    msg: "K3s installed: {{ k3s_version.stdout }}"
+
+- name: Backup bootstrap token
+  ansible.builtin.copy:
+    src: /etc/k3s-bootstrap-token
+    dest: /etc/k3s-bootstrap-token.backup
+    owner: root
+    group: root
+    mode: '0600'
+    backup: true
+  become: true
+  when: k3s_install.changed
+
+- name: Remove original bootstrap token securely
+  ansible.builtin.file:
+    path: /etc/k3s-bootstrap-token
+    state: absent
+  become: true
+  when: k3s_install.changed
