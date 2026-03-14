@@ -52,20 +52,12 @@
   ansible.builtin.debug:
     msg: "K3s installed: {{ k3s_version.stdout }}"
 
-- name: Backup bootstrap token
-  ansible.builtin.copy:
-    src: /etc/k3s-bootstrap-token
-    dest: /etc/k3s-bootstrap-token.backup
-    owner: root
-    group: root
-    mode: '0600'
-    backup: true
-  become: true
-  when: k3s_install.changed
-
-- name: Remove original bootstrap token securely
+- name: Remove bootstrap token and any backups securely
   ansible.builtin.file:
-    path: /etc/k3s-bootstrap-token
+    path: "{{ item }}"
     state: absent
+  loop:
+    - /etc/k3s-bootstrap-token
+    - /etc/k3s-bootstrap-token.backup
   become: true
   when: k3s_install.changed

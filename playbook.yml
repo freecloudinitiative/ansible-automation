@@ -1,16 +1,35 @@
 ---
-- name: Ensure master node is configured
+- name: Ensure all node is ready
+  hosts: all
+  gather_facts: false
+  become: true
+
+  roles:
+    - k3s-presetup
+
+- name: Ensure master nodes are configured
   hosts: master
   gather_facts: false
   become: true
 
   roles:
-    - k8s-master-node-setup
+    - k3s-bootstrap
+    - k3s-master-install
+    - distribute-node-passwords
 
 - name: Ensure worker nodes are configured
-  hosts: workers
+  hosts: worker
   gather_facts: false
   become: true
 
   roles:
-    - k8s-worker-node-setup
+    - k3s-worker-setup
+
+- name: Ensure master nodes are ready
+  hosts: master
+  gather_facts: false
+  become: true
+
+  roles:
+    - cilium-setup
+    - k3s-node-labeling
