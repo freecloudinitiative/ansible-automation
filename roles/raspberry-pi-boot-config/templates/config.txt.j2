@@ -7,33 +7,32 @@
 #dtparam=i2s=on
 #dtparam=spi=on
 
-# Enable audio (loads snd_bcm2835)
-dtparam=audio=on
+# Disable Bluetooth to save power and reduce interference
+dtoverlay=disable-bt
+
+# Disable onboard audio processing
+dtparam=audio=off
+
+# Disable automatic detection of Camera and Display (CSI/DSI) ports
+camera_auto_detect=0
+display_auto_detect=0
+
+# Disable HDMI output and ignore display hotplugging to save energy
+hdmi_ignore_hotplug=1
+hdmi_blanking=2
 
 # Additional overlays and parameters are documented
 # /boot/firmware/overlays/README
 
-# Automatically load overlays for detected cameras
-camera_auto_detect=1
-
-# Automatically load overlays for detected DSI displays
-display_auto_detect=1
-
 # Automatically load initramfs files, if found
 auto_initramfs=1
-
-# Enable DRM VC4 V3D driver
-dtoverlay=vc4-kms-v3d
-max_framebuffers=2
-# disable_fw_kms_setup=1
-# disable_overscan=1
 
 # Don't have the firmware create an initial video= setting in cmdline.txt.
 # Use the kernel's default instead.
 disable_fw_kms_setup=1
 
-# Run in 64-bit mode
-arm_64bit=1
+# Allocate minimum memory to the GPU to maximize RAM available for k3s nodes
+gpu_mem=16
 
 # CPU and Architecture
 arm_64bit={{ rpi_arm_64bit }}
@@ -47,9 +46,6 @@ dtparam=fan_temp1_hyst={{ rpi_fan_temp1_hyst }}
 
 # Disable compensation for displays with overscan
 disable_overscan=1
-
-# Run as fast as firmware / board allows
-arm_boost=1
 
 [cm4]
 # Enable host mode on the 2711 built-in XHCI USB controller.
