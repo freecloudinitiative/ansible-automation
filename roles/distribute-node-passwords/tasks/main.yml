@@ -1,0 +1,35 @@
+---
+- name: Ensure rancher node directory exists
+  ansible.builtin.file:
+    path: /etc/rancher/node
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  become: true
+
+- name: Write node password from Vault
+  ansible.builtin.copy:
+    content: "{{ password }}"
+    dest: /etc/rancher/node/password
+    owner: root
+    group: root
+    mode: "0600"
+  become: true
+  no_log: true
+  register: password_written
+
+- name: Verify password file exists and has correct permissions
+  ansible.builtin.stat:
+    path: /etc/rancher/node/password
+  register: password_file_stat
+  changed_when: false
+
+- name: Assert password file is secure
+  ansible.builtin.assert:
+    that:
+      - password_file_stat.stat.exists
+      - password_file_stat.stat.mode == "0600"
+      - password_file_stat.stat.pw_name == "root"
+    fail_msg: "Password file security check failed!"
+    success_msg: "Password file is secure ✓"

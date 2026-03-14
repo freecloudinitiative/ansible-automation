@@ -1,0 +1,25 @@
+---
+node_labels:
+  high_memory:
+    nodes:
+      - worker5.local
+      - worker6.local
+    label: "node-tier=high-memory"
+
+  mid_memory:
+    nodes:
+      - worker1.local
+      - worker2.local
+      - worker4.local
+    label: "node-tier=mid-memory"
+  
+  low_memory:
+    nodes:
+      - worker3.local
+    label: "node-tier=low-memory"
+
+node_taints:
+  low_memory_taint: "worker3.local:memory=limited:NoSchedule"
+  master_taint: "master1.local:node-role.kubernetes.io/master=:NoSchedule"
+
+longhorn_exclusion: "worker3.local:node.longhorn.io/create-default-disk=false"

@@ -1,0 +1,80 @@
+---
+- name: Get node hostname
+  ansible.builtin.command: hostname
+  register: node_hostname
+  changed_when: false
+
+- name: Download k3s install script
+  ansible.builtin.get_url:
+    url: https://get.k3s.io
+    dest: /tmp/k3s-install.sh
+    mode: '0755'
+  become: true
+
+- name: Check if k3s is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Install k3s agent (worker)
+  ansible.builtin.command: |
+    /tmp/k3s-install.sh agent \
+      --server https://master1.local:6443 \
+      --token-file /etc/rancher/node/password \
+      --node-name={{ node_hostname.stdout }}
+  environment:
+    INSTALL_K3S_SKIP_DOWNLOAD: "true"
+  become: true
+  when: not k3s_binary.stat.exists
+  register: k3s_install
+  changed_when: "'k3s' in k3s_install.stdout or k3s_install.rc == 0"
+
+- name: Wait for k3s agent to be ready
+  ansible.builtin.wait_for:
+    port: 10250
+    host: localhost
+    delay: 5
+    timeout: 60
+  when: k3s_install.changed
+  become: true
+
+- name: Verify k3s agent installation
+  ansible.builtin.command: /usr/local/bin/k3s --version
+  register: k3s_version
+  changed_when: false
+  when: k3s_install.changed
+
+- name: Display k3s agent version
+  ansible.builtin.debug:
+    msg: "K3s agent installed: {{ k3s_version.stdout }}"
+  when: k3s_install.changed
+
+- name: Check if password file exists
+  ansible.builtin.stat:
+    path: /etc/rancher/node/password
+  register: password_file
+  become: true
+
+- name: Securely remove password file
+  ansible.builtin.shell: |
+    shred -vfz -n 3 /etc/rancher/node/password 2>/dev/null || \
+    rm -f /etc/rancher/node/password
+  become: true
+  when: password_file.stat.exists and k3s_install.changed
+  changed_when: false
+  register: shred_result
+  failed_when: false
+
+- name: Verify password file is removed
+  ansible.builtin.stat:
+    path: /etc/rancher/node/password
+  register: password_file_final
+  become: true
+  changed_when: false
+
+- name: Assert password file cleanup
+  ansible.builtin.assert:
+    that:
+      - not password_file_final.stat.exists
+    fail_msg: "Password file cleanup failed!"
+    success_msg: "Password file securely removed ✓"
