@@ -1,61 +1,122 @@
 ---
+# ============================================================================
+# Apply Node Labels
+# ============================================================================
+
 - name: Label high-memory nodes
-  ansible.builtin.command: |
-    kubectl label nodes {{ item }} node-tier=high-memory --overwrite
+  kubernetes.core.kubectl:
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+    command: label
+    kind: nodes
+    name: "{{ item }}"
+    labels:
+      node-tier: high-memory
+    state: present
   loop: "{{ groups['high_memory'] | default([]) }}"
   delegate_to: "{{ groups['master'][0] }}"
   run_once: true
-  changed_when: true
 
 - name: Label mid-memory nodes
-  ansible.builtin.command: |
-    kubectl label nodes {{ item }} node-tier=mid-memory --overwrite
+  kubernetes.core.kubectl:
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+    command: label
+    kind: nodes
+    name: "{{ item }}"
+    labels:
+      node-tier: mid-memory
+    state: present
   loop: "{{ groups['mid_memory'] | default([]) }}"
   delegate_to: "{{ groups['master'][0] }}"
   run_once: true
-  changed_when: true
 
 - name: Label low-memory node
-  ansible.builtin.command: |
-    kubectl label nodes {{ item }} node-tier=low-memory --overwrite
+  kubernetes.core.kubectl:
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+    command: label
+    kind: nodes
+    name: "{{ item }}"
+    labels:
+      node-tier: low-memory
+    state: present
   loop: "{{ groups['low_memory'] | default([]) }}"
   delegate_to: "{{ groups['master'][0] }}"
   run_once: true
-  changed_when: true
+
+# ============================================================================
+# Apply Node Taints
+# ============================================================================
 
 - name: Taint low-memory node
-  ansible.builtin.command: |
-    kubectl taint nodes {{ item }} memory=limited:NoSchedule --overwrite
+  kubernetes.core.kubectl:
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+    command: taint
+    kind: nodes
+    name: "{{ item }}"
+    taints:
+      - key: memory
+        value: limited
+        effect: NoSchedule
+    state: present
   loop: "{{ groups['low_memory'] | default([]) }}"
   delegate_to: "{{ groups['master'][0] }}"
   run_once: true
-  changed_when: true
 
 - name: Taint master node
-  ansible.builtin.command: |
-    kubectl taint nodes {{ item }} node-role.kubernetes.io/master=:NoSchedule --overwrite
+  kubernetes.core.kubectl:
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+    command: taint
+    kind: nodes
+    name: "{{ item }}"
+    taints:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+    state: present
   loop: "{{ groups['master'] | default([]) }}"
   delegate_to: "{{ groups['master'][0] }}"
   run_once: true
-  changed_when: true
+
+# ============================================================================
+# Storage Exclusions (Longhorn)
+# ============================================================================
 
 - name: Label low-memory node for Longhorn exclusion
-  ansible.builtin.command: |
-    kubectl label nodes {{ item }} node.longhorn.io/create-default-disk=false --overwrite
+  kubernetes.core.kubectl:
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+    command: label
+    kind: nodes
+    name: "{{ item }}"
+    labels:
+      node.longhorn.io/create-default-disk: "false"
+    state: present
   loop: "{{ groups['low_memory'] | default([]) }}"
   delegate_to: "{{ groups['master'][0] }}"
   run_once: true
-  changed_when: true
+
+# ============================================================================
+# Verification
+# ============================================================================
 
 - name: Get node labels and taints
-  ansible.builtin.command: |
-    kubectl get nodes -o custom-columns=NAME:.metadata.name,LABELS:.metadata.labels,TAINTS:.spec.taints
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+    kind: Node
   register: nodes_info
-  changed_when: false
   delegate_to: "{{ groups['master'][0] }}"
   run_once: true
 
 - name: Display node configuration
   ansible.builtin.debug:
-    msg: "{{ nodes_info.stdout }}"
+    msg: |
+      {% for node in nodes_info.resources %}
+      NAME: {{ node.metadata.name }}
+      LABELS: {{ node.metadata.labels }}
+      TAINTS: {{ node.spec.taints | default([]) }}
+      {% endfor %}
   run_once: true

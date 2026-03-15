@@ -1,4 +1,8 @@
 ---
+# ============================================================================
+# Preparation
+# ============================================================================
+
 - name: Get node hostname
   ansible.builtin.command: hostname
   register: node_hostname
@@ -16,6 +20,10 @@
     path: /usr/local/bin/k3s
   register: k3s_binary
 
+# ============================================================================
+# Installation
+# ============================================================================
+
 - name: Install k3s agent (worker)
   ansible.builtin.command: |
     /tmp/k3s-install.sh agent \
@@ -28,6 +36,10 @@
   when: not k3s_binary.stat.exists
   register: k3s_install
   changed_when: "'k3s' in k3s_install.stdout or k3s_install.rc == 0"
+
+# ============================================================================
+# Verification
+# ============================================================================
 
 - name: Wait for k3s agent to be ready
   ansible.builtin.wait_for:
@@ -48,6 +60,10 @@
   ansible.builtin.debug:
     msg: "K3s agent installed: {{ k3s_version.stdout }}"
   when: k3s_install.changed
+
+# ============================================================================
+# Cleanup
+# ============================================================================
 
 - name: Check if password file exists
   ansible.builtin.stat:

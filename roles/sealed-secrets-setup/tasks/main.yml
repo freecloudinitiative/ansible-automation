@@ -1,0 +1,113 @@
+---
+# ============================================================================
+# Controller Installation (Helm)
+# ============================================================================
+
+- name: Add Bitnami Sealed Secrets Helm repo
+  kubernetes.core.helm_repository:
+    name: sealed-secrets
+    repo_url: https://bitnami-labs.github.io/sealed-secrets
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+
+- name: Install sealed secrets
+  kubernetes.core.helm:
+    name: sealed-secrets
+    chart_ref: sealed-secrets/sealed-secrets
+    release_namespace: kube-system
+    create_namespace: false
+    update_repo_cache: true
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+
+- name: Install Sealed Secrets Helm chart
+  kubernetes.core.helm:
+    name: "{{ sealed_secrets_release_name }}"
+    chart_ref: "{{ sealed_secrets_chart }}"
+    release_namespace: "{{ sealed_secrets_namespace }}"
+    create_namespace: false
+    values:
+      fullnameOverride: sealed-secrets-controller
+      nodeSelector:
+        node-tier: mid-memory
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+    wait: true
+    timeout: 5m
+  register: helm_install_result
+
+- name: Verify Sealed Secrets pod is running
+  kubernetes.core.k8s_info:
+    kind: Pod
+    namespace: "{{ sealed_secrets_namespace }}"
+    label_selectors:
+      - app.kubernetes.io/name=sealed-secrets
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+  register: sealed_secrets_pod
+  until: sealed_secrets_pod.resources | length > 0 and sealed_secrets_pod.resources[0].status.phase == "Running"
+  retries: 30
+  delay: 10
+
+# ============================================================================
+# Kubeseal CLI Installation
+# ============================================================================
+
+- name: Get latest kubeseal version
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/bitnami-labs/sealed-secrets/releases/latest
+    return_content: true
+  register: kubeseal_release
+  changed_when: false
+
+- name: Set kubeseal version fact
+  ansible.builtin.set_fact:
+    kubeseal_version: "{{ kubeseal_release.json.tag_name | regex_replace('^v', '') }}"
+ 
+- name: Create kubeseal temp directory
+  ansible.builtin.file:
+    path: "{{ kubeseal_tmp_dir }}"
+    state: directory
+    mode: '0755'
+ 
+- name: Download kubeseal archive
+  ansible.builtin.get_url:
+    url: "https://github.com/bitnami-labs/sealed-secrets/releases/download/v{{ kubeseal_version }}/kubeseal-{{ kubeseal_version }}-linux-amd64.tar.gz"
+    dest: "{{ kubeseal_tmp_dir }}/kubeseal.tar.gz"
+    mode: '0644'
+    timeout: 30
+
+- name: Extract kubeseal binary
+  ansible.builtin.unarchive:
+    src: "{{ kubeseal_tmp_dir }}/kubeseal.tar.gz"
+    dest: "{{ kubeseal_tmp_dir }}"
+    remote_src: true
+    mode: '0755'
+ 
+- name: Copy kubeseal to install path
+  ansible.builtin.copy:
+    src: "{{ kubeseal_tmp_dir }}/kubeseal"
+    dest: "{{ kubeseal_install_path }}/kubeseal"
+    remote_src: true
+    owner: root
+    group: root
+    mode: '0755'
+  become: true
+
+# ============================================================================
+# Verification and Cleanup
+# ============================================================================
+
+- name: Verify kubeseal installation
+  ansible.builtin.command: "{{ kubeseal_install_path }}/kubeseal --version"
+  register: kubeseal_version_check
+  changed_when: false
+ 
+- name: Clean up kubeseal temp files
+  ansible.builtin.file:
+    path: "{{ kubeseal_tmp_dir }}/kubeseal.tar.gz"
+    state: absent
+ 
+- name: Display kubeseal version
+  ansible.builtin.debug:
+    msg: "kubeseal installed: {{ kubeseal_version_check.stdout }}"

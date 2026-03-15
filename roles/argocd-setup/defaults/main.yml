@@ -1,0 +1,25 @@
+---
+# ArgoCD Namespace and Installation
+argocd_namespace: argocd
+argocd_manifest_url: https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+# Node selector for ArgoCD deployments
+argocd_node_selector:
+  node-tier: mid-memory
+
+# ArgoCD deployments to patch with nodeSelector
+argocd_deployments:
+  - argocd-server
+  - argocd-repo-server
+  - argocd-application-controller
+  - argocd-dex-server
+  - argocd-redis
+
+# Kubeconfig and context
+kubeconfig_path: ~/.kube/config
+context: ""
+
+# ArgoCD UI port-forwarding (optional)
+argocd_port_forward_enabled: false
+argocd_port_forward_local_port: 8080
+argocd_port_forward_remote_port: 443

@@ -1,0 +1,25 @@
+---
+# Namespace
+longhorn_namespace: longhorn-system
+
+# Node exclusion for Longhorn disk creation
+# Example: longhorn_exclude_nodes: ['worker3.local', 'worker4.local']
+longhorn_exclude_nodes: []
+
+# Default settings
+longhorn_replica_count: 2
+longhorn_backup_target: ""
+longhorn_backup_secret: ""
+
+# Ingress configuration
+longhorn_ingress_enabled: false
+longhorn_ingress_class: "nginx"
+longhorn_ingress_host: "longhorn.example.com"
+
+# Helm values
+longhorn_wait_condition: "condition=available"
+longhorn_timeout: "10m"
+
+# Optional kubeconfig and context
+kubeconfig_path: ~/.kube/config
+context: ""

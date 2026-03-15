@@ -1,8 +1,16 @@
 ---
+# ============================================================================
+# Check Existing Token
+# ============================================================================
+
 - name: Check if K3S bootstrap token exists
   ansible.builtin.stat:
     path: /etc/k3s-bootstrap-token
   register: k3s_token_file
+
+# ============================================================================
+# Generate and Save Token
+# ============================================================================
 
 - name: Generate K3S bootstrap token
   ansible.builtin.set_fact:

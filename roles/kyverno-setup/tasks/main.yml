@@ -1,0 +1,64 @@
+---
+# ============================================================================
+# Kyverno Helm Installation
+# ============================================================================
+
+- name: Add Kyverno Helm repository
+  kubernetes.core.helm_repository:
+    name: "{{ kyverno_repo_name }}"
+    repo_url: "{{ kyverno_repo_url }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+    state: present
+
+- name: Install Kyverno Helm chart
+  kubernetes.core.helm:
+    name: "{{ kyverno_release_name }}"
+    chart_ref: "{{ kyverno_chart }}"
+    release_namespace: "{{ kyverno_namespace }}"
+    create_namespace: true
+    values:
+      replicaCount: "{{ kyverno_replica_count }}"
+      nodeSelector: "{{ kyverno_node_selector }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+    state: present
+    wait: true
+    wait_condition: "{{ kyverno_wait_condition }}"
+    timeout: "{{ kyverno_timeout }}"
+  register: kyverno_helm_install
+
+- name: Verify Kyverno deployment is ready
+  kubernetes.core.k8s_info:
+    kind: Deployment
+    name: kyverno
+    namespace: "{{ kyverno_namespace }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+  register: kyverno_deployment
+  until:
+    - kyverno_deployment.resources | length > 0
+    - kyverno_deployment.resources[0].status.readyReplicas | default(0) >= kyverno_replica_count
+  retries: 30
+  delay: 10
+
+- name: Verify Kyverno webhook is ready
+  kubernetes.core.k8s_info:
+    kind: ValidatingWebhookConfiguration
+    name: kyverno-resource-validating-webhook-cfg
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+  register: kyverno_webhook
+  until: kyverno_webhook.resources | length > 0
+  retries: 30
+  delay: 10
+  ignore_errors: true
+
+- name: Display Kyverno installation status
+  ansible.builtin.debug:
+    msg: |
+      Kyverno installation completed successfully
+      Release: {{ kyverno_release_name }}
+      Namespace: {{ kyverno_namespace }}
+      Replica Count: {{ kyverno_replica_count }}
+      Node Selector: {{ kyverno_node_selector }}

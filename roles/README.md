@@ -14,3 +14,8 @@ This directory contains the Ansible roles used to provision and configure the K3
 | **[k3s-worker-setup](./k3s-worker-setup)**                   | Installs K3s agent on worker nodes and joins them to the K3s cluster.                                         |
 | **[cilium-setup](./cilium-setup)**                           | Installs Cilium CNI with WireGuard encryption on the K3s cluster.                                             |
 | **[k3s-node-labeling](./k3s-node-labeling)**                 | Labels and taints K8s nodes for workload distribution and resource management.                                |
+| **[sealed-secrets-setup](./sealed-secrets-setup)**           | Installs Bitnami Sealed Secrets controller in the K3s cluster and the kubeseal CLI tool.                      |
+| **[argocd-setup](./argocd-setup)**                           | Installs ArgoCD from official manifests, patches deployments, and sets up optional port-forwarding.           |
+| **[longhorn-setup](./longhorn-setup)**                       | Installs Longhorn block storage with node selections and configurable ingress via Helm.                       |
+| **[traefik-setup](./traefik-setup)**                         | Deploys cert-manager and configures Traefik as the default IngressController via Helm.                        |
+| **[kyverno-setup](./kyverno-setup)**                         | Installs Kyverno policy engine via Helm and verifies deployment and webhook readiness.                        |

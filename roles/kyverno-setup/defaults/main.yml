@@ -1,0 +1,17 @@
+---
+kyverno_repo_name: kyverno
+kyverno_repo_url: https://kyverno.github.io/kyverno
+
+kyverno_namespace: kyverno
+kyverno_release_name: kyverno
+kyverno_chart: kyverno/kyverno
+
+kyverno_replica_count: 1
+kyverno_node_selector:
+  node-tier: mid-memory
+
+kyverno_timeout: 5m
+kyverno_wait_condition: "stat.readyReplicas >= 1"
+
+kubeconfig_path: ~/.kube/config
+context: ""

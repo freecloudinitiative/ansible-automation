@@ -1,4 +1,8 @@
 ---
+# ============================================================================
+# Distribute Node Password
+# ============================================================================
+
 - name: Ensure rancher node directory exists
   ansible.builtin.file:
     path: /etc/rancher/node
@@ -18,6 +22,10 @@
   become: true
   no_log: true
   register: password_written
+
+# ============================================================================
+# Verify Password Security
+# ============================================================================
 
 - name: Verify password file exists and has correct permissions
   ansible.builtin.stat:

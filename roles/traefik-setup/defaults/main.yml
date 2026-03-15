@@ -1,0 +1,24 @@
+---
+cert_manager_manifest_url: https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+
+traefik_namespace: traefik
+
+traefik_repo_name: traefik
+traefik_repo_url: https://helm.traefik.io/traefik
+
+traefik_release_name: traefik
+traefik_chart: traefik/traefik
+
+traefik_node_selector:
+  node-tier: mid-memory
+
+traefik_ingress_class_default: true
+
+# Traefik Helm install settings
+traefik_wait_condition:
+  type: Available
+  status: "true"
+traefik_timeout: 5m
+
+kubeconfig_path: ~/.kube/config
+context: ""

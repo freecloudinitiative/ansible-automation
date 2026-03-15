@@ -1,0 +1,100 @@
+---
+# ============================================================================
+# cert-manager Installation
+# ============================================================================
+
+- name: Download cert-manager manifest
+  ansible.builtin.get_url:
+    url: "{{ cert_manager_manifest_url }}"
+    dest: "/tmp/cert-manager.yaml"
+    mode: '0644'
+    timeout: 30
+  register: cert_manager_download
+  changed_when: false
+
+- name: Apply cert-manager manifest
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('file', '/tmp/cert-manager.yaml') | from_yaml_all | list }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+  register: cert_manager_apply
+
+- name: Verify cert-manager pods are ready
+  kubernetes.core.k8s_info:
+    kind: Deployment
+    namespace: cert-manager
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+  register: cert_manager_deployments
+  until: 
+    - cert_manager_deployments.resources | length > 0
+    - cert_manager_deployments.resources | selectattr('status.readyReplicas', 'defined') | map(attribute='status.readyReplicas') | list | length > 0
+  retries: 30
+  delay: 10
+
+# ============================================================================
+# Traefik Installation
+# ============================================================================
+
+- name: Add Traefik Helm repository
+  kubernetes.core.helm_repository:
+    name: "{{ traefik_repo_name }}"
+    repo_url: "{{ traefik_repo_url }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+    state: present
+
+- name: Install Traefik via Helm chart
+  kubernetes.core.helm:
+    name: "{{ traefik_release_name }}"
+    chart_ref: "{{ traefik_chart }}"
+    release_namespace: "{{ traefik_namespace }}"
+    create_namespace: true
+    state: present
+    values:
+      nodeSelector: "{{ traefik_node_selector }}"
+      ingressClass:
+        enabled: true
+        isDefaultClass: "{{ traefik_ingress_class_default }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+    wait: true
+    wait_condition: "{{ traefik_wait_condition }}"
+    timeout: "{{ traefik_timeout }}"
+  register: traefik_helm_install
+
+- name: Verify Traefik deployment is ready
+  kubernetes.core.k8s_info:
+    kind: Deployment
+    name: "{{ traefik_release_name }}"
+    namespace: "{{ traefik_namespace }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+  register: traefik_deployment
+  until:
+    - traefik_deployment.resources | length > 0
+    - traefik_deployment.resources[0].status.readyReplicas | default(0) > 0
+  retries: 30
+  delay: 10
+
+- name: Verify IngressClass is set as default
+  kubernetes.core.k8s_info:
+    kind: IngressClass
+    name: "{{ traefik_release_name }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+  register: traefik_ingressclass
+  until: 
+    - traefik_ingressclass.resources | length > 0
+    - traefik_ingressclass.resources[0].metadata.annotations.get('ingressclass.kubernetes.io/is-default-class', 'false') == 'true'
+  retries: 10
+  delay: 5
+
+- name: Display installation summary
+  ansible.builtin.debug:
+    msg: |
+      ✓ cert-manager installed successfully
+      ✓ Traefik {{ traefik_release_name }} deployed in namespace: {{ traefik_namespace }}
+      ✓ IngressClass {{ traefik_release_name }} set as default
+  run_once: true
