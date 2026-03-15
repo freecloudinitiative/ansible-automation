@@ -3,6 +3,7 @@
   hosts: all
   become: true
   roles:
+    - raspberry-pi-boot-config
     - k3s-presetup
 
 - name: Bootstrap token
