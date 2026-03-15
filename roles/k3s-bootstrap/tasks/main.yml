@@ -12,17 +12,8 @@
 # Generate and Save Token
 # ============================================================================
 
-- name: Generate K3S bootstrap token
-  ansible.builtin.set_fact:
-    k3s_token: "{{ lookup('password', '/dev/null length=64 chars=hexdigits') }}"
-  when: not k3s_token_file.stat.exists
-
-- name: Write token to file
-  ansible.builtin.copy:
-    content: "{{ k3s_token }}"
-    dest: /etc/k3s-bootstrap-token
-    owner: root
-    group: root
-    mode: '0600'
-  when: not k3s_token_file.stat.exists
+- name: Generate and write K3S bootstrap token
+  ansible.builtin.shell:
+    cmd: "openssl rand -hex 32 > /etc/k3s-bootstrap-token && chmod 600 /etc/k3s-bootstrap-token"
+    creates: /etc/k3s-bootstrap-token
   become: true

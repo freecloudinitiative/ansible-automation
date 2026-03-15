@@ -4,7 +4,7 @@
 # ============================================================================
 
 - name: Label high-memory nodes
-  kubernetes.core.kubectl:
+  kubernetes.core.k8s:
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
     context: "{{ context | default(omit) }}"
     command: label
@@ -18,7 +18,7 @@
   run_once: true
 
 - name: Label mid-memory nodes
-  kubernetes.core.kubectl:
+  kubernetes.core.k8s:
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
     context: "{{ context | default(omit) }}"
     command: label
@@ -32,7 +32,7 @@
   run_once: true
 
 - name: Label low-memory node
-  kubernetes.core.kubectl:
+  kubernetes.core.k8s:
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
     context: "{{ context | default(omit) }}"
     command: label
@@ -50,7 +50,7 @@
 # ============================================================================
 
 - name: Taint low-memory node
-  kubernetes.core.kubectl:
+  kubernetes.core.k8s:
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
     context: "{{ context | default(omit) }}"
     command: taint
@@ -66,7 +66,7 @@
   run_once: true
 
 - name: Taint master node
-  kubernetes.core.kubectl:
+  kubernetes.core.k8s:
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
     context: "{{ context | default(omit) }}"
     command: taint

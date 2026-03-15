@@ -1,35 +1,37 @@
 ---
-- name: Ensure all node is ready
+- name: Pre-setup
   hosts: all
-  gather_facts: false
   become: true
-
   roles:
     - k3s-presetup
 
-- name: Ensure master nodes are configured
-  hosts: master
-  gather_facts: false
+- name: Bootstrap token
+  hosts: masters
   become: true
-
   roles:
     - k3s-bootstrap
-    - k3s-master-install
-    - distribute-node-passwords
+    - k3s-master-setup
 
-- name: Ensure worker nodes are configured
-  hosts: worker
-  gather_facts: false
+- name: Distribute passwords
+  hosts: workers
   become: true
-
   roles:
+    - distribute-k3s-node-password
     - k3s-worker-setup
 
-- name: Ensure master nodes are ready
-  hosts: master
-  gather_facts: false
+- name: Cleanup bootstrap token
+  hosts: masters
   become: true
+  roles:
+    - cleanup-bootstrap
 
+- name: Node labelling
+  hosts: masters
   roles:
     - cilium-setup
-    - k3s-node-labeling
+    - k3s-node-labelling
+    - sealed-secrets-setup
+    - argocd-setup
+    - longhorn-setup
+    - traefik-setup
+    - kyverno-setup

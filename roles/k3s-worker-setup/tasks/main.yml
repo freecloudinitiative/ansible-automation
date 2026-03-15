@@ -30,12 +30,12 @@
       --server https://master1.local:6443 \
       --token-file /etc/rancher/node/password \
       --node-name={{ node_hostname.stdout }}
-  environment:
-    INSTALL_K3S_SKIP_DOWNLOAD: "true"
+  # environment:
+  #  INSTALL_K3S_SKIP_DOWNLOAD: "true"
   become: true
   when: not k3s_binary.stat.exists
   register: k3s_install
-  changed_when: "'k3s' in k3s_install.stdout or k3s_install.rc == 0"
+  changed_when: k3s_install.rc == 0 and not k3s_binary.stat.exists
 
 # ============================================================================
 # Verification

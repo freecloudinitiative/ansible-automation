@@ -1,4 +1,4 @@
-# distribute-node-password
+# distribute-k3s-node-password
 
 Distributes a shared node password from Ansible Vault to all worker nodes securely.
 

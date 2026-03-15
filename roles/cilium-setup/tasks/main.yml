@@ -27,7 +27,7 @@
     chart_ref: cilium/cilium
     chart_version: 1.15.6
     release_namespace: kube-system
-    kubeconfig: /etc/kubernetes/admin.conf
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
     values:
       k8sServiceHost: master1.local
       k8sServicePort: 6443

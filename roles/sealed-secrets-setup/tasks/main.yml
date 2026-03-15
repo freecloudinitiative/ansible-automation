@@ -10,22 +10,13 @@
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
     context: "{{ context | default(omit) }}"
 
-- name: Install sealed secrets
+- name: Install Sealed Secrets Helm chart
   kubernetes.core.helm:
     name: sealed-secrets
     chart_ref: sealed-secrets/sealed-secrets
     release_namespace: kube-system
     create_namespace: false
     update_repo_cache: true
-    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
-    context: "{{ context | default(omit) }}"
-
-- name: Install Sealed Secrets Helm chart
-  kubernetes.core.helm:
-    name: "{{ sealed_secrets_release_name }}"
-    chart_ref: "{{ sealed_secrets_chart }}"
-    release_namespace: "{{ sealed_secrets_namespace }}"
-    create_namespace: false
     values:
       fullnameOverride: sealed-secrets-controller
       nodeSelector:
@@ -39,7 +30,7 @@
 - name: Verify Sealed Secrets pod is running
   kubernetes.core.k8s_info:
     kind: Pod
-    namespace: "{{ sealed_secrets_namespace }}"
+    namespace: kube-system
     label_selectors:
       - app.kubernetes.io/name=sealed-secrets
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"

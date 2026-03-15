@@ -1,0 +1,13 @@
+---
+# ============================================================================
+# Cleanup
+# ============================================================================
+
+- name: Remove bootstrap token and any backups securely
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/k3s-bootstrap-token
+    - /etc/k3s-bootstrap-token.backup
+  become: true
