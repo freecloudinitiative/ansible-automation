@@ -1,8 +1,6 @@
----
 # ============================================================================
 # Preparation
 # ============================================================================
-
 - name: Get node hostname
   ansible.builtin.command:
     argv:
@@ -25,7 +23,6 @@
 # ============================================================================
 # Installation
 # ============================================================================
-
 - name: Install k3s agent (worker)
   ansible.builtin.command:
     argv:
@@ -45,7 +42,6 @@
 # ============================================================================
 # Verification
 # ============================================================================
-
 - name: Wait for k3s agent to be ready
   ansible.builtin.wait_for:
     port: 10250
@@ -72,22 +68,34 @@
 # ============================================================================
 # Cleanup
 # ============================================================================
-
 - name: Check if password file exists
   ansible.builtin.stat:
     path: /etc/rancher/node/password
   register: password_file
   become: true
 
-- name: Securely remove password file
+- name: Check if shred command is available
+  ansible.builtin.command:
+    cmd: "which shred"
+  register: shred_available
+  changed_when: false
+  failed_when: false
+  when: password_file.stat.exists and k3s_install.changed
+
+- name: Securely remove password file (shred method)
+  ansible.builtin.command:
+    cmd: "shred -vfz -n 3 /etc/rancher/node/password"
+  become: true
+  changed_when: false
+  when: password_file.stat.exists and k3s_install.changed and shred_available.rc == 0
+
+- name: Securely remove password file (dd + rm fallback)
   ansible.builtin.shell: |
-    shred -vfz -n 3 /etc/rancher/node/password 2>/dev/null || \
+    dd if=/dev/zero of=/etc/rancher/node/password bs=4096 2>/dev/null || true
     rm -f /etc/rancher/node/password
   become: true
-  when: password_file.stat.exists and k3s_install.changed
   changed_when: false
-  register: shred_result
-  failed_when: false
+  when: password_file.stat.exists and k3s_install.changed and shred_available.rc != 0
 
 - name: Verify password file is removed
   ansible.builtin.stat:

@@ -3,9 +3,11 @@
 # Prerequisites
 # ============================================================================
 
-- name: Install wireguard-tools
+- name: Install wireguard-tools and netcat
   ansible.builtin.apt:
-    name: wireguard-tools
+    name:
+      - wireguard-tools
+      - netcat-openbsd
     state: present
     update_cache: true
   become: true

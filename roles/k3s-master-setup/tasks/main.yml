@@ -30,10 +30,9 @@
       --disable=traefik \
       --disable=servicelb \
       --tls-san=master1.local \
-      --node-name=master1 \
+      --node-name=master1.local \
       --etcd-snapshot-schedule-cron="0 */6 * * *" \
       --etcd-snapshot-retention=10 \
-      --node-taint node-role.kubernetes.io/master=:NoSchedule \
       --write-kubeconfig-mode=640 \
       --kube-apiserver-arg=authorization-mode=Node,RBAC
   # environment:
