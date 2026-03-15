@@ -9,11 +9,29 @@
   register: k3s_token_file
 
 # ============================================================================
-# Generate and Save Token
+# Generate Token
 # ============================================================================
 
-- name: Generate and write K3S bootstrap token
-  ansible.builtin.shell:
-    cmd: "openssl rand -hex 32 > /etc/k3s-bootstrap-token && chmod 600 /etc/k3s-bootstrap-token"
-    creates: /etc/k3s-bootstrap-token
+- name: Generate K3S bootstrap token
+  ansible.builtin.command:
+    argv:
+      - openssl
+      - rand
+      - -hex
+      - "32"
+  register: k3s_token
+  changed_when: true
+  when: not k3s_token_file.stat.exists
+  become: true
+
+# ============================================================================
+# Write Token
+# ============================================================================
+
+- name: Write bootstrap token
+  ansible.builtin.copy:
+    content: "{{ k3s_token.stdout }}"
+    dest: /etc/k3s-bootstrap-token
+    mode: "0600"
+  when: not k3s_token_file.stat.exists
   become: true

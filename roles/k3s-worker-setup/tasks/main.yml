@@ -4,7 +4,9 @@
 # ============================================================================
 
 - name: Get node hostname
-  ansible.builtin.command: hostname
+  ansible.builtin.command:
+    argv:
+      - hostname
   register: node_hostname
   changed_when: false
 
@@ -25,13 +27,16 @@
 # ============================================================================
 
 - name: Install k3s agent (worker)
-  ansible.builtin.command: |
-    /tmp/k3s-install.sh agent \
-      --server https://master1.local:6443 \
-      --token-file /etc/rancher/node/password \
-      --node-name={{ node_hostname.stdout }}
-  # environment:
-  #  INSTALL_K3S_SKIP_DOWNLOAD: "true"
+  ansible.builtin.command:
+    argv:
+      - /tmp/k3s-install.sh
+      - agent
+      - --server
+      - https://master1.local:6443
+      - --token-file
+      - /etc/rancher/node/password
+      - --node-name
+      - "{{ node_hostname.stdout }}"
   become: true
   when: not k3s_binary.stat.exists
   register: k3s_install
@@ -51,7 +56,10 @@
   become: true
 
 - name: Verify k3s agent installation
-  ansible.builtin.command: /usr/local/bin/k3s --version
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - --version
   register: k3s_version
   changed_when: false
   when: k3s_install.changed

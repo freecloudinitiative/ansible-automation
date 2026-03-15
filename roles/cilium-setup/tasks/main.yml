@@ -48,7 +48,16 @@
 # ============================================================================
 
 - name: Wait for Cilium
-  ansible.builtin.command: kubectl rollout status daemonset/cilium -n kube-system --timeout=5m
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - rollout
+      - status
+      - daemonset/cilium
+      - -n
+      - kube-system
+      - --timeout=5m
+  changed_when: false
   delegate_to: "{{ groups['masters'][0] }}"
   run_once: true
 
@@ -57,7 +66,17 @@
 # ============================================================================
 
 - name: Verify encryption
-  ansible.builtin.command: kubectl -n kube-system exec ds/cilium -- cilium encrypt status
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - -n
+      - kube-system
+      - exec
+      - ds/cilium
+      - --
+      - cilium
+      - encrypt
+      - status
   register: encryption_status
   changed_when: false
   delegate_to: "{{ groups['masters'][0] }}"
@@ -68,8 +87,13 @@
     var: encryption_status.stdout
 
 - name: Check UDP connectivity between nodes (WireGuard port)
-  ansible.builtin.shell: nc -zvu {{ item }} 51871
-  with_items: "{{ groups['workers'] }}"
+  ansible.builtin.command:
+    argv:
+      - nc
+      - -zvu
+      - "{{ item }}"
+      - "51871"
+  loop: "{{ groups['workers'] }}"
   register: wg_connectivity
   changed_when: false
   delegate_to: "{{ groups['masters'][0] }}"

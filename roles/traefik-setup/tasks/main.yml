@@ -27,7 +27,7 @@
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
     context: "{{ context | default(omit) }}"
   register: cert_manager_deployments
-  until: 
+  until:
     - cert_manager_deployments.resources | length > 0
     - cert_manager_deployments.resources | selectattr('status.readyReplicas', 'defined') | map(attribute='status.readyReplicas') | list | length > 0
   retries: 30
@@ -85,7 +85,7 @@
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
     context: "{{ context | default(omit) }}"
   register: traefik_ingressclass
-  until: 
+  until:
     - traefik_ingressclass.resources | length > 0
     - traefik_ingressclass.resources[0].metadata.annotations.get('ingressclass.kubernetes.io/is-default-class', 'false') == 'true'
   retries: 10

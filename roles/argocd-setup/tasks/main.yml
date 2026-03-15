@@ -2,7 +2,7 @@
 # ============================================================================
 # ArgoCD Namespace Creation
 # ============================================================================
- 
+
 - name: Ensure argocd namespace exists
   kubernetes.core.k8s:
     api_version: v1
@@ -15,14 +15,14 @@
 # ============================================================================
 # ArgoCD Installation from Manifest
 # ============================================================================
- 
+
 - name: Install ArgoCD from manifest
   kubernetes.core.k8s:
     state: present
     namespace: "{{ argocd_namespace }}"
     definition: "{{ lookup('url', argocd_manifest_url) | from_yaml_all | list }}"
     wait: true
-    wait_condition: 
+    wait_condition:
       type: Ready
       status: "True"
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
@@ -32,7 +32,7 @@
 # ============================================================================
 # Wait for ArgoCD deployments to be ready
 # ============================================================================
- 
+
 - name: Wait for ArgoCD deployments to be ready
   kubernetes.core.k8s_info:
     kind: Deployment
@@ -41,7 +41,7 @@
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
     context: "{{ context | default(omit) }}"
   register: argocd_deployment_status
-  until: 
+  until:
     - argocd_deployment_status.resources | length > 0
     - argocd_deployment_status.resources[0].status.readyReplicas | default(0) > 0
     - argocd_deployment_status.resources[0].status.readyReplicas == argocd_deployment_status.resources[0].spec.replicas | default(1)
@@ -52,7 +52,7 @@
 # ============================================================================
 # Patch ArgoCD deployments with nodeSelector
 # ============================================================================
- 
+
 - name: Patch ArgoCD deployments with nodeSelector
   kubernetes.core.k8s:
     state: patched
@@ -68,14 +68,14 @@
     context: "{{ context | default(omit) }}"
   loop: "{{ argocd_deployments }}"
   register: patch_result
-  failed_when: 
+  failed_when:
     - patch_result.failed
     - "'not found' not in patch_result.msg | lower"
 
 # ============================================================================
 # Retrieve ArgoCD admin credentials
 # ============================================================================
- 
+
 - name: Get ArgoCD initial admin secret
   kubernetes.core.k8s_info:
     kind: Secret
@@ -87,7 +87,7 @@
   retries: 10
   delay: 5
   until: argocd_secret.resources | length > 0
- 
+
 - name: Decode ArgoCD admin password
   ansible.builtin.set_fact:
     argocd_admin_password: "{{ argocd_secret.resources[0].data.password | b64decode }}"
@@ -101,27 +101,33 @@
       Namespace: {{ argocd_namespace }}
       Admin User: admin
       Admin Password: {{ argocd_admin_password }}
-      
+
       Access ArgoCD UI:
       kubectl port-forward svc/argocd-server -n {{ argocd_namespace }} {{ argocd_port_forward_local_port }}:{{ argocd_port_forward_remote_port }}
-      
+
       Then visit: https://localhost:{{ argocd_port_forward_local_port }}
   when: argocd_admin_password is defined
- 
+
 
 # ============================================================================
 # Setup port-forwarding
 # ============================================================================
- 
+
 - name: Setup ArgoCD port-forwarding
-  ansible.builtin.command: >
-    kubectl port-forward svc/argocd-server -n {{ argocd_namespace }} 
-    {{ argocd_port_forward_local_port }}:{{ argocd_port_forward_remote_port }}
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - port-forward
+      - svc/argocd-server
+      - -n
+      - "{{ argocd_namespace }}"
+      - "{{ argocd_port_forward_local_port }}:{{ argocd_port_forward_remote_port }}"
+  changed_when: false
   async: 3600
   poll: 0
   register: port_forward_job
   when: argocd_port_forward_enabled | bool
- 
+
 - name: Display port-forward job info
   ansible.builtin.debug:
     msg: |
@@ -130,4 +136,3 @@
       Local Port: {{ argocd_port_forward_local_port }}
       Remote Service: argocd-server:{{ argocd_port_forward_remote_port }}
   when: argocd_port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
- 

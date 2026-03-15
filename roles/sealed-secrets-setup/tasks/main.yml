@@ -54,13 +54,13 @@
 - name: Set kubeseal version fact
   ansible.builtin.set_fact:
     kubeseal_version: "{{ kubeseal_release.json.tag_name | regex_replace('^v', '') }}"
- 
+
 - name: Create kubeseal temp directory
   ansible.builtin.file:
     path: "{{ kubeseal_tmp_dir }}"
     state: directory
     mode: '0755'
- 
+
 - name: Download kubeseal archive
   ansible.builtin.get_url:
     url: "https://github.com/bitnami-labs/sealed-secrets/releases/download/v{{ kubeseal_version }}/kubeseal-{{ kubeseal_version }}-linux-amd64.tar.gz"
@@ -74,7 +74,7 @@
     dest: "{{ kubeseal_tmp_dir }}"
     remote_src: true
     mode: '0755'
- 
+
 - name: Copy kubeseal to install path
   ansible.builtin.copy:
     src: "{{ kubeseal_tmp_dir }}/kubeseal"
@@ -90,15 +90,18 @@
 # ============================================================================
 
 - name: Verify kubeseal installation
-  ansible.builtin.command: "{{ kubeseal_install_path }}/kubeseal --version"
+  ansible.builtin.command:
+    argv:
+      - "{{ kubeseal_install_path }}/kubeseal"
+      - --version
   register: kubeseal_version_check
   changed_when: false
- 
+
 - name: Clean up kubeseal temp files
   ansible.builtin.file:
     path: "{{ kubeseal_tmp_dir }}/kubeseal.tar.gz"
     state: absent
- 
+
 - name: Display kubeseal version
   ansible.builtin.debug:
     msg: "kubeseal installed: {{ kubeseal_version_check.stdout }}"

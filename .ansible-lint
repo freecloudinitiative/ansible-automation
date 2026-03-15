@@ -1,0 +1,13 @@
+---
+skip_list:
+  - no-handler
+
+warn_list:
+  - experimental
+
+exclude_paths:
+  - .git
+  - .github
+  - node_modules
+  - venv
+  - .claude
