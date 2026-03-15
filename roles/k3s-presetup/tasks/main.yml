@@ -3,10 +3,13 @@
 # Disable Swap
 # ============================================================================
 
-- name: Disable swap immediately
-  ansible.builtin.command: swapoff -a
+- name: Disable swap
+  ansible.builtin.command:
+    argv:
+      - swapoff
+      - -a
   when: ansible_swaptotal_mb > 0
-  changed_when: false
+  changed_when: ansible_swaptotal_mb > 0
 
 - name: Disable swap in fstab
   ansible.builtin.replace:
@@ -23,7 +26,6 @@
     enabled: false
     state: stopped
   when: "'dphys-swapfile.service' in ansible_facts.services"
-  become: true
 
 # ============================================================================
 # Install Requirements
@@ -33,10 +35,8 @@
   ansible.builtin.apt:
     update_cache: true
     cache_valid_time: 3600
-  become: true
 
 - name: Install required packages
   ansible.builtin.apt:
     name: "{{ k3s_presetup_packages }}"
     state: present
-  become: true

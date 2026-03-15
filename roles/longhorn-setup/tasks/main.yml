@@ -98,7 +98,7 @@
       Longhorn successfully installed in namespace: {{ longhorn_namespace }}
       Manager ready: {{ longhorn_manager.resources[0].status.readyReplicas | default(0) }}/{{ longhorn_manager.resources[0].spec.replicas }}
       UI ready: {{ longhorn_ui.resources[0].status.readyReplicas | default(0) }}/{{ longhorn_ui.resources[0].spec.replicas }}
-      
+
       To access Longhorn UI:
       {% if longhorn_ingress_enabled %}
       - Via Ingress: https://{{ longhorn_ingress_host }}

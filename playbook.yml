@@ -6,7 +6,7 @@
     - k3s-presetup
 
 - name: Bootstrap token
-  hosts: masters
+  hosts: master
   become: true
   roles:
     - k3s-bootstrap
@@ -20,16 +20,16 @@
     - k3s-worker-setup
 
 - name: Cleanup bootstrap token
-  hosts: masters
+  hosts: master
   become: true
   roles:
     - cleanup-bootstrap
 
 - name: Node labelling
-  hosts: masters
+  hosts: master
   roles:
     - cilium-setup
-    - k3s-node-labelling
+    - k3s-node-labeling
     - sealed-secrets-setup
     - argocd-setup
     - longhorn-setup
