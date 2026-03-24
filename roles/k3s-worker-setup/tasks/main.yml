@@ -31,9 +31,9 @@
       - --server
       - https://master1.local:6443
       - --token-file
-      - /etc/rancher/node/password
+      - /etc/k3s-bootstrap-token
       - --node-name
-      - "{{ node_hostname.stdout }}"
+      - "{{ inventory_hostname.split('.')[0] }}"
   become: true
   when: not k3s_binary.stat.exists
   register: k3s_install

@@ -62,6 +62,12 @@ ssh master1.local "cilium encryption status"
 ssh master1.local "kubectl get pods -n kube-system | grep cilium"
 ```
 
-## License
+## Should we do this
 
-MIT
+```bash
+cilium install \
+  --set ingressController.enabled=true \
+  --set ingressController.loadbalancerMode=shared \
+  --set kubeProxyReplacement=true
+```
+

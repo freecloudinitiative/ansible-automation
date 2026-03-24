@@ -21,22 +21,19 @@
 # ============================================================================
 
 - name: Install k3s server with cluster-init
-  ansible.builtin.command: |
-    /tmp/k3s-install.sh server \
-      --cluster-init \
-      --token-file /etc/k3s-bootstrap-token \
-      --flannel-backend=none \
-      --disable-network-policy \
-      --disable=traefik \
-      --disable=servicelb \
-      --tls-san=master1.local \
-      --node-name=master1.local \
-      --etcd-snapshot-schedule-cron="0 */6 * * *" \
-      --etcd-snapshot-retention=10 \
-      --write-kubeconfig-mode=640 \
-      --kube-apiserver-arg=authorization-mode=Node,RBAC
-  # environment:
-  #   INSTALL_K3S_SKIP_DOWNLOAD: "true"
+  ansible.builtin.command:
+    argv:
+      - /tmp/k3s-install.sh
+      - server
+      - --cluster-init
+      - --token-file
+      - /etc/k3s-bootstrap-token
+      - --tls-san=master1.local
+      - --node-name=master1
+      - --etcd-snapshot-schedule-cron=0 */6 * * *
+      - --etcd-snapshot-retention=10
+      - --write-kubeconfig-mode=640
+      - --kube-apiserver-arg=authorization-mode=Node,RBAC
   become: true
   when: not k3s_binary.stat.exists or k3s_script_download.changed
   register: k3s_install

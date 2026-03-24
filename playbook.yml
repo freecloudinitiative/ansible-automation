@@ -29,10 +29,8 @@
 - name: Node labelling
   hosts: master
   roles:
-    - cilium-setup
     - k3s-node-labeling
     - sealed-secrets-setup
     - argocd-setup
     - longhorn-setup
     - traefik-setup
-    - kyverno-setup
