@@ -30,7 +30,3 @@
   hosts: master
   roles:
     - k3s-node-labeling
-    - sealed-secrets-setup
-    - argocd-setup
-    - longhorn-setup
-    - traefik-setup

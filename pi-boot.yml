@@ -1,0 +1,6 @@
+---
+- name: Pre-setup
+  hosts: all
+  become: true
+  roles:
+    - raspberry-pi-boot-config

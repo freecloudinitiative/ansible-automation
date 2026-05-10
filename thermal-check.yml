@@ -1,0 +1,6 @@
+---
+- name: Pre-setup
+  hosts: all
+  become: true
+  roles:
+    - rpi-thermal-check

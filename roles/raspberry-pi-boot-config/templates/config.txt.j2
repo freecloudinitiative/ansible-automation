@@ -18,8 +18,7 @@ camera_auto_detect=0
 display_auto_detect=0
 
 # Disable HDMI output and ignore display hotplugging to save energy
-hdmi_ignore_hotplug=1
-hdmi_blanking=2
+dtparam=hdmi=off
 
 # Additional overlays and parameters are documented
 # /boot/firmware/overlays/README
@@ -44,14 +43,19 @@ dtparam=fan_temp0_hyst={{ rpi_fan_temp0_hyst }}
 dtparam=fan_temp1={{ rpi_fan_temp1 }}
 dtparam=fan_temp1_hyst={{ rpi_fan_temp1_hyst }}
 
+# Disable the green activity LED
+dtparam=act_led_trigger=none
+dtparam=act_led_activelow=off
+
+# Disable the red power LED as well
+dtparam=pwr_led_trigger=none
+dtparam=pwr_led_activelow=off
+
+# Enable PCIe Gen 3 for maximum NVMe speed
+dtparam=pciex1_gen=3
+
+# Increase timeout for NVMe drives to ensure stable boot
+boot_delay=1
+
 # Disable compensation for displays with overscan
 disable_overscan=1
-
-[cm4]
-# Enable host mode on the 2711 built-in XHCI USB controller.
-# This line should be removed if the legacy DWC2 controller is required
-# (e.g. for USB device mode) or if USB support is not required.
-otg_mode={{ rpi_cm4_otg_mode }}
-
-[cm5]
-dtoverlay=dwc2,dr_mode=host
