@@ -12,6 +12,8 @@ An Ansible role that deploys the `kube-prometheus-stack` Helm chart into a K3s c
 
 ## Requirements
 
+- Python 3.9+ on the target host.
+- `kubernetes>=24.2.0`, `PyYAML>=3.11`, and `jsonpatch` Python packages.
 - `kubernetes.core` Ansible collection.
 - Helm installed on the target host (provided by the `k3s-master-setup` role).
 - A functional K3s / Kubernetes cluster.
@@ -20,13 +22,13 @@ An Ansible role that deploys the `kube-prometheus-stack` Helm chart into a K3s c
 
 Available variables are listed below, along with default values (see `defaults/main.yml`):
 
-| Variable | Default Value | Description |
-| --- | --- | --- |
-| `prometheus_stack_dir` | `~/k3s-stack/monitoring` | Directory on the target host for stack files. |
-| `prometheus_namespace` | `monitoring` | Kubernetes namespace for the stack. |
-| `prometheus_release_name` | `prometheus` | Helm release name. |
-| `prometheus_helm_repo_url` | `https://prometheus-community.github.io/helm-charts` | Helm repository URL. |
-| `prometheus_kubeconfig` | `~/.kube/config` | Path to the kubeconfig file on the target host. |
+| Variable                   | Default Value                                        | Description                                     |
+| -------------------------- | ---------------------------------------------------- | ----------------------------------------------- |
+| `prometheus_stack_dir`     | `~/k3s-stack/monitoring`                             | Directory on the target host for stack files.   |
+| `prometheus_namespace`     | `monitoring`                                         | Kubernetes namespace for the stack.             |
+| `prometheus_release_name`  | `prometheus`                                         | Helm release name.                              |
+| `prometheus_helm_repo_url` | `https://prometheus-community.github.io/helm-charts` | Helm repository URL.                            |
+| `prometheus_kubeconfig`    | `~/.kube/config`                                     | Path to the kubeconfig file on the target host. |
 
 ## Dependencies
 

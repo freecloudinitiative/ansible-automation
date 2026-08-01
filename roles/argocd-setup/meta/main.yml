@@ -4,7 +4,7 @@ galaxy_info:
   author: freecloudinitiative
   description: Installs ArgoCD via official manifests, patches deployments with a custom nodeSelector, and retrieves initial admin credentials
   license: MIT
-  min_ansible_version: "2.15"
+  min_ansible_version: "2.16"
   platforms:
     - name: Ubuntu
       versions:

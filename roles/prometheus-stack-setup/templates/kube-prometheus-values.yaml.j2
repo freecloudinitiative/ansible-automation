@@ -17,7 +17,7 @@ prometheus:
         cpu: 1000m
         memory: 1.5Gi
 grafana:
-  adminPassword: "DuckMeGasHole"
+  adminPassword: "{{ grafana_admin_password | mandatory }}"
   persistence:
     enabled: true
     storageClassName: local-path

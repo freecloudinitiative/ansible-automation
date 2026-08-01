@@ -21,4 +21,4 @@ galaxy_info:
     - cluster
 
 dependencies:
-  - role: k3s-presetup
+  - role: k3s-pre-setup

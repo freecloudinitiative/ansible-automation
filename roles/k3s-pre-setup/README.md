@@ -1,4 +1,4 @@
-# k3s-presetup
+# k3s-pre-setup
 
 This role handles the initial system preparation required before installing K3s.
 

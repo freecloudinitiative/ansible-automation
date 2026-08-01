@@ -18,6 +18,7 @@ galaxy_info:
 
 dependencies:
   - role: k3s-master-setup
+    become: true
 
 collections:
   - kubernetes.core

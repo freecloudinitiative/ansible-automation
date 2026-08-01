@@ -16,4 +16,4 @@ galaxy_info:
     - ha
 
 dependencies:
-  - role: k3s-presetup
+  - role: k3s-pre-setup

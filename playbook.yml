@@ -3,8 +3,7 @@
   hosts: all
   become: true
   roles:
-    - raspberry-pi-boot-config
-    - k3s-presetup
+    - k3s-pre-setup
 
 - name: Setup K3s master node
   hosts: master
