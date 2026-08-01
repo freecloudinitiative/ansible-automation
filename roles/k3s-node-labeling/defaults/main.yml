@@ -15,3 +15,5 @@ node_taints:
   master:
     - key: node-role.kubernetes.io/master
       effect: NoSchedule
+
+kubeconfig_path: /etc/rancher/k3s/k3s.yaml

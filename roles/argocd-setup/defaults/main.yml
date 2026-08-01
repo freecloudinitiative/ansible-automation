@@ -1,0 +1,20 @@
+---
+argocd_namespace: argocd
+argocd_manifest_url: https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+argocd_node_selector:
+  node-tier: mid-memory
+
+argocd_deployments:
+  - argocd-server
+  - argocd-repo-server
+  - argocd-application-controller
+  - argocd-dex-server
+  - argocd-redis
+
+kubeconfig_path: /etc/rancher/k3s/k3s.yaml
+context: ""
+
+argocd_port_forward_enabled: false
+argocd_port_forward_local_port: 8080
+argocd_port_forward_remote_port: 443
