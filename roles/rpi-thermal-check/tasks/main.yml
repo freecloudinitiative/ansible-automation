@@ -1,0 +1,8 @@
+---
+- name: Get CPU temperature
+  shell: vcgencmd measure_temp | cut -d "=" -f2 | tr -d "'"
+  register: rpi_temp
+
+- name: Display Hostname and Temperature
+  debug:
+    msg: "{{ inventory_hostname }}: {{ rpi_temp.stdout }}"
