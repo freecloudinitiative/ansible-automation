@@ -1,111 +1,51 @@
 # k3s-node-labeling
 
-Labels and taints K8s nodes for workload distribution and resource management.
-
-## Description
-
-Configures node labels and taints:
-
-- **Labels**: Tier-based (high/mid/low memory)
-- **Taints**: Workload restrictions (master, low-memory)
-- **Longhorn**: Excludes low-memory node from storage
+An Ansible role that manages and reconciles K3s cluster node labels and taints based on inventory groups.
 
 ## Requirements
 
-- Ansible 2.11+ (required for unpinned `kubernetes.core` collection)
-- `kubernetes.core` collection
-- K3s/K8s cluster operational
-- The following dependencies must be available on the delegated master (`groups['master'][0]`):
-  - `kubectl`
-  - Python 3.6+
-  - `kubernetes` Python library (>= 12.0.0)
-  - `PyYAML` (>= 3.11)
-  - `jsonpatch` (>= 1.21)
+- `kubernetes.core` Ansible collection (pinned version recommended, e.g. `>= 2.4.0` or requirements file).
+- Python dependencies installed on `groups['master'][0]` (the control plane host performing delegated tasks):
+  - Python 3.9+
+  - `kubernetes` >= 24.2.0
+  - `PyYAML` >= 3.11
+  - `jsonpatch`
+- A functional K3s / Kubernetes cluster.
 
-## Variables
+## Role Variables
 
-| Variable             | Description             | Default      |
-| -------------------- | ----------------------- | ------------ |
-| `node_labels`        | Label configuration     | See defaults |
-| `node_taints`        | Taint configuration     | See defaults |
-| `longhorn_exclusion` | Longhorn disk exclusion | See defaults |
+Available variables are listed below, along with default values (see `defaults/main.yml`):
 
-## Usage
+| Variable                  | Default Value                                                         | Description                                                   |
+| ------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `kubeconfig_path`         | `/etc/rancher/k3s/k3s.yaml`                                           | Path to the kubeconfig file.                                  |
+| `context`                 | `""`                                                                  | Kubernetes context to use.                                    |
+| `node_labels.high_memory` | `{'node-tier': 'high-memory'}`                                        | Labels applied to nodes in the `high_memory` inventory group. |
+| `node_labels.mid_memory`  | `{'node-tier': 'mid-memory'}`                                         | Labels applied to nodes in the `mid_memory` inventory group.  |
+| `node_labels.low_memory`  | `{'node-tier': 'low-memory'}`                                         | Labels applied to nodes in the `low_memory` inventory group.  |
+| `node_taints.low_memory`  | `[{'key': 'memory', 'value': 'limited', 'effect': 'NoSchedule'}]`     | Taints applied to `low_memory` nodes.                         |
+| `node_taints.master`      | `[{'key': 'node-role.kubernetes.io/master', 'effect': 'NoSchedule'}]` | Taints applied to control plane / master nodes.               |
+
+## Dependencies
+
+- `k3s-master-setup`
+
+## Example Playbook
+
+The inventory must define a `master` host group (with at least one control plane node, `groups['master'][0]`) for task delegation:
+
+```ini
+[master]
+master1.example.com
+
+[high_memory]
+node1.example.com
+```
 
 ```yaml
----
-- name: Configure node labels and taints
-  hosts: master
+- hosts: master
   roles:
-    - k3s-node-labeling
-```
-
-Run:
-
-```bash
-ansible-playbook -i inventory.ini playbook.yml
-```
-
-## Tasks
-
-1. Label high-memory nodes (worker-1)
-2. Label mid-memory nodes (worker-2)
-3. Label low-memory nodes (worker-3)
-4. Taint low-memory node (NoSchedule)
-5. Taint master node (NoSchedule)
-6. Exclude low-memory node from Longhorn
-7. Display final node configuration
-
-## Node Configuration
-
-**High Memory (8GB):**
-
-- `node-tier=high-memory`
-- No taints
-
-**Mid Memory (4-6GB):**
-
-- `node-tier=mid-memory`
-- No taints
-
-**Low Memory (4GB):**
-
-- `node-tier=low-memory`
-- `memory=limited:NoSchedule`
-- `node.longhorn.io/create-default-disk=false`
-
-**Master:**
-
-- `node-role.kubernetes.io/master=:NoSchedule`
-
-## Verify
-
-```bash
-ssh master "kubectl get nodes --show-labels"
-ssh master "kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints"
-```
-
-## Usage in Pod Specs
-
-**High-memory workloads:**
-
-```yaml
-nodeSelector:
-  node-tier: high-memory
-```
-
-**Avoid low-memory nodes:**
-
-```yaml
-affinity:
-  nodeAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: node-tier
-              operator: NotIn
-              values:
-                - low-memory
+    - role: k3s-node-labeling
 ```
 
 ## License

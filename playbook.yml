@@ -22,6 +22,7 @@
     - k3s-worker-setup
 
 - name: Configure K3s node labels and taints
-  hosts: all
+  hosts: master
   roles:
     - k3s-node-labeling
+    - argocd-setup
