@@ -6,3 +6,6 @@ k3s_presetup_packages:
   - curl
   - iptables
   - ca-certificates
+  - python3-pip
+  - python3-setuptools
+  - python3-packaging
