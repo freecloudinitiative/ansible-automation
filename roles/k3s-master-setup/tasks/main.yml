@@ -38,12 +38,18 @@
   changed_when: "'k3s' in k3s_install.stdout"
 
 - name: Wait for k3s to be ready
-  ansible.builtin.wait_for:
-    port: 6443
-    host: localhost
-    delay: 5
-    timeout: 60
-  when: k3s_install.changed
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - get
+      - --raw=/readyz
+  register: k3s_readyz
+  until: k3s_readyz.rc == 0 and 'ok' in k3s_readyz.stdout
+  retries: 12
+  delay: 5
+  changed_when: false
+
 
 - name: Verify k3s installation
   ansible.builtin.command:
@@ -62,6 +68,8 @@
     src: /var/lib/rancher/k3s/server/node-token
   register: k3s_node_token
   become: true
+  no_log: true
+
 
 - name: Store master node IP address
   ansible.builtin.set_fact:

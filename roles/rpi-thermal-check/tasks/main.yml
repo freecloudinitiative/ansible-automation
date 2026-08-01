@@ -1,6 +1,8 @@
 ---
 - name: Get CPU temperature
   ansible.builtin.shell: set -o pipefail && vcgencmd measure_temp | cut -d "=" -f2 | tr -d "'"
+  args:
+    executable: /bin/bash
   changed_when: false
   register: rpi_temp
 
