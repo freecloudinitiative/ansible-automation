@@ -20,6 +20,7 @@
     K3S_TOKEN: "{{ k3s_node_token }}"
     INSTALL_K3S_EXEC: "agent --node-name={{ worker_label }} --node-ip={{ ansible_default_ipv4.address }}"
   become: true
+  no_log: true
   when: not k3s_binary.stat.exists or k3s_script_download.changed
   register: k3s_worker_install
   changed_when: "'k3s' in k3s_worker_install.stdout or k3s_worker_install.rc == 0"
