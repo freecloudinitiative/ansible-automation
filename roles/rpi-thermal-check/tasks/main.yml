@@ -1,8 +1,11 @@
 ---
 - name: Get CPU temperature
-  shell: vcgencmd measure_temp | cut -d "=" -f2 | tr -d "'"
+  ansible.builtin.shell: set -o pipefail && vcgencmd measure_temp | cut -d "=" -f2 | tr -d "'"
+  args:
+    executable: /bin/bash
+  changed_when: false
   register: rpi_temp
 
 - name: Display Hostname and Temperature
-  debug:
+  ansible.builtin.debug:
     msg: "{{ inventory_hostname }}: {{ rpi_temp.stdout }}"
