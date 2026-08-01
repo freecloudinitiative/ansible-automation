@@ -33,11 +33,27 @@
     context: "{{ context | default(omit) }}"
   register: argocd_install
 
+- name: Patch ArgoCD deployments with nodeSelector
+  kubernetes.core.k8s:
+    state: patched
+    kind: "{{ item.kind }}"
+    namespace: "{{ argocd_namespace }}"
+    name: "{{ item.name }}"
+    definition:
+      spec:
+        template:
+          spec:
+            nodeSelector: "{{ argocd_node_selector }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context | default(omit) }}"
+  loop: "{{ argocd_deployments }}"
+  register: patch_result
+
 - name: Wait for ArgoCD deployments to be ready
   kubernetes.core.k8s_info:
-    kind: Deployment
+    kind: "{{ item.kind }}"
     namespace: "{{ argocd_namespace }}"
-    name: "{{ item }}"
+    name: "{{ item.name }}"
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
     context: "{{ context | default(omit) }}"
   register: argocd_deployment_status
@@ -48,25 +64,6 @@
   retries: 60
   delay: 10
   loop: "{{ argocd_deployments }}"
-
-- name: Patch ArgoCD deployments with nodeSelector
-  kubernetes.core.k8s:
-    state: patched
-    kind: Deployment
-    namespace: "{{ argocd_namespace }}"
-    name: "{{ item }}"
-    definition:
-      spec:
-        template:
-          spec:
-            nodeSelector: "{{ argocd_node_selector }}"
-    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
-    context: "{{ context | default(omit) }}"
-  loop: "{{ argocd_deployments }}"
-  register: patch_result
-  failed_when:
-    - patch_result.failed
-    - "'not found' not in patch_result.msg | lower"
 
 - name: Get ArgoCD initial admin secret
   kubernetes.core.k8s_info:

@@ -6,11 +6,16 @@ argocd_node_selector:
   node-tier: mid-memory
 
 argocd_deployments:
-  - argocd-server
-  - argocd-repo-server
-  - argocd-application-controller
-  - argocd-dex-server
-  - argocd-redis
+  - name: argocd-server
+    kind: Deployment
+  - name: argocd-repo-server
+    kind: Deployment
+  - name: argocd-application-controller
+    kind: StatefulSet
+  - name: argocd-dex-server
+    kind: Deployment
+  - name: argocd-redis
+    kind: Deployment
 
 kubeconfig_path: /etc/rancher/k3s/k3s.yaml
 context: ""

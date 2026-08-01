@@ -4,7 +4,12 @@ An Ansible role that manages and reconciles K3s cluster node labels and taints b
 
 ## Requirements
 
-- `kubernetes.core` Ansible collection.
+- `kubernetes.core` Ansible collection (pinned version recommended, e.g. `>= 2.4.0` or requirements file).
+- Python dependencies installed on `groups['master'][0]` (the control plane host performing delegated tasks):
+  - Python 3.9+
+  - `kubernetes` >= 24.2.0
+  - `PyYAML` >= 3.11
+  - `jsonpatch`
 - A functional K3s / Kubernetes cluster.
 
 ## Role Variables
@@ -27,8 +32,18 @@ Available variables are listed below, along with default values (see `defaults/m
 
 ## Example Playbook
 
+The inventory must define a `master` host group (with at least one control plane node, `groups['master'][0]`) for task delegation:
+
+```ini
+[master]
+master1.example.com
+
+[high_memory]
+node1.example.com
+```
+
 ```yaml
-- hosts: all
+- hosts: master
   roles:
     - role: k3s-node-labeling
 ```
