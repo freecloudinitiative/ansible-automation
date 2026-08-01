@@ -6,8 +6,17 @@
     - raspberry-pi-boot-config
     - k3s-presetup
 
-- name: Bootstrap token
+- name: Setup K3s master node
   hosts: master
   become: true
   roles:
     - k3s-master-setup
+
+- name: Setup K3s worker nodes
+  hosts: workers
+  become: true
+  vars:
+    k3s_master_ip: "{{ hostvars[groups['master'][0]]['k3s_master_ip'] }}"
+    k3s_node_token: "{{ hostvars[groups['master'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
+  roles:
+    - k3s-worker-setup
