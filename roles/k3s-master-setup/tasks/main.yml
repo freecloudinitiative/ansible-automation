@@ -50,6 +50,13 @@
   delay: 5
   changed_when: false
 
+- name: Create k3s local storage directory
+  ansible.builtin.file:
+    path: /var/lib/rancher/k3s/storage
+    state: directory
+    mode: "0755"
+  become: true
+
 - name: Verify k3s installation
   ansible.builtin.command:
     argv:

@@ -1,8 +1,8 @@
 ---
 galaxy_info:
-  role_name: argocd_setup
+  role_name: prometheus_stack_setup
   author: freecloudinitiative
-  description: Installs ArgoCD via official manifests, patches deployments with a custom nodeSelector, and retrieves initial admin credentials
+  description: Installs kube-prometheus-stack via Helm into a K3s cluster
   license: MIT
   min_ansible_version: "2.16"
   platforms:
@@ -11,8 +11,9 @@ galaxy_info:
         - jammy
   galaxy_tags:
     - kubernetes
-    - argocd
-    - gitops
+    - prometheus
+    - monitoring
+    - helm
     - k3s
 
 dependencies:

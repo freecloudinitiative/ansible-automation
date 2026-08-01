@@ -1,0 +1,28 @@
+prometheus:
+  prometheusSpec:
+    retention: 14d
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+    resources:
+      requests:
+        cpu: 150m
+        memory: 500Mi
+      limits:
+        cpu: 1000m
+        memory: 1.5Gi
+grafana:
+  adminPassword: "DuckMeGasHole"
+  persistence:
+    enabled: true
+    storageClassName: local-path
+    size: 5Gi
+prometheus-node-exporter:
+  enabled: true
+kube-state-metrics:
+  enabled: true

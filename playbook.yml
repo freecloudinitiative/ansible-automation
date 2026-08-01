@@ -3,8 +3,7 @@
   hosts: all
   become: true
   roles:
-    - raspberry-pi-boot-config
-    - k3s-presetup
+    - k3s-pre-setup
 
 - name: Setup K3s master node
   hosts: master
@@ -25,4 +24,10 @@
   hosts: master
   roles:
     - k3s-node-labeling
+
+- name: Install K3S Components
+  hosts: master
+  become: true
+  roles:
     - argocd-setup
+    - prometheus-stack-setup
