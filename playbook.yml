@@ -1,0 +1,32 @@
+---
+- name: Pre-setup
+  hosts: all
+  become: true
+  roles:
+    - raspberry-pi-boot-config
+    - k3s-presetup
+
+- name: Bootstrap token
+  hosts: master
+  become: true
+  roles:
+    - k3s-bootstrap
+    - k3s-master-setup
+
+- name: Distribute passwords
+  hosts: workers
+  become: true
+  roles:
+    - distribute-k3s-node-password
+    - k3s-worker-setup
+
+- name: Cleanup bootstrap token
+  hosts: master
+  become: true
+  roles:
+    - cleanup-bootstrap
+
+- name: Node labelling
+  hosts: master
+  roles:
+    - k3s-node-labeling
