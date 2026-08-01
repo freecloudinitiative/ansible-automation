@@ -1,4 +1,4 @@
-# k8s-node-labeling
+# k3s-node-labeling
 
 Labels and taints K8s nodes for workload distribution and resource management.
 
@@ -12,9 +12,15 @@ Configures node labels and taints:
 
 ## Requirements
 
-- Ansible 2.9+
+- Ansible 2.11+ (required for unpinned `kubernetes.core` collection)
+- `kubernetes.core` collection
 - K3s/K8s cluster operational
-- `kubectl` accessible on master
+- The following dependencies must be available on the delegated master (`groups['master'][0]`):
+  - `kubectl`
+  - Python 3.6+
+  - `kubernetes` Python library (>= 12.0.0)
+  - `PyYAML` (>= 3.11)
+  - `jsonpatch` (>= 1.21)
 
 ## Variables
 
@@ -29,22 +35,22 @@ Configures node labels and taints:
 ```yaml
 ---
 - name: Configure node labels and taints
-  hosts: masters
+  hosts: master
   roles:
-    - k8s-node-labeling
+    - k3s-node-labeling
 ```
 
 Run:
 
 ```bash
-ansible-playbook -i inventory site.yml
+ansible-playbook -i inventory.ini playbook.yml
 ```
 
 ## Tasks
 
-1. Label high-memory nodes (worker5, worker6)
-2. Label mid-memory nodes (worker1, worker2, worker4)
-3. Label low-memory node (worker3)
+1. Label high-memory nodes (worker-1)
+2. Label mid-memory nodes (worker-2)
+3. Label low-memory nodes (worker-3)
 4. Taint low-memory node (NoSchedule)
 5. Taint master node (NoSchedule)
 6. Exclude low-memory node from Longhorn
@@ -75,8 +81,8 @@ ansible-playbook -i inventory site.yml
 ## Verify
 
 ```bash
-ssh master1.local "kubectl get nodes --show-labels"
-ssh master1.local "kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints"
+ssh master "kubectl get nodes --show-labels"
+ssh master "kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints"
 ```
 
 ## Usage in Pod Specs
