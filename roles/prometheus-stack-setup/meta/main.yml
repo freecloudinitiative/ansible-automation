@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  role_name: prometheus_stack_setup
+  author: freecloudinitiative
+  description: Installs kube-prometheus-stack via Helm into a K3s cluster
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+  galaxy_tags:
+    - kubernetes
+    - prometheus
+    - monitoring
+    - helm
+    - k3s
+
+collections:
+  - kubernetes.core

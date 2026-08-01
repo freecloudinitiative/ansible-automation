@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  role_name: k3s_master_setup
+  author: freecloudinitiative
+  description: Initializes and configures the primary master node of an HA K3s cluster with embedded etcd, dynamic IP binding, and secure kubeconfig permissions
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+  galaxy_tags:
+    - kubernetes
+    - k3s
+    - cluster
+    - ha
+
+dependencies:
+  - role: k3s-presetup

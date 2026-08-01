@@ -1,0 +1,40 @@
+---
+- name: Create monitoring stack directory
+  ansible.builtin.file:
+    path: "{{ prometheus_stack_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Create monitoring namespace
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ prometheus_namespace }}"
+    state: present
+    kubeconfig: "{{ prometheus_kubeconfig }}"
+
+- name: Render kube-prometheus values from template
+  ansible.builtin.template:
+    src: kube-prometheus-values.yaml.j2
+    dest: "{{ prometheus_stack_dir }}/kube-prometheus-values.yaml"
+    mode: "0644"
+
+- name: Add prometheus-community Helm repo
+  kubernetes.core.helm_repository:
+    name: prometheus-community
+    repo_url: "{{ prometheus_helm_repo_url }}"
+
+- name: Update Helm repos
+  ansible.builtin.command: helm repo update
+  changed_when: false
+
+- name: Install kube-prometheus-stack via Helm
+  kubernetes.core.helm:
+    name: "{{ prometheus_release_name }}"
+    chart_ref: prometheus-community/kube-prometheus-stack
+    release_namespace: "{{ prometheus_namespace }}"
+    create_namespace: false
+    values_files:
+      - "{{ prometheus_stack_dir }}/kube-prometheus-values.yaml"
+    kubeconfig: "{{ prometheus_kubeconfig }}"
+    state: present

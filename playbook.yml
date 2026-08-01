@@ -25,4 +25,10 @@
   hosts: master
   roles:
     - k3s-node-labeling
+
+- name: Install K3S Components
+  hosts: master
+  become: true
+  roles:
     - argocd-setup
+    - prometheus-stack-setup

@@ -1,8 +1,8 @@
 ---
 galaxy_info:
-  role_name: argocd_setup
+  role_name: k3s_node_labeling
   author: freecloudinitiative
-  description: Installs ArgoCD via official manifests, patches deployments with a custom nodeSelector, and retrieves initial admin credentials
+  description: Manages and reconciles K3s cluster node labels and taints based on inventory groups (high_memory, mid_memory, low_memory, master)
   license: MIT
   min_ansible_version: "2.15"
   platforms:
@@ -11,9 +11,10 @@ galaxy_info:
         - jammy
   galaxy_tags:
     - kubernetes
-    - argocd
-    - gitops
     - k3s
+    - nodes
+    - labels
+    - taints
 
 dependencies:
   - role: k3s-master-setup
