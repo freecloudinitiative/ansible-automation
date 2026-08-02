@@ -22,18 +22,18 @@ An Ansible role that deploys the `grafana/loki` Helm chart into a K3s cluster, i
 
 Available variables are listed below, along with default values (see `defaults/main.yml`):
 
-| Variable                       | Default Value                                | Description                                     |
-| ------------------------------ | -------------------------------------------- | ----------------------------------------------- |
-| `prometheus_namespace`         | `monitoring`                                 | Kubernetes namespace for Loki installation.     |
-| `loki_stack_dir`               | `~/k3s-stack/monitoring`                     | Directory on target host for Loki config files. |
-| `loki_release_name`            | `loki`                                       | Helm release name.                              |
-| `loki_helm_repo_url`           | `https://grafana.github.io/helm-charts`      | Helm repository URL.                            |
-| `loki_kubeconfig`              | `{{ kubeconfig_path \| default(...) }}`      | Path to the kubeconfig file on target host.     |
-| `loki_port_forward_enabled`    | `true`                                       | Whether to start background port-forwarding.    |
-| `loki_port_forward_address`    | `127.0.0.1`                                  | Listening IP address for port-forwarding.       |
-| `loki_port_forward_local_port` | `3100`                                       | Local port to bind for port-forwarding.         |
-| `loki_port_forward_remote_port`| `3100`                                       | Remote port on the Loki service.                |
-| `loki_service_name`            | `svc/loki-gateway`                           | Target service for port-forwarding.             |
+| Variable                        | Default Value                           | Description                                     |
+| ------------------------------- | --------------------------------------- | ----------------------------------------------- |
+| `monitoring_namespace`          | `monitoring`                            | Kubernetes namespace for Loki installation.     |
+| `loki_stack_dir`                | `~/k3s-stack/monitoring`                | Directory on target host for Loki config files. |
+| `loki_release_name`             | `loki`                                  | Helm release name.                              |
+| `loki_helm_repo_url`            | `https://grafana.github.io/helm-charts` | Helm repository URL.                            |
+| `loki_kubeconfig`               | `{{ kubeconfig_path \| default(...) }}` | Path to the kubeconfig file on target host.     |
+| `loki_port_forward_enabled`     | `true`                                  | Whether to start background port-forwarding.    |
+| `loki_port_forward_address`     | `127.0.0.1`                             | Listening IP address for port-forwarding.       |
+| `loki_port_forward_local_port`  | `3100`                                  | Local port to bind for port-forwarding.         |
+| `loki_port_forward_remote_port` | `3100`                                  | Remote port on the Loki service.                |
+| `loki_service_name`             | `svc/loki-gateway`                      | Target service for port-forwarding.             |
 
 ## Dependencies
 
@@ -51,4 +51,3 @@ Available variables are listed below, along with default values (see `defaults/m
 ## License
 
 MIT
-

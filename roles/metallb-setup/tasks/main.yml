@@ -33,7 +33,7 @@
     dest: "{{ metallb_stack_dir }}/metallb-config.yaml"
     mode: "0644"
 
-- name: Create and label MetalLB namespace
+- name: Ensure MetalLB namespace exists
   kubernetes.core.k8s:
     name: "{{ metallb_namespace }}"
     api_version: v1

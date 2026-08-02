@@ -14,6 +14,14 @@
   ansible.builtin.command: helm repo update
   changed_when: false
 
+- name: Ensure Kyverno namespace exists
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ kyverno_namespace }}"
+    state: present
+    kubeconfig: "{{ kyverno_kubeconfig }}"
+
 - name: Render Kyverno values from template
   ansible.builtin.template:
     src: kyverno-values.yaml.j2
@@ -25,7 +33,7 @@
     name: "{{ kyverno_release_name }}"
     chart_ref: kyverno/kyverno
     release_namespace: "{{ kyverno_namespace }}"
-    create_namespace: true
+    create_namespace: false
     values_files:
       - "{{ kyverno_stack_dir }}/kyverno-values.yaml"
     kubeconfig: "{{ kyverno_kubeconfig }}"

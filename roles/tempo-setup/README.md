@@ -24,7 +24,7 @@ Available variables are listed below, along with default values (see `defaults/m
 
 | Variable                         | Default Value                                     | Description                                  |
 | -------------------------------- | ------------------------------------------------- | -------------------------------------------- |
-| `prometheus_namespace`           | `monitoring`                                      | Kubernetes namespace for Tempo installation. |
+| `monitoring_namespace`           | `monitoring`                                      | Kubernetes namespace for Tempo installation. |
 | `tempo_stack_dir`                | `~/k3s-stack/monitoring`                          | Directory on target host for config files.   |
 | `tempo_release_name`             | `tempo`                                           | Helm release name.                           |
 | `tempo_helm_repo_url`            | `https://grafana-community.github.io/helm-charts` | Helm repository URL.                         |

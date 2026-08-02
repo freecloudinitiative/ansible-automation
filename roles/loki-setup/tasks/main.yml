@@ -14,6 +14,14 @@
   ansible.builtin.command: helm repo update
   changed_when: false
 
+- name: Ensure monitoring namespace exists
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ monitoring_namespace }}"
+    state: present
+    kubeconfig: "{{ loki_kubeconfig }}"
+
 - name: Render Loki values from template
   ansible.builtin.template:
     src: loki-values.yaml.j2
@@ -24,8 +32,8 @@
   kubernetes.core.helm:
     name: "{{ loki_release_name }}"
     chart_ref: grafana/loki
-    release_namespace: "{{ prometheus_namespace }}"
-    create_namespace: true
+    release_namespace: "{{ monitoring_namespace }}"
+    create_namespace: false
     values_files:
       - "{{ loki_stack_dir }}/loki-values.yaml"
     kubeconfig: "{{ loki_kubeconfig }}"
@@ -40,7 +48,7 @@
       - get
       - svc
       - -n
-      - "{{ prometheus_namespace }}"
+      - "{{ monitoring_namespace }}"
       - -l
       - "app.kubernetes.io/instance={{ loki_release_name }}"
       - -o
@@ -64,7 +72,7 @@
       - "{{ loki_port_forward_address }}"
       - "{{ loki_service_name }}"
       - -n
-      - "{{ prometheus_namespace }}"
+      - "{{ monitoring_namespace }}"
       - "{{ loki_port_forward_local_port }}:{{ loki_port_forward_remote_port }}"
   environment:
     KUBECONFIG: "{{ loki_kubeconfig }}"
