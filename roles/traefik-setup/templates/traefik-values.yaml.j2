@@ -1,0 +1,13 @@
+image:
+  tag: "{{ traefik_image_tag }}"
+
+nodeSelector:
+  node-tier: {{ traefik_node_tier }}
+
+ingressClass:
+  enabled: {{ traefik_ingress_class_enabled | lower }}
+  isDefaultClass: {{ traefik_ingress_class_is_default | lower }}
+
+ingressRoute:
+  dashboard:
+    enabled: {{ traefik_dashboard_enabled | lower }}
