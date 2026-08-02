@@ -1,0 +1,8 @@
+---
+- name: Apply ArgoCD bootstrap root application from template
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('ansible.builtin.template', 'root-app.yaml.j2') | from_yaml }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context if (context | default('') | length > 0) else omit }}"
+  when: argocd_bootstrap_enabled | bool

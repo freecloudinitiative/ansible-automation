@@ -25,7 +25,9 @@
     k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
   roles:
     - k3s-node-labeling
+    - sealed-secret-setup
     - argocd-setup
+    - argocd-bootstrap
     - cert-manager-setup
     - prometheus-stack-setup
     - loki-setup
@@ -34,3 +36,5 @@
     - open-telemetry-setup
     - kyverno-setup
     - linkerd-setup
+    - gitea-setup
+    - harbor-setup

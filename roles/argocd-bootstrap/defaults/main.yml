@@ -1,0 +1,6 @@
+---
+argocd_bootstrap_enabled: true
+argocd_root_app_manifest_url: https://raw.githubusercontent.com/freecloudinitiative/k3s-manifests/main/bootstrap/root-app.yaml
+argocd_namespace: argocd
+kubeconfig_path: /etc/rancher/k3s/k3s.yaml
+context: ""

@@ -36,6 +36,7 @@ Services deployed on top of K3s to provide networking, certs, and deployment aut
 | [`metallb-setup`](metallb-setup)             | `masters`    | Deploys and configures MetalLB to provide bare-metal LoadBalancer services utilizing a specified IP address pool. |
 | [`cert-manager-setup`](cert-manager-setup)   | `masters`    | Installs cert-manager to manage SSL/TLS certificates and configures ClusterIssuers (e.g., Let's Encrypt).         |
 | [`argocd-setup`](argocd-setup)               | `masters`    | Installs ArgoCD for GitOps-driven deployment and synchronization of Kubernetes manifests and applications.        |
+| [`argocd-bootstrap`](argocd-bootstrap)       | `masters`    | Bootstraps the K3s cluster by applying the ArgoCD root application (App of Apps) manifest.                         |
 | [`sealed-secret-setup`](sealed-secret-setup) | `masters`    | Installs Bitnami Sealed Secrets controller via Helm to allow encrypting secrets that are safe to commit to git.   |
 
 ---
@@ -53,6 +54,17 @@ These roles deploy and configure telemetry collection, storage, visualization, a
 | [`open-telemetry-setup`](open-telemetry-setup)     | `masters`    | Installs the OpenTelemetry Collector to build flexible, high-performance telemetry processing pipelines.           |
 | [`kyverno-setup`](kyverno-setup)                   | `masters`    | Installs Kyverno to define and enforce security, validation, mutation, and generation policies across the cluster. |
 | [`linkerd-setup`](linkerd-setup)                   | `masters`    | Deploys Linkerd service mesh to secure pod-to-pod communications, provide mTLS, and collect golden metrics.        |
+
+---
+
+## Developer Tooling & Registries
+
+These roles deploy local developer tools and registries for hosting code and container images.
+
+| Role | Target Hosts | Description |
+|---|---|---|
+| [`gitea-setup`](gitea-setup) | `masters` | Installs Gitea Git service via Helm and configures port-forwarding. |
+| [`harbor-setup`](harbor-setup) | `masters` | Installs Harbor container registry via Helm and configures port-forwarding. |
 
 ---
 
