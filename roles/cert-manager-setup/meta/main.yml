@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  role_name: cert_manager_setup
+  author: freecloudinitiative
+  description: Installs cert-manager via Helm into a K3s cluster and configures a ClusterIssuer
+  license: MIT
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+  galaxy_tags:
+    - kubernetes
+    - certmanager
+    - tls
+    - certificates
+    - security
+    - helm
+    - k3s
+
+collections:
+  - kubernetes.core

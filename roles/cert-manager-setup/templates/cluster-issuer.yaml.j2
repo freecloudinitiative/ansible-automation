@@ -1,0 +1,65 @@
+---
+{% if cert_manager_issuer_type == 'selfsigned' %}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-cluster-issuer
+spec:
+  selfSigned: {}
+---
+# Bootstrap CA using self-signed issuer
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: selfsigned-ca
+  namespace: {{ cert_manager_namespace }}
+spec:
+  isCA: true
+  commonName: k3s-cluster-ca
+  secretName: selfsigned-ca-secret
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned-cluster-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: ca-cluster-issuer
+spec:
+  ca:
+    secretName: selfsigned-ca-secret
+{% elif cert_manager_issuer_type == 'letsencrypt-staging' %}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: {{ cert_manager_letsencrypt_staging_url }}
+    email: {{ cert_manager_letsencrypt_email }}
+    privateKeySecretRef:
+      name: letsencrypt-staging-key
+    solvers:
+      - http01:
+          ingress:
+            class: traefik
+{% elif cert_manager_issuer_type == 'letsencrypt-production' %}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-production
+spec:
+  acme:
+    server: {{ cert_manager_letsencrypt_production_url }}
+    email: {{ cert_manager_letsencrypt_email }}
+    privateKeySecretRef:
+      name: letsencrypt-production-key
+    solvers:
+      - http01:
+          ingress:
+            class: traefik
+{% endif %}
