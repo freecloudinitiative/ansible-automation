@@ -34,5 +34,4 @@
     - prometheus-stack-setup
     - loki-setup
     - tempo-setup
-    - open-telemetry-setup
     - alloy-setup
