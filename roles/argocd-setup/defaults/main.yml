@@ -18,7 +18,6 @@ argocd_deployments:
     kind: Deployment
 
 kubeconfig_path: /etc/rancher/k3s/k3s.yaml
-context: ""
 
 argocd_port_forward_enabled: false
 argocd_port_forward_local_port: 8080

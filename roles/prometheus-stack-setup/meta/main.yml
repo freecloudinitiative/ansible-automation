@@ -16,8 +16,5 @@ galaxy_info:
     - helm
     - k3s
 
-dependencies:
-  - role: k3s-master-setup
-
 collections:
   - kubernetes.core

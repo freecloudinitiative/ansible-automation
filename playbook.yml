@@ -1,32 +1,33 @@
 ---
-- name: Pre-setup
+- name: Prepare nodes for K3s installation
   hosts: all
   become: true
   roles:
     - k3s-pre-setup
 
 - name: Setup K3s master node
-  hosts: master
+  hosts: masters
   become: true
   roles:
     - k3s-master-setup
+    - k3s-fact-gathering
 
 - name: Setup K3s worker nodes
   hosts: workers
   become: true
   vars:
-    k3s_master_ip: "{{ hostvars[groups['master'][0]]['k3s_master_ip'] }}"
-    k3s_node_token: "{{ hostvars[groups['master'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
+    k3s_master_ip: "{{ hostvars[groups['masters'][0]]['k3s_master_ip'] }}"
+    k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
   roles:
     - k3s-worker-setup
 
 - name: Configure K3s node labels and taints
-  hosts: master
+  hosts: masters
   roles:
     - k3s-node-labeling
 
 - name: Install K3S Components
-  hosts: master
+  hosts: masters
   become: true
   roles:
     - argocd-setup

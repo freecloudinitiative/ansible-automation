@@ -16,9 +16,5 @@ galaxy_info:
     - labels
     - taints
 
-dependencies:
-  - role: k3s-master-setup
-    become: true
-
 collections:
   - kubernetes.core

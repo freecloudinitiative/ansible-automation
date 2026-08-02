@@ -1,8 +1,8 @@
 ---
 galaxy_info:
-  role_name: k3s_master_setup
+  role_name: k3s_fact_gathering
   author: freecloudinitiative
-  description: Initializes and configures the primary master node of an HA K3s cluster with embedded etcd, dynamic IP binding, and secure kubeconfig permissions
+  description: Gathers the K3s node token and master IP address from the primary master node for worker node initialization
   license: MIT
   min_ansible_version: "2.15"
   platforms:

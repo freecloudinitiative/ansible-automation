@@ -8,15 +8,8 @@
 - name: Verify Python version requirement
   ansible.builtin.assert:
     that:
-      - ansible_python_version is version('3.9', '>=')
+      - ansible_facts.python_version is version('3.9', '>=')
     fail_msg: "Python 3.9+ is required for kubernetes.core"
-
-- name: Install Python dependencies for kubernetes.core
-  ansible.builtin.pip:
-    name:
-      - "kubernetes>=24.2.0"
-      - "PyYAML>=3.11"
-      - "jsonpatch"
 
 - name: Create monitoring namespace
   kubernetes.core.k8s:

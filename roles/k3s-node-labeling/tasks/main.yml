@@ -1,174 +1,81 @@
 ---
-- name: Wait for target nodes to be present and ready
-  kubernetes.core.k8s_info:
-    kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
-    context: "{{ context | default(omit) }}"
-    kind: Node
-    name: "{{ item.split('.')[0] }}"
-  register: target_node_info
-  until:
-    - target_node_info.resources | length > 0
-    - (target_node_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length) > 0
-  retries: 12
-  delay: 5
-  loop: "{{ (groups['high_memory'] | default([]) + groups['mid_memory'] | default([]) + groups['low_memory'] | default([]) + groups['master'] | default([])) | unique }}"
-  delegate_to: "{{ groups['master'][0] }}"
+- name: Get list of active nodes in cluster
+  ansible.builtin.command:
+    cmd: kubectl get nodes -o jsonpath='{.items[*].metadata.name}'
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+  register: ready_nodes_cmd
+  changed_when: false
+  failed_when: false
+  delegate_to: "{{ groups['masters'][0] }}"
   run_once: true
 
-- name: Get all cluster nodes for reconciliation
-  kubernetes.core.k8s_info:
-    kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
-    context: "{{ context | default(omit) }}"
-    kind: Node
-  register: all_nodes_info
-  delegate_to: "{{ groups['master'][0] }}"
-  run_once: true
-
-- name: Remove stale node-tier labels from unassigned nodes
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
-    context: "{{ context | default(omit) }}"
-    api_version: v1
-    kind: Node
-    name: "{{ item.metadata.name }}"
-    state: patched
-    definition:
-      metadata:
-        labels:
-          node-tier: null
-  loop: "{{ all_nodes_info.resources | default([]) }}"
-  when:
-    - item.metadata.labels['node-tier'] is defined
-    - item.metadata.name not in (groups['high_memory'] | default([]) + groups['mid_memory'] | default([]) + groups['low_memory'] | default([])) | map('regex_replace', '\..*', '') | list
-  delegate_to: "{{ groups['master'][0] }}"
-  run_once: true
-
-- name: Remove stale memory taints from non-low-memory nodes
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
-    context: "{{ context | default(omit) }}"
-    api_version: v1
-    kind: Node
-    name: "{{ item.metadata.name }}"
-    state: patched
-    definition:
-      spec:
-        taints: "{{ (item.spec.taints | default([])) | rejectattr('key', 'equalto', 'memory') | list }}"
-  loop: "{{ all_nodes_info.resources | default([]) }}"
-  when:
-    - item.metadata.name not in (groups['low_memory'] | default([]) | map('regex_replace', '\..*', '') | list)
-    - (item.spec.taints | default([]) | selectattr('key', 'equalto', 'memory') | list | length) > 0
-  delegate_to: "{{ groups['master'][0] }}"
-  run_once: true
-
-- name: Remove stale master taints from former master nodes
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
-    context: "{{ context | default(omit) }}"
-    api_version: v1
-    kind: Node
-    name: "{{ item.metadata.name }}"
-    state: patched
-    definition:
-      spec:
-        taints: "{{ (item.spec.taints | default([])) | rejectattr('key', 'equalto', 'node-role.kubernetes.io/master') | list }}"
-  loop: "{{ all_nodes_info.resources | default([]) }}"
-  when:
-    - item.metadata.name not in (groups['master'] | default([]) | map('regex_replace', '\..*', '') | list)
-    - (item.spec.taints | default([]) | selectattr('key', 'equalto', 'node-role.kubernetes.io/master') | list | length) > 0
-  delegate_to: "{{ groups['master'][0] }}"
+- name: Set cluster_nodes fact
+  ansible.builtin.set_fact:
+    cluster_nodes: "{{ ready_nodes_cmd.stdout.split() if ready_nodes_cmd.rc == 0 else [] }}"
   run_once: true
 
 - name: Label high-memory nodes
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
-    context: "{{ context | default(omit) }}"
-    api_version: v1
-    kind: Node
-    name: "{{ item.split('.')[0] }}"
-    state: patched
-    definition:
-      metadata:
-        labels: "{{ node_labels.high_memory }}"
-  loop: "{{ groups['high_memory'] | default([]) }}"
-  delegate_to: "{{ groups['master'][0] }}"
+  ansible.builtin.command:
+    cmd: "kubectl label node {{ item }} node-tier=high-memory --overwrite"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+  loop: "{{ groups['high_memory'] | default([]) | map('regex_replace', '\\..*', '') | list }}"
+  when: item in cluster_nodes
+  delegate_to: "{{ groups['masters'][0] }}"
   run_once: true
 
 - name: Label mid-memory nodes
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
-    context: "{{ context | default(omit) }}"
-    api_version: v1
-    kind: Node
-    name: "{{ item.split('.')[0] }}"
-    state: patched
-    definition:
-      metadata:
-        labels: "{{ node_labels.mid_memory }}"
-  loop: "{{ groups['mid_memory'] | default([]) }}"
-  delegate_to: "{{ groups['master'][0] }}"
+  ansible.builtin.command:
+    cmd: "kubectl label node {{ item }} node-tier=mid-memory --overwrite"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+  loop: "{{ groups['mid_memory'] | default([]) | map('regex_replace', '\\..*', '') | list }}"
+  when: item in cluster_nodes
+  delegate_to: "{{ groups['masters'][0] }}"
   run_once: true
 
-- name: Label low-memory node
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
-    context: "{{ context | default(omit) }}"
-    api_version: v1
-    kind: Node
-    name: "{{ item.split('.')[0] }}"
-    state: patched
-    definition:
-      metadata:
-        labels: "{{ node_labels.low_memory }}"
-  loop: "{{ groups['low_memory'] | default([]) }}"
-  delegate_to: "{{ groups['master'][0] }}"
+- name: Label low-memory nodes
+  ansible.builtin.command:
+    cmd: "kubectl label node {{ item }} node-tier=low-memory --overwrite"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+  loop: "{{ groups['low_memory'] | default([]) | map('regex_replace', '\\..*', '') | list }}"
+  when: item in cluster_nodes
+  delegate_to: "{{ groups['masters'][0] }}"
   run_once: true
 
-- name: Taint low-memory node
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
-    context: "{{ context | default(omit) }}"
-    api_version: v1
-    kind: Node
-    name: "{{ item.split('.')[0] }}"
-    state: patched
-    definition:
-      spec:
-        taints: "{{ node_taints.low_memory }}"
-  loop: "{{ groups['low_memory'] | default([]) }}"
-  delegate_to: "{{ groups['master'][0] }}"
+- name: Taint low-memory nodes
+  ansible.builtin.command:
+    cmd: "kubectl taint node {{ item }} memory=limited:NoSchedule --overwrite"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+  loop: "{{ groups['low_memory'] | default([]) | map('regex_replace', '\\..*', '') | list }}"
+  when: item in cluster_nodes
+  delegate_to: "{{ groups['masters'][0] }}"
   run_once: true
 
-- name: Taint master node
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
-    context: "{{ context | default(omit) }}"
-    api_version: v1
-    kind: Node
-    name: "{{ item.split('.')[0] }}"
-    state: patched
-    definition:
-      spec:
-        taints: "{{ node_taints.master }}"
-  loop: "{{ groups['master'] | default([]) }}"
-  delegate_to: "{{ groups['master'][0] }}"
-  run_once: true
-
-- name: Get node labels and taints
-  kubernetes.core.k8s_info:
-    kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
-    context: "{{ context | default(omit) }}"
-    kind: Node
-  register: nodes_info
-  delegate_to: "{{ groups['master'][0] }}"
+- name: Taint master nodes
+  ansible.builtin.command:
+    cmd: "kubectl taint node {{ item }} node-role.kubernetes.io/master=:NoSchedule --overwrite"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+  loop: "{{ groups['masters'] | default([]) | map('regex_replace', '\\..*', '') | list }}"
+  when: item in cluster_nodes
+  delegate_to: "{{ groups['masters'][0] }}"
   run_once: true
 
 - name: Display node configuration
+  ansible.builtin.command:
+    cmd: kubectl get nodes --show-labels
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+  register: nodes_status
+  changed_when: false
+  delegate_to: "{{ groups['masters'][0] }}"
+  run_once: true
+
+- name: Print node configuration
   ansible.builtin.debug:
-    msg: |
-      {% for node in nodes_info.resources %}
-      NAME: {{ node.metadata.name }}
-      LABELS: {{ node.metadata.labels | default({}) }}
-      TAINTS: {{ node.spec.taints | default([]) }}
-      {% endfor %}
+    var: nodes_status.stdout_lines
   run_once: true
