@@ -29,6 +29,7 @@
     - gitea-setup
     - argocd-bootstrap
     - sealed-secret-setup
+    - traefik-setup
     - cert-manager-setup
     - prometheus-stack-setup
     - loki-setup

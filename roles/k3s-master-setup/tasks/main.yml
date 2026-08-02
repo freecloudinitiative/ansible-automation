@@ -20,6 +20,8 @@
       - --cluster-init
       - --disable
       - metrics-server
+      - --disable
+      - traefik
       - --node-name=master
       - "--node-ip={{ ansible_facts.default_ipv4.address }}"
       - "--advertise-address={{ ansible_facts.default_ipv4.address }}"
