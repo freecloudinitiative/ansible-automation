@@ -1,4 +1,26 @@
 ---
+- name: Ensure python3-pip is installed
+  ansible.builtin.apt:
+    name:
+      - python3-pip
+      - python3-jsonpatch
+      - python3-yaml
+    state: present
+    update_cache: true
+  become: true
+  ignore_errors: true
+
+- name: Upgrade kubernetes Python library to >= 24.2.0
+  ansible.builtin.pip:
+    name:
+      - "kubernetes>=24.2.0"
+      - "jsonpatch"
+      - "PyYAML"
+    state: present
+    extra_args: "--break-system-packages --ignore-installed"
+  become: true
+  ignore_errors: true
+
 - name: Ensure argocd namespace exists
   kubernetes.core.k8s:
     api_version: v1
@@ -6,31 +28,27 @@
     name: "{{ argocd_namespace }}"
     state: present
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
-    context: "{{ context | default(omit) }}"
+    context: "{{ context if (context | default('') | length > 0) else omit }}"
 
 - name: Ensure ~/k3s-stack/argocd directory exists
   ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/k3s-stack/argocd"
+    path: "{{ ansible_facts.env.HOME }}/k3s-stack/argocd"
     state: directory
     mode: '0755'
 
 - name: Download ArgoCD manifest
   ansible.builtin.get_url:
     url: "{{ argocd_manifest_url }}"
-    dest: "{{ ansible_env.HOME }}/k3s-stack/argocd/install.yaml"
+    dest: "{{ ansible_facts.env.HOME }}/k3s-stack/argocd/install.yaml"
     mode: '0644'
 
 - name: Install ArgoCD from manifest
   kubernetes.core.k8s:
     state: present
     namespace: "{{ argocd_namespace }}"
-    src: "{{ ansible_env.HOME }}/k3s-stack/argocd/install.yaml"
-    wait: true
-    wait_condition:
-      type: Ready
-      status: "True"
+    src: "{{ ansible_facts.env.HOME }}/k3s-stack/argocd/install.yaml"
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
-    context: "{{ context | default(omit) }}"
+    context: "{{ context if (context | default('') | length > 0) else omit }}"
   register: argocd_install
 
 - name: Patch ArgoCD deployments with nodeSelector
@@ -45,7 +63,7 @@
           spec:
             nodeSelector: "{{ argocd_node_selector }}"
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
-    context: "{{ context | default(omit) }}"
+    context: "{{ context if (context | default('') | length > 0) else omit }}"
   loop: "{{ argocd_deployments }}"
   register: patch_result
 
@@ -55,12 +73,13 @@
     namespace: "{{ argocd_namespace }}"
     name: "{{ item.name }}"
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
-    context: "{{ context | default(omit) }}"
+    context: "{{ context if (context | default('') | length > 0) else omit }}"
   register: argocd_deployment_status
   until:
+    - argocd_deployment_status.resources is defined
     - argocd_deployment_status.resources | length > 0
-    - argocd_deployment_status.resources[0].status.readyReplicas | default(0) > 0
-    - argocd_deployment_status.resources[0].status.readyReplicas == argocd_deployment_status.resources[0].spec.replicas | default(1)
+    - (argocd_deployment_status.resources[0].status.readyReplicas | default(0)) > 0
+    - (argocd_deployment_status.resources[0].status.readyReplicas | default(0)) == (argocd_deployment_status.resources[0].spec.replicas | default(1))
   retries: 60
   delay: 10
   loop: "{{ argocd_deployments }}"
@@ -71,11 +90,13 @@
     name: argocd-initial-admin-secret
     namespace: "{{ argocd_namespace }}"
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
-    context: "{{ context | default(omit) }}"
+    context: "{{ context if (context | default('') | length > 0) else omit }}"
   register: argocd_secret
   retries: 10
   delay: 5
-  until: argocd_secret.resources | length > 0
+  until:
+    - argocd_secret.resources is defined
+    - argocd_secret.resources | length > 0
 
 - name: Decode ArgoCD admin password
   ansible.builtin.set_fact:

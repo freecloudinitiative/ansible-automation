@@ -18,7 +18,7 @@
   environment:
     K3S_URL: "https://{{ k3s_master_ip }}:6443"
     K3S_TOKEN: "{{ k3s_node_token }}"
-    INSTALL_K3S_EXEC: "agent --node-name={{ worker_label }} --node-ip={{ ansible_default_ipv4.address }}"
+    INSTALL_K3S_EXEC: "agent --node-name={{ worker_label }} --node-ip={{ ansible_facts.default_ipv4.address }}"
   become: true
   no_log: true
   when: not k3s_binary.stat.exists or k3s_script_download.changed

@@ -1,12 +1,6 @@
 ---
-- name: Pre-setup
-  hosts: all
-  become: true
-  roles:
-    - k3s-pre-setup
-
 - name: Setup K3s master node
-  hosts: master
+  hosts: masters
   become: true
   roles:
     - k3s-master-setup
@@ -21,12 +15,12 @@
     - k3s-worker-setup
 
 - name: Configure K3s node labels and taints
-  hosts: master
+  hosts: masters
   roles:
     - k3s-node-labeling
 
 - name: Install K3S Components
-  hosts: master
+  hosts: masters
   become: true
   roles:
     - argocd-setup

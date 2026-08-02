@@ -23,15 +23,9 @@
       - --disable
       - metrics-server
       - --node-name=master
-      - "--node-ip={{ ansible_default_ipv4.address }}"
-      - "--advertise-address={{ ansible_default_ipv4.address }}"
-      - "--tls-san={{ ansible_default_ipv4.address }}"
-      - --token-file
-      - /etc/k3s-bootstrap-token
-      - --etcd-snapshot-schedule-cron=0 */6 * * *
-      - --etcd-snapshot-retention=10
-      - --write-kubeconfig-mode=640
-      - --kube-apiserver-arg=authorization-mode=Node,RBAC
+      - "--node-ip={{ ansible_facts.default_ipv4.address }}"
+      - "--advertise-address={{ ansible_facts.default_ipv4.address }}"
+      - "--tls-san={{ ansible_facts.default_ipv4.address }}"
   become: true
   when: not k3s_binary.stat.exists or k3s_script_download.changed
   register: k3s_install
@@ -78,7 +72,7 @@
 
 - name: Store master node IP address and kubeconfig path
   ansible.builtin.set_fact:
-    k3s_master_ip: "{{ ansible_default_ipv4.address }}"
+    k3s_master_ip: "{{ ansible_facts.default_ipv4.address }}"
     kubeconfig_path: "{{ kubeconfig_path }}"
 
 - name: Ensure permissions on k3s kubeconfig file
@@ -89,20 +83,20 @@
 
 - name: Create .kube directory for user
   ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/.kube"
+    path: "{{ ansible_facts.env.HOME }}/.kube"
     state: directory
     mode: '0755'
 
 - name: Copy k3s kubeconfig to user .kube directory
   ansible.builtin.copy:
     src: "{{ kubeconfig_path }}"
-    dest: "{{ ansible_env.HOME }}/.kube/config"
+    dest: "{{ ansible_facts.env.HOME }}/.kube/config"
     remote_src: true
     mode: '0600'
 
 - name: Ensure KUBECONFIG environment variable is set in .bashrc
   ansible.builtin.lineinfile:
-    path: "{{ ansible_env.HOME }}/.bashrc"
+    path: "{{ ansible_facts.env.HOME }}/.bashrc"
     line: 'export KUBECONFIG=~/.kube/config'
     regexp: '^export KUBECONFIG='
     state: present

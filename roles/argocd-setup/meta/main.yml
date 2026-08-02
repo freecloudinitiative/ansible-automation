@@ -15,8 +15,5 @@ galaxy_info:
     - gitops
     - k3s
 
-dependencies:
-  - role: k3s-master-setup
-
 collections:
   - kubernetes.core
