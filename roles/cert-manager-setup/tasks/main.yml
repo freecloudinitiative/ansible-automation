@@ -1,0 +1,84 @@
+---
+- name: Create cert-manager stack directory
+  ansible.builtin.file:
+    path: "{{ cert_manager_stack_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Add Jetstack Helm repo
+  kubernetes.core.helm_repository:
+    name: jetstack
+    repo_url: "{{ cert_manager_helm_repo_url }}"
+
+- name: Update Helm repos
+  ansible.builtin.command: helm repo update
+  changed_when: false
+
+- name: Render cert-manager values from template
+  ansible.builtin.template:
+    src: cert-manager-values.yaml.j2
+    dest: "{{ cert_manager_stack_dir }}/cert-manager-values.yaml"
+    mode: "0644"
+
+- name: Install cert-manager via Helm
+  kubernetes.core.helm:
+    name: "{{ cert_manager_release_name }}"
+    chart_ref: jetstack/cert-manager
+    release_namespace: "{{ cert_manager_namespace }}"
+    create_namespace: true
+    values_files:
+      - "{{ cert_manager_stack_dir }}/cert-manager-values.yaml"
+    kubeconfig: "{{ cert_manager_kubeconfig }}"
+    wait: true
+    wait_timeout: 5m
+    state: present
+
+- name: Wait for cert-manager webhook to be ready
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - wait
+      - --for=condition=Available
+      - deployment/cert-manager-webhook
+      - -n
+      - "{{ cert_manager_namespace }}"
+      - --timeout=120s
+  environment:
+    KUBECONFIG: "{{ cert_manager_kubeconfig }}"
+  changed_when: false
+
+- name: Render ClusterIssuer manifest from template
+  ansible.builtin.template:
+    src: cluster-issuer.yaml.j2
+    dest: "{{ cert_manager_stack_dir }}/cluster-issuer.yaml"
+    mode: "0644"
+
+- name: Apply ClusterIssuer
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ cert_manager_stack_dir }}/cluster-issuer.yaml"
+    kubeconfig: "{{ cert_manager_kubeconfig }}"
+
+- name: Verify ClusterIssuer is ready
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - wait
+      - --for=condition=Ready
+      - clusterissuer
+      - --all
+      - --timeout=60s
+  environment:
+    KUBECONFIG: "{{ cert_manager_kubeconfig }}"
+  changed_when: false
+
+- name: Display cert-manager setup info
+  ansible.builtin.debug:
+    msg:
+      status: "cert-manager installed and ClusterIssuer ready"
+      issuer_type: "{{ cert_manager_issuer_type }}"
+      namespace: "{{ cert_manager_namespace }}"
+      access_url: "http://{{ k3s_master_ip }}:9402/metrics"
+      note: >-
+        Use 'ca-cluster-issuer' (selfsigned) or 'letsencrypt-production'
+        in your Certificate and Ingress resources
