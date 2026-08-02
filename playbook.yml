@@ -34,4 +34,3 @@
     - open-telemetry-setup
     - kyverno-setup
     - linkerd-setup
-    - sealed-secret-setup
