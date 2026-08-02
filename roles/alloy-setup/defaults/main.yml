@@ -1,0 +1,12 @@
+---
+prometheus_namespace: monitoring
+alloy_stack_dir: "{{ '~/k3s-stack/monitoring' | expanduser }}"
+alloy_release_name: alloy
+alloy_helm_repo_url: https://grafana.github.io/helm-charts
+alloy_kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+
+alloy_port_forward_enabled: true
+alloy_port_forward_address: "127.0.0.1"
+alloy_port_forward_local_port: 12345
+alloy_port_forward_remote_port: 12345
+alloy_service_name: daemonset/alloy

@@ -1,0 +1,6 @@
+---
+- name: Install K3S Components
+  hosts: masters
+  become: true
+  roles:
+    - alloy-setup

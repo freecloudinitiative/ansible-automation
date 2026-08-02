@@ -1,0 +1,55 @@
+alloy:
+  clustering:
+    enabled: false
+  
+  config: |
+    logging {
+      level  = "info"
+      format = "json"
+    }
+
+    // Receive OTLP from apps
+    otelcol.receiver.otlp "default" {
+      grpc {
+        endpoint = "0.0.0.0:4317"
+      }
+      http {
+        endpoint = "0.0.0.0:4318"
+      }
+      output {
+        traces = [otelcol.exporter.otlp.tempo.input]
+        logs   = [loki.write.default.receiver]
+      }
+    }
+
+    // Send traces to Tempo
+    otelcol.exporter.otlp "tempo" {
+      client {
+        endpoint = "tempo.monitoring.svc.cluster.local:4317"
+        tls {
+          insecure = true
+        }
+      }
+    }
+
+    // Send logs to Loki
+    loki.write "default" {
+      endpoint {
+        url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+      }
+    }
+
+    // Scrape Prometheus metrics
+    prometheus.scrape "default" {
+      targets = [
+        {"__address__" = "localhost:9090"},
+      ]
+      forward_to = [prometheus.remote_write.default.receiver]
+    }
+
+    // Send metrics to Prometheus
+    prometheus.remote_write "default" {
+      endpoint {
+        url = "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
+      }
+    }

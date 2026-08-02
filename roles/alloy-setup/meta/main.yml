@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  role_name: alloy_setup
+  author: freecloudinitiative
+  description: Installs Grafana Alloy via Helm into a K3s cluster with background port forwarding capability
+  license: MIT
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+  galaxy_tags:
+    - kubernetes
+    - alloy
+    - logging
+    - monitoring
+    - helm
+    - k3s
+
+collections:
+  - kubernetes.core
