@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  role_name: loki_setup
+  author: freecloudinitiative
+  description: Installs Grafana Loki via Helm into a K3s cluster with background port forwarding capability
+  license: MIT
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+  galaxy_tags:
+    - kubernetes
+    - loki
+    - logging
+    - monitoring
+    - helm
+    - k3s
+
+collections:
+  - kubernetes.core

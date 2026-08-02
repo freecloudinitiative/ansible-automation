@@ -1,0 +1,12 @@
+---
+prometheus_namespace: monitoring
+loki_stack_dir: "{{ '~/k3s-stack/monitoring' | expanduser }}"
+loki_release_name: loki
+loki_helm_repo_url: https://grafana.github.io/helm-charts
+loki_kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+
+loki_port_forward_enabled: true
+loki_port_forward_address: "127.0.0.1"
+loki_port_forward_local_port: 3100
+loki_port_forward_remote_port: 3100
+loki_service_name: svc/loki-gateway
