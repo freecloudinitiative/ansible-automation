@@ -29,6 +29,8 @@
     values_files:
       - "{{ loki_stack_dir }}/loki-values.yaml"
     kubeconfig: "{{ loki_kubeconfig }}"
+    wait: true
+    wait_timeout: 10m
     state: present
 
 - name: Setup Loki port-forwarding
