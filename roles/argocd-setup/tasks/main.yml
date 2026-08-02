@@ -1,26 +1,4 @@
 ---
-- name: Ensure python3-pip is installed
-  ansible.builtin.apt:
-    name:
-      - python3-pip
-      - python3-jsonpatch
-      - python3-yaml
-    state: present
-    update_cache: true
-  become: true
-  ignore_errors: true
-
-- name: Upgrade kubernetes Python library to >= 24.2.0
-  ansible.builtin.pip:
-    name:
-      - "kubernetes>=24.2.0"
-      - "jsonpatch"
-      - "PyYAML"
-    state: present
-    extra_args: "--break-system-packages --ignore-installed"
-  become: true
-  ignore_errors: true
-
 - name: Ensure argocd namespace exists
   kubernetes.core.k8s:
     api_version: v1
