@@ -83,17 +83,13 @@
 
 - name: Display ArgoCD admin credentials
   ansible.builtin.debug:
-    msg: |
-      ArgoCD Installation Complete!
-      ==============================
-      Namespace: {{ argocd_namespace }}
-      Admin User: admin
-      Admin Password: {{ argocd_admin_password }}
-
-      Access ArgoCD UI:
-      kubectl port-forward svc/argocd-server -n {{ argocd_namespace }} {{ argocd_port_forward_local_port }}:{{ argocd_port_forward_remote_port }}
-
-      Then visit: https://localhost:{{ argocd_port_forward_local_port }}
+    msg:
+      status: "ArgoCD Installation Complete!"
+      namespace: "{{ argocd_namespace }}"
+      admin_user: "admin"
+      admin_password: "{{ argocd_admin_password }}"
+      access_command: "kubectl port-forward svc/argocd-server -n {{ argocd_namespace }} {{ argocd_port_forward_local_port }}:{{ argocd_port_forward_remote_port }}"
+      ui_url: "https://localhost:{{ argocd_port_forward_local_port }}"
   when: argocd_admin_password is defined
 
 - name: Setup ArgoCD port-forwarding
@@ -113,9 +109,9 @@
 
 - name: Display port-forward job info
   ansible.builtin.debug:
-    msg: |
-      Port-forwarding started in background
-      Job ID: {{ port_forward_job.ansible_job_id }}
-      Local Port: {{ argocd_port_forward_local_port }}
-      Remote Service: argocd-server:{{ argocd_port_forward_remote_port }}
+    msg:
+      status: "Port-forwarding started in background"
+      job_id: "{{ port_forward_job.ansible_job_id }}"
+      local_port: "{{ argocd_port_forward_local_port }}"
+      remote_service: "argocd-server:{{ argocd_port_forward_remote_port }}"
   when: argocd_port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
