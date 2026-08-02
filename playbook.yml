@@ -33,3 +33,4 @@
     - argocd-setup
     - prometheus-stack-setup
     - loki-setup
+    - alloy-setup
