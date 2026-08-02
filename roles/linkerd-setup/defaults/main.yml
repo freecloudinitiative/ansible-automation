@@ -1,0 +1,22 @@
+---
+linkerd_namespace: linkerd
+linkerd_stack_dir: "{{ '~/k3s-stack/linkerd' | expanduser }}"
+linkerd_release_name: linkerd
+linkerd_helm_repo_url: https://helm.linkerd.io/stable
+linkerd_kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+
+# cert-manager ClusterIssuer to use for the Linkerd trust anchor
+# Must match the issuer created by the cert-manager-setup role
+linkerd_cert_manager_cluster_issuer: selfsigned-cluster-issuer
+
+# Trust anchor certificate validity (Linkerd root CA — long-lived, manually rotated)
+linkerd_trust_anchor_duration: 8760h  # 1 year
+linkerd_trust_anchor_renew_before: 720h  # 30 days before expiry
+
+# Issuer certificate validity (auto-rotated by cert-manager)
+linkerd_issuer_duration: 48h
+linkerd_issuer_renew_before: 25h
+
+# Install Linkerd Viz (dashboard + Grafana integration)
+linkerd_viz_enabled: false
+linkerd_viz_release_name: linkerd-viz
