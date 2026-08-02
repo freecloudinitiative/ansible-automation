@@ -15,7 +15,7 @@ An Ansible role that deploys MetalLB via Helm (`metallb/metallb`) into a K3s clu
 ## Requirements
 
 - Python 3.9+ on target host.
-- `kubernetes` Python package.
+- Python packages on target host: `kubernetes>=24.2.0`, `PyYAML>=3.11`, `jsonpatch` (installed via `k3s-pre-setup` role).
 - `kubernetes.core` Ansible collection.
 - Helm installed on target host (provided by `k3s-master-setup`).
 - A functional K3s / Kubernetes cluster.

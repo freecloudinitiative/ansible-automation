@@ -2,7 +2,7 @@
 galaxy_info:
   role_name: metallb_setup
   author: freecloudinitiative
-  description: Installs Grafana MetalLB via Helm into a K3s cluster with background port forwarding capability
+  description: Installs MetalLB via Helm into a K3s cluster with background port forwarding capability
   license: MIT
   min_ansible_version: "2.16"
   platforms:

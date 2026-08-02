@@ -20,18 +20,38 @@
     dest: "{{ metallb_stack_dir }}/metallb-values.yaml"
     mode: "0644"
 
+- name: Assert metallb_ip_pool_range is defined
+  ansible.builtin.assert:
+    that:
+      - metallb_ip_pool_range is defined
+      - metallb_ip_pool_range | length > 0
+    fail_msg: "metallb_ip_pool_range must be explicitly defined (e.g. '192.168.1.100-192.168.1.110')"
+
 - name: Render MetalLB config from template
   ansible.builtin.template:
     src: metallb-config.yaml.j2
     dest: "{{ metallb_stack_dir }}/metallb-config.yaml"
     mode: "0644"
 
+- name: Create and label MetalLB namespace
+  kubernetes.core.k8s:
+    name: "{{ metallb_namespace }}"
+    api_version: v1
+    kind: Namespace
+    state: present
+    definition:
+      metadata:
+        labels:
+          pod-security.kubernetes.io/enforce: privileged
+    kubeconfig: "{{ metallb_kubeconfig }}"
+
 - name: Install MetalLB via Helm
   kubernetes.core.helm:
     name: "{{ metallb_release_name }}"
     chart_ref: metallb/metallb
+    chart_version: "{{ metallb_chart_version }}"
     release_namespace: "{{ metallb_namespace }}"
-    create_namespace: true
+    create_namespace: false
     values_files:
       - "{{ metallb_stack_dir }}/metallb-values.yaml"
     kubeconfig: "{{ metallb_kubeconfig }}"
@@ -62,10 +82,34 @@
   register: port_forward_job
   when: metallb_port_forward_enabled | bool
 
+- name: Check MetalLB port-forward job status
+  ansible.builtin.async_status:
+    jid: "{{ port_forward_job.ansible_job_id }}"
+  register: job_result
+  until: job_result.finished or (job_result.started is defined and job_result.started == 1)
+  retries: 5
+  delay: 1
+  when: metallb_port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
+  failed_when: job_result.finished and job_result.rc != 0
+
+- name: Verify MetalLB port-forward local port is accepting connections
+  ansible.builtin.wait_for:
+    host: "{{ '127.0.0.1' if metallb_port_forward_address == '0.0.0.0' else metallb_port_forward_address }}"
+    port: "{{ metallb_port_forward_local_port }}"
+    timeout: 10
+  when: metallb_port_forward_enabled | bool
+
+- name: Stop MetalLB port-forward process when disabled
+  ansible.builtin.pkill:
+    pattern: "kubectl port-forward.*{{ metallb_namespace }}.*{{ metallb_port_forward_local_port }}:"
+  failed_when: false
+  changed_when: false
+  when: not (metallb_port_forward_enabled | bool)
+
 - name: Display MetalLB port-forward job info
   ansible.builtin.debug:
     msg:
-      status: "Port-forwarding started in background"
+      status: "Port-forwarding started and validated"
       job_id: "{{ port_forward_job.ansible_job_id }}"
       local_port: "{{ metallb_port_forward_local_port }}"
       remote_service: "{{ metallb_service_name }}:{{ metallb_port_forward_remote_port }}"
