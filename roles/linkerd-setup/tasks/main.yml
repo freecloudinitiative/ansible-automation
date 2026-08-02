@@ -5,7 +5,7 @@
     state: directory
     mode: "0755"
 
-- name: Create Linkerd namespace
+- name: Ensure Linkerd namespace exists
   kubernetes.core.k8s:
     api_version: v1
     kind: Namespace
@@ -92,12 +92,21 @@
     KUBECONFIG: "{{ linkerd_kubeconfig }}"
   changed_when: false
 
+- name: Ensure Linkerd Viz namespace exists
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ linkerd_viz_namespace }}"
+    state: present
+    kubeconfig: "{{ linkerd_kubeconfig }}"
+  when: linkerd_viz_enabled | bool
+
 - name: Install Linkerd Viz via Helm
   kubernetes.core.helm:
     name: "{{ linkerd_viz_release_name }}"
     chart_ref: linkerd/linkerd-viz
-    release_namespace: linkerd-viz
-    create_namespace: true
+    release_namespace: "{{ linkerd_viz_namespace }}"
+    create_namespace: false
     kubeconfig: "{{ linkerd_kubeconfig }}"
     wait: true
     wait_timeout: 5m

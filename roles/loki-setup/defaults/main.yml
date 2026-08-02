@@ -1,5 +1,5 @@
 ---
-prometheus_namespace: monitoring
+monitoring_namespace: monitoring
 loki_stack_dir: "{{ '~/k3s-stack/monitoring' | expanduser }}"
 loki_release_name: loki
 loki_helm_repo_url: https://grafana.github.io/helm-charts

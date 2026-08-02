@@ -20,3 +20,4 @@ linkerd_issuer_renew_before: 25h
 # Install Linkerd Viz (dashboard + Grafana integration)
 linkerd_viz_enabled: false
 linkerd_viz_release_name: linkerd-viz
+linkerd_viz_namespace: linkerd-viz

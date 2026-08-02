@@ -14,7 +14,7 @@ Defined in `defaults/main.yml`:
 
 | Variable | Default Value | Description |
 | --- | --- | --- |
-| `prometheus_namespace` | `monitoring` | Target namespace |
+| `monitoring_namespace` | `monitoring` | Target namespace |
 | `otel_stack_dir` | `~/k3s-stack/monitoring` | Directory where `otel-values.yaml` will be rendered |
 | `otel_release_name` | `opentelemetry` | Helm release name |
 | `otel_helm_repo_url` | `https://open-telemetry.github.io/opentelemetry-helm-charts` | OpenTelemetry Helm repository URL |

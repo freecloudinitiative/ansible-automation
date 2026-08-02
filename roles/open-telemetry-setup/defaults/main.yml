@@ -1,5 +1,5 @@
 ---
-prometheus_namespace: monitoring
+monitoring_namespace: monitoring
 otel_stack_dir: "{{ '~/k3s-stack/monitoring' | expanduser }}"
 otel_release_name: opentelemetry
 otel_helm_repo_url: https://open-telemetry.github.io/opentelemetry-helm-charts

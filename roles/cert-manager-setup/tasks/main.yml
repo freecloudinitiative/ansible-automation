@@ -23,6 +23,14 @@
   ansible.builtin.command: helm repo update
   changed_when: false
 
+- name: Ensure cert-manager namespace exists
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ cert_manager_namespace }}"
+    state: present
+    kubeconfig: "{{ cert_manager_kubeconfig }}"
+
 - name: Render cert-manager values from template
   ansible.builtin.template:
     src: cert-manager-values.yaml.j2
@@ -34,7 +42,7 @@
     name: "{{ cert_manager_release_name }}"
     chart_ref: jetstack/cert-manager
     release_namespace: "{{ cert_manager_namespace }}"
-    create_namespace: true
+    create_namespace: false
     values_files:
       - "{{ cert_manager_stack_dir }}/cert-manager-values.yaml"
     kubeconfig: "{{ cert_manager_kubeconfig }}"

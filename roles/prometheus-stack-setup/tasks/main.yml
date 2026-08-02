@@ -11,11 +11,11 @@
       - ansible_facts.python_version is version('3.9', '>=')
     fail_msg: "Python 3.9+ is required for kubernetes.core"
 
-- name: Create monitoring namespace
+- name: Ensure monitoring namespace exists
   kubernetes.core.k8s:
     api_version: v1
     kind: Namespace
-    name: "{{ prometheus_namespace }}"
+    name: "{{ monitoring_namespace }}"
     state: present
     kubeconfig: "{{ prometheus_kubeconfig }}"
 
@@ -38,7 +38,7 @@
   kubernetes.core.helm:
     name: "{{ prometheus_release_name }}"
     chart_ref: prometheus-community/kube-prometheus-stack
-    release_namespace: "{{ prometheus_namespace }}"
+    release_namespace: "{{ monitoring_namespace }}"
     create_namespace: false
     values_files:
       - "{{ prometheus_stack_dir }}/kube-prometheus-values.yaml"
@@ -54,7 +54,7 @@
       - get
       - svc
       - -n
-      - "{{ prometheus_namespace }}"
+      - "{{ monitoring_namespace }}"
       - -l
       - "app.kubernetes.io/name=grafana"
       - -o
@@ -78,7 +78,7 @@
       - "{{ grafana_port_forward_address }}"
       - "{{ grafana_service_name }}"
       - -n
-      - "{{ prometheus_namespace }}"
+      - "{{ monitoring_namespace }}"
       - "{{ grafana_port_forward_local_port }}:{{ grafana_port_forward_remote_port }}"
   environment:
     KUBECONFIG: "{{ prometheus_kubeconfig }}"

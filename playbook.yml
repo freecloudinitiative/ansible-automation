@@ -21,17 +21,20 @@
   roles:
     - k3s-worker-setup
 
-- name: Configure K3s node labels and taints
-  hosts: masters
-  roles:
-    - k3s-node-labeling
-
 - name: Install K3S Components
   hosts: masters
   become: true
+  vars:
+    k3s_master_ip: "{{ hostvars[groups['masters'][0]]['k3s_master_ip'] }}"
+    k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
   roles:
+    - k3s-node-labeling
     - argocd-setup
+    - cert-manager-setup
     - prometheus-stack-setup
     - loki-setup
     - tempo-setup
     - alloy-setup
+    - open-telemetry-setup
+    - kyverno-setup
+    - linkerd-setup

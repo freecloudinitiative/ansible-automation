@@ -24,7 +24,7 @@ Available variables are listed below, along with default values (see `defaults/m
 
 | Variable                         | Default Value                           | Description                                  |
 | -------------------------------- | --------------------------------------- | -------------------------------------------- |
-| `prometheus_namespace`           | `monitoring`                            | Kubernetes namespace for Alloy installation. |
+| `monitoring_namespace`           | `monitoring`                            | Kubernetes namespace for Alloy installation. |
 | `alloy_stack_dir`                | `~/k3s-stack/monitoring`                | Directory on target host for config files.   |
 | `alloy_release_name`             | `alloy`                                 | Helm release name.                           |
 | `alloy_helm_repo_url`            | `https://grafana.github.io/helm-charts` | Helm repository URL.                         |

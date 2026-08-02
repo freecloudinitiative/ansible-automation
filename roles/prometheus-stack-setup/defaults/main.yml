@@ -1,12 +1,8 @@
 ---
 prometheus_stack_dir: "{{ '~/k3s-stack/monitoring' | expanduser }}"
-
-prometheus_namespace: monitoring
-
+monitoring_namespace: monitoring
 prometheus_release_name: prometheus
-
 prometheus_helm_repo_url: https://prometheus-community.github.io/helm-charts
-
 prometheus_kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
 
 grafana_port_forward_enabled: true

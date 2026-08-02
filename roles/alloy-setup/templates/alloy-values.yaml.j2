@@ -32,7 +32,7 @@ alloy:
       // Send traces to Tempo
       otelcol.exporter.otlp "tempo" {
         client {
-          endpoint = "tempo.monitoring.svc.cluster.local:4317"
+          endpoint = "tempo.{{ monitoring_namespace }}.svc.cluster.local:4317"
           tls {
             insecure = true
           }
@@ -42,14 +42,14 @@ alloy:
       // Send logs to Loki
       loki.write "default" {
         endpoint {
-          url = "http://loki-gateway.monitoring.svc.cluster.local:80/loki/api/v1/push"
+          url = "http://loki-gateway.{{ monitoring_namespace }}.svc.cluster.local:80/loki/api/v1/push"
         }
       }
 
       // Scrape Prometheus metrics
       prometheus.scrape "default" {
         targets = [
-          {"__address__" = "prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"},
+          {"__address__" = "prometheus-kube-prometheus-prometheus.{{ monitoring_namespace }}.svc.cluster.local:9090"},
         ]
         forward_to = [prometheus.remote_write.default.receiver]
       }
@@ -57,6 +57,6 @@ alloy:
       // Send metrics to Prometheus
       prometheus.remote_write "default" {
         endpoint {
-          url = "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
+          url = "http://prometheus-kube-prometheus-prometheus.{{ monitoring_namespace }}.svc.cluster.local:9090/api/v1/write"
         }
       }

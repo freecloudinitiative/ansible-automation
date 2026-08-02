@@ -1,5 +1,5 @@
 ---
-prometheus_namespace: monitoring
+monitoring_namespace: monitoring
 alloy_stack_dir: "{{ '~/k3s-stack/monitoring' | expanduser }}"
 alloy_release_name: alloy
 alloy_helm_repo_url: https://grafana.github.io/helm-charts

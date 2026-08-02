@@ -14,6 +14,14 @@
   ansible.builtin.command: helm repo update
   changed_when: false
 
+- name: Ensure monitoring namespace exists
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ monitoring_namespace }}"
+    state: present
+    kubeconfig: "{{ alloy_kubeconfig }}"
+
 - name: Render alloy values from template
   ansible.builtin.template:
     src: alloy-values.yaml.j2
@@ -24,8 +32,8 @@
   kubernetes.core.helm:
     name: "{{ alloy_release_name }}"
     chart_ref: grafana/alloy
-    release_namespace: "{{ prometheus_namespace }}"
-    create_namespace: true
+    release_namespace: "{{ monitoring_namespace }}"
+    create_namespace: false
     values_files:
       - "{{ alloy_stack_dir }}/alloy-values.yaml"
     kubeconfig: "{{ alloy_kubeconfig }}"
@@ -40,7 +48,7 @@
       - get
       - svc
       - -n
-      - "{{ prometheus_namespace }}"
+      - "{{ monitoring_namespace }}"
       - -l
       - "app.kubernetes.io/instance={{ alloy_release_name }}"
       - -o
@@ -64,7 +72,7 @@
       - "{{ alloy_port_forward_address }}"
       - "{{ alloy_service_name }}"
       - -n
-      - "{{ prometheus_namespace }}"
+      - "{{ monitoring_namespace }}"
       - "{{ alloy_port_forward_local_port }}:{{ alloy_port_forward_remote_port }}"
   environment:
     KUBECONFIG: "{{ alloy_kubeconfig }}"

@@ -1,5 +1,5 @@
 ---
-prometheus_namespace: monitoring
+monitoring_namespace: monitoring
 tempo_stack_dir: "{{ '~/k3s-stack/monitoring' | expanduser }}"
 tempo_release_name: tempo
 tempo_helm_repo_url: https://grafana-community.github.io/helm-charts

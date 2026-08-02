@@ -24,7 +24,7 @@ Available variables are listed below, along with default values (see `defaults/m
 
 | Variable                       | Default Value                                | Description                                     |
 | ------------------------------ | -------------------------------------------- | ----------------------------------------------- |
-| `prometheus_namespace`         | `monitoring`                                 | Kubernetes namespace for Loki installation.     |
+| `monitoring_namespace`         | `monitoring`                                 | Kubernetes namespace for Loki installation.     |
 | `loki_stack_dir`               | `~/k3s-stack/monitoring`                     | Directory on target host for Loki config files. |
 | `loki_release_name`            | `loki`                                       | Helm release name.                              |
 | `loki_helm_repo_url`           | `https://grafana.github.io/helm-charts`      | Helm repository URL.                            |
