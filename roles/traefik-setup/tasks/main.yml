@@ -32,6 +32,7 @@
   kubernetes.core.helm:
     name: "{{ traefik_release_name }}"
     chart_ref: traefik/traefik
+    chart_version: "{{ traefik_chart_version }}"
     release_namespace: "{{ traefik_namespace }}"
     create_namespace: false
     values_files:
@@ -47,7 +48,9 @@
       - kubectl
       - wait
       - --for=condition=Available
-      - "deployment/{{ traefik_release_name }}"
+      - deployment
+      - -l
+      - "app.kubernetes.io/instance={{ traefik_release_name }}"
       - -n
       - "{{ traefik_namespace }}"
       - --timeout=120s

@@ -3,10 +3,11 @@ traefik_namespace: traefik
 traefik_release_name: traefik
 traefik_stack_dir: "{{ '~/k3s-stack/traefik' | expanduser }}"
 traefik_helm_repo_url: https://traefik.github.io/charts
+traefik_chart_version: "34.0.0"
+traefik_image_tag: "v3.3.2"
 traefik_kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
 traefik_node_tier: mid-memory
 
-# Traefik configuration options
 traefik_dashboard_enabled: true
 traefik_ingress_class_enabled: true
 traefik_ingress_class_is_default: true
