@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  role_name: kyverno_setup
+  author: freecloudinitiative
+  description: Installs Kyverno policy engine via Helm into a K3s cluster and applies baseline ClusterPolicies
+  license: MIT
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+  galaxy_tags:
+    - kubernetes
+    - kyverno
+    - policy
+    - security
+    - compliance
+    - helm
+    - k3s
+
+collections:
+  - kubernetes.core
