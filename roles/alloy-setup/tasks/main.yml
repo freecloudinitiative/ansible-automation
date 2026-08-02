@@ -50,10 +50,27 @@
   register: port_forward_job
   when: alloy_port_forward_enabled | bool
 
+- name: Check Alloy port-forward job status
+  ansible.builtin.async_status:
+    jid: "{{ port_forward_job.ansible_job_id }}"
+  register: job_result
+  until: job_result.finished or (job_result.started is defined and job_result.started == 1)
+  retries: 5
+  delay: 1
+  when: alloy_port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
+  failed_when: job_result.finished and job_result.rc != 0
+
+- name: Verify Alloy port-forward local port is accepting connections
+  ansible.builtin.wait_for:
+    host: "{{ '127.0.0.1' if alloy_port_forward_address == '0.0.0.0' else alloy_port_forward_address }}"
+    port: "{{ alloy_port_forward_local_port }}"
+    timeout: 10
+  when: alloy_port_forward_enabled | bool
+
 - name: Display Alloy port-forward job info
   ansible.builtin.debug:
     msg:
-      status: "Port-forwarding started in background"
+      status: "Port-forwarding started and validated"
       job_id: "{{ port_forward_job.ansible_job_id }}"
       local_port: "{{ alloy_port_forward_local_port }}"
       remote_service: "{{ alloy_service_name }}:{{ alloy_port_forward_remote_port }}"
