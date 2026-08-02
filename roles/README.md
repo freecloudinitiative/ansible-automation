@@ -33,11 +33,11 @@ Services deployed on top of K3s to provide networking, certs, and deployment aut
 
 | Role                                         | Target Hosts | Description                                                                                                       |
 | -------------------------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------- |
-| [`metallb-setup`](metallb-setup)             | `masters`    | Deploys and configures MetalLB to provide bare-metal LoadBalancer services utilizing a specified IP address pool. |
-| [`cert-manager-setup`](cert-manager-setup)   | `masters`    | Installs cert-manager to manage SSL/TLS certificates and configures ClusterIssuers (e.g., Let's Encrypt).         |
-| [`argocd-setup`](argocd-setup)               | `masters`    | Installs ArgoCD for GitOps-driven deployment and synchronization of Kubernetes manifests and applications.        |
-| [`argocd-bootstrap`](argocd-bootstrap)       | `masters`    | Bootstraps the K3s cluster by applying the ArgoCD root application (App of Apps) manifest.                         |
-| [`sealed-secret-setup`](sealed-secret-setup) | `masters`    | Installs Bitnami Sealed Secrets controller via Helm to allow encrypting secrets that are safe to commit to git.   |
+| [`metallb-setup`](metallb-setup)             | `masters[0]` | Deploys and configures MetalLB to provide bare-metal LoadBalancer services utilizing a specified IP address pool. |
+| [`cert-manager-setup`](cert-manager-setup)   | `masters[0]` | Installs cert-manager to manage SSL/TLS certificates and configures ClusterIssuers (e.g., Let's Encrypt).         |
+| [`argocd-setup`](argocd-setup)               | `masters[0]` | Installs ArgoCD for GitOps-driven deployment and synchronization of Kubernetes manifests and applications.        |
+| [`argocd-bootstrap`](argocd-bootstrap)       | `masters[0]` | Bootstraps the K3s cluster by applying the ArgoCD root application (App of Apps) manifest.                         |
+| [`sealed-secret-setup`](sealed-secret-setup) | `masters[0]` | Installs Bitnami Sealed Secrets controller via Helm to allow encrypting secrets that are safe to commit to git.   |
 
 ---
 
