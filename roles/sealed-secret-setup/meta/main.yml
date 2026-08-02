@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  role_name: sealed_secret_setup
+  author: freecloudinitiative
+  description: Installs Bitnami Sealed Secrets controller via Helm into a K3s cluster.
+  license: MIT
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+  galaxy_tags:
+    - kubernetes
+    - sealed-secrets
+    - secrets
+    - security
+    - helm
+    - k3s
+
+collections:
+  - kubernetes.core

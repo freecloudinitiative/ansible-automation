@@ -1,0 +1,63 @@
+---
+- name: Add Sealed Secrets Helm repo
+  kubernetes.core.helm_repository:
+    name: sealed-secrets
+    repo_url: "{{ sealed_secret_helm_repo_url }}"
+
+- name: Update Helm repos
+  ansible.builtin.command: helm repo update
+  changed_when: false
+
+- name: Ensure Sealed Secrets namespace exists
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ sealed_secret_namespace }}"
+    state: present
+    kubeconfig: "{{ sealed_secret_kubeconfig }}"
+
+- name: Install Sealed Secrets via Helm
+  kubernetes.core.helm:
+    name: "{{ sealed_secret_release_name }}"
+    chart_ref: sealed-secrets/sealed-secrets
+    release_namespace: "{{ sealed_secret_namespace }}"
+    create_namespace: false
+    kubeconfig: "{{ sealed_secret_kubeconfig }}"
+    wait: true
+    wait_timeout: 5m
+    state: present
+    values:
+      fullnameOverride: "{{ sealed_secret_controller_name }}"
+      nodeSelector:
+        node-tier: "{{ sealed_secret_node_tier }}"
+
+- name: Wait for Sealed Secrets controller to be ready
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - wait
+      - --for=condition=Available
+      - "deployment/{{ sealed_secret_controller_name }}"
+      - -n
+      - "{{ sealed_secret_namespace }}"
+      - --timeout=120s
+  environment:
+    KUBECONFIG: "{{ sealed_secret_kubeconfig }}"
+  changed_when: false
+
+- name: Get Sealed Secrets controller pods
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - get
+      - pods
+      - -n
+      - "{{ sealed_secret_namespace }}"
+  environment:
+    KUBECONFIG: "{{ sealed_secret_kubeconfig }}"
+  register: sealed_secrets_pods
+  changed_when: false
+
+- name: Display Sealed Secrets pods info
+  ansible.builtin.debug:
+    msg: "{{ sealed_secrets_pods.stdout_lines }}"
