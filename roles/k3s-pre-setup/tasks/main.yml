@@ -23,6 +23,7 @@
     name: dphys-swapfile
     enabled: false
     state: stopped
+  when: "'dphys-swapfile.service' in ansible_facts.services or 'dphys-swapfile' in ansible_facts.services"
 
 # ============================================================================
 # Install Requirements
