@@ -23,7 +23,9 @@ Defined in `defaults/main.yml`:
 | `otel_port_forward_address` | `127.0.0.1` | Local address to bind for port-forwarding |
 | `otel_port_forward_local_port` | `4317` | Local port for port-forwarding |
 | `otel_port_forward_remote_port` | `4317` | Remote service port |
-| `otel_service_name` | `service/opentelemetry-opentelemetry-collector` | Target Kubernetes service |
+
+> [!NOTE]
+> `otel_service_name` is discovered dynamically at runtime by the "Set otel_service_name from discovered service" task and is overwritten during role execution rather than being set in `defaults/main.yml`.
 
 ## Example Playbook
 

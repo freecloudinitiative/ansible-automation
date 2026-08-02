@@ -32,7 +32,7 @@ config:
 
   exporters:
     otlp/tempo:
-      endpoint: tempo.monitoring.svc.cluster.local:4317
+      endpoint: "tempo.{{ prometheus_namespace }}.svc.cluster.local:4317"
       tls:
         insecure: true
     debug:
