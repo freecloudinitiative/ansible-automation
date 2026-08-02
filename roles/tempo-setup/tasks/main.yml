@@ -1,0 +1,62 @@
+---
+- name: Create Tempo stack directory
+  ansible.builtin.file:
+    path: "{{ tempo_stack_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Add Grafana Helm repo
+  kubernetes.core.helm_repository:
+    name: grafana-community
+    repo_url: "{{ tempo_helm_repo_url }}"
+
+- name: Update Helm repos
+  ansible.builtin.command: helm repo update
+  changed_when: false
+
+- name: Render tempo values from template
+  ansible.builtin.template:
+    src: tempo-values.yaml.j2
+    dest: "{{ tempo_stack_dir }}/tempo-values.yaml"
+    mode: "0644"
+
+- name: Install Tempo via Helm
+  kubernetes.core.helm:
+    name: "{{ tempo_release_name }}"
+    chart_ref: grafana-community/tempo
+    release_namespace: "{{ prometheus_namespace }}"
+    create_namespace: true
+    values_files:
+      - "{{ tempo_stack_dir }}/tempo-values.yaml"
+    kubeconfig: "{{ tempo_kubeconfig }}"
+    wait: true
+    wait_timeout: 10m
+    state: present
+
+- name: Setup Tempo port-forwarding
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - port-forward
+      - --address
+      - "{{ tempo_port_forward_address }}"
+      - "{{ tempo_service_name }}"
+      - -n
+      - "{{ prometheus_namespace }}"
+      - "{{ tempo_port_forward_local_port }}:{{ tempo_port_forward_remote_port }}"
+  environment:
+    KUBECONFIG: "{{ tempo_kubeconfig }}"
+  changed_when: false
+  async: 3600
+  poll: 0
+  register: port_forward_job
+  when: tempo_port_forward_enabled | bool
+
+- name: Display Tempo port-forward job info
+  ansible.builtin.debug:
+    msg:
+      status: "Port-forwarding started in background"
+      job_id: "{{ port_forward_job.ansible_job_id }}"
+      local_port: "{{ tempo_port_forward_local_port }}"
+      remote_service: "{{ tempo_service_name }}:{{ tempo_port_forward_remote_port }}"
+  when: tempo_port_forward_enabled | bool and port_forward_job.ansible_job_id is defined

@@ -6,7 +6,7 @@ Ansible role for initializing and configuring the primary master node in a High 
 
 - Downloads and runs the official K3s installation script (`https://get.k3s.io`).
 - Initializes an embedded etcd HA cluster (`--cluster-init`).
-- Disables default `servicelb` and `metrics-server` to allow custom component deployments.
+- Disables default `metrics-server` to allow custom component deployments.
 - Configures dynamic IP binding (`--node-ip`, `--advertise-address`, and `--tls-san`) using host Facts (`ansible_default_ipv4.address`).
 - Enables etcd snapshot scheduling (`cron: 0 */6 * * *`, retention: 10).
 - Configures secure kubeconfig permissions (`0640`) and API server RBAC authorization.
