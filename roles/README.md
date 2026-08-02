@@ -36,6 +36,7 @@ Services deployed on top of K3s to provide networking, certs, and deployment aut
 | [`metallb-setup`](metallb-setup) | `masters` | Deploys and configures MetalLB to provide bare-metal LoadBalancer services utilizing a specified IP address pool. |
 | [`cert-manager-setup`](cert-manager-setup) | `masters` | Installs cert-manager to manage SSL/TLS certificates and configures ClusterIssuers (e.g., Let's Encrypt). |
 | [`argocd-setup`](argocd-setup) | `masters` | Installs ArgoCD for GitOps-driven deployment and synchronization of Kubernetes manifests and applications. |
+| [`sealed-secret-setup`](sealed-secret-setup) | `masters` | Installs Bitnami Sealed Secrets controller via Helm to allow encrypting secrets that are safe to commit to git. |
 
 ---
 
