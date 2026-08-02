@@ -30,7 +30,7 @@ Available variables are listed below, along with default values (see `defaults/m
 | `loki_helm_repo_url`           | `https://grafana.github.io/helm-charts`      | Helm repository URL.                            |
 | `loki_kubeconfig`              | `{{ kubeconfig_path \| default(...) }}`      | Path to the kubeconfig file on target host.     |
 | `loki_port_forward_enabled`    | `true`                                       | Whether to start background port-forwarding.    |
-| `loki_port_forward_address`    | `0.0.0.0`                                    | Listening IP address for port-forwarding.       |
+| `loki_port_forward_address`    | `127.0.0.1`                                  | Listening IP address for port-forwarding.       |
 | `loki_port_forward_local_port` | `3100`                                       | Local port to bind for port-forwarding.         |
 | `loki_port_forward_remote_port`| `3100`                                       | Remote port on the Loki service.                |
 | `loki_service_name`            | `svc/loki-gateway`                           | Target service for port-forwarding.             |

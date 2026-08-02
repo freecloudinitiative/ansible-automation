@@ -52,7 +52,7 @@
       - port-forward
       - --address
       - "{{ grafana_port_forward_address }}"
-      - svc/kube-prometheus-stack-grafana
+      - "{{ grafana_service_name }}"
       - -n
       - "{{ prometheus_namespace }}"
       - "{{ grafana_port_forward_local_port }}:{{ grafana_port_forward_remote_port }}"
@@ -70,5 +70,5 @@
       status: "Port-forwarding started in background"
       job_id: "{{ port_forward_job.ansible_job_id }}"
       local_port: "{{ grafana_port_forward_local_port }}"
-      remote_service: "svc/kube-prometheus-stack-grafana:{{ grafana_port_forward_remote_port }}"
+      remote_service: "{{ grafana_service_name }}:{{ grafana_port_forward_remote_port }}"
   when: grafana_port_forward_enabled | bool and port_forward_job.ansible_job_id is defined

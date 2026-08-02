@@ -25,7 +25,7 @@
     name: "{{ loki_release_name }}"
     chart_ref: grafana/loki
     release_namespace: "{{ prometheus_namespace }}"
-    create_namespace: false
+    create_namespace: true
     values_files:
       - "{{ loki_stack_dir }}/loki-values.yaml"
     kubeconfig: "{{ loki_kubeconfig }}"

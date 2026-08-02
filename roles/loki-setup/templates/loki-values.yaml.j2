@@ -47,9 +47,3 @@ read:
   replicas: 0
 write:
   replicas: 0
-
-promtail:
-  enabled: true
-  config:
-    clients:
-      - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
