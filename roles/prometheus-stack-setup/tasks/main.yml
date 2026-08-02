@@ -44,3 +44,31 @@
       - "{{ prometheus_stack_dir }}/kube-prometheus-values.yaml"
     kubeconfig: "{{ prometheus_kubeconfig }}"
     state: present
+
+- name: Setup Grafana port-forwarding
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - port-forward
+      - --address
+      - "{{ grafana_port_forward_address }}"
+      - svc/kube-prometheus-stack-grafana
+      - -n
+      - "{{ prometheus_namespace }}"
+      - "{{ grafana_port_forward_local_port }}:{{ grafana_port_forward_remote_port }}"
+  environment:
+    KUBECONFIG: "{{ prometheus_kubeconfig }}"
+  changed_when: false
+  async: 3600
+  poll: 0
+  register: port_forward_job
+  when: grafana_port_forward_enabled | bool
+
+- name: Display Grafana port-forward job info
+  ansible.builtin.debug:
+    msg:
+      status: "Port-forwarding started in background"
+      job_id: "{{ port_forward_job.ansible_job_id }}"
+      local_port: "{{ grafana_port_forward_local_port }}"
+      remote_service: "svc/kube-prometheus-stack-grafana:{{ grafana_port_forward_remote_port }}"
+  when: grafana_port_forward_enabled | bool and port_forward_job.ansible_job_id is defined

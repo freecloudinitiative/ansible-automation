@@ -32,3 +32,4 @@
   roles:
     - argocd-setup
     - prometheus-stack-setup
+    - loki-setup

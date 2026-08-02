@@ -8,3 +8,9 @@ prometheus_release_name: prometheus
 prometheus_helm_repo_url: https://prometheus-community.github.io/helm-charts
 
 prometheus_kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+
+grafana_port_forward_enabled: true
+grafana_port_forward_address: "0.0.0.0"
+grafana_port_forward_local_port: 3000
+grafana_port_forward_remote_port: 80
+
