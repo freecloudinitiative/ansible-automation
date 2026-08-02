@@ -1,6 +1,7 @@
 ---
 sealed_secret_namespace: sealed-secrets
 sealed_secret_release_name: sealed-secrets
-sealed_secret_helm_repo_url: https://charts.sealedsecrets.dev
+sealed_secret_helm_repo_url: https://bitnami.github.io/sealed-secrets
 sealed_secret_kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
 sealed_secret_node_tier: mid-memory
+sealed_secret_controller_name: sealed-secrets

@@ -27,6 +27,7 @@
     wait_timeout: 5m
     state: present
     values:
+      fullnameOverride: "{{ sealed_secret_controller_name }}"
       nodeSelector:
         node-tier: "{{ sealed_secret_node_tier }}"
 
@@ -36,7 +37,7 @@
       - kubectl
       - wait
       - --for=condition=Available
-      - deployment/sealed-secrets-controller
+      - "deployment/{{ sealed_secret_controller_name }}"
       - -n
       - "{{ sealed_secret_namespace }}"
       - --timeout=120s
