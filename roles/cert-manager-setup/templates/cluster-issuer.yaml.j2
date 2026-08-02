@@ -12,7 +12,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: selfsigned-ca
-  namespace: cert-manager
+  namespace: {{ cert_manager_namespace }}
 spec:
   isCA: true
   commonName: k3s-cluster-ca

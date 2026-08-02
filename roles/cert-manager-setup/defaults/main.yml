@@ -11,3 +11,7 @@ cert_manager_issuer_type: selfsigned
 cert_manager_letsencrypt_email: ""
 cert_manager_letsencrypt_staging_url: https://acme-staging-v02.api.letsencrypt.org/directory
 cert_manager_letsencrypt_production_url: https://acme-v02.api.letsencrypt.org/directory
+
+cert_manager_prometheus_enabled: true
+cert_manager_servicemonitor_enabled: false
+cert_manager_servicemonitor_namespace: monitoring

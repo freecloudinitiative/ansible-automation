@@ -1,4 +1,13 @@
 ---
+- name: Validate cert-manager configuration
+  ansible.builtin.assert:
+    that:
+      - cert_manager_issuer_type in ['selfsigned', 'letsencrypt-staging', 'letsencrypt-production']
+      - cert_manager_issuer_type == 'selfsigned' or (cert_manager_letsencrypt_email is defined and cert_manager_letsencrypt_email | length > 0)
+    fail_msg: >-
+      Invalid cert_manager_issuer_type (must be selfsigned, letsencrypt-staging, or letsencrypt-production)
+      or missing cert_manager_letsencrypt_email when using Let's Encrypt issuer.
+
 - name: Create cert-manager stack directory
   ansible.builtin.file:
     path: "{{ cert_manager_stack_dir }}"
@@ -66,7 +75,8 @@
       - wait
       - --for=condition=Ready
       - clusterissuer
-      - --all
+      - "{{ 'selfsigned-cluster-issuer' if cert_manager_issuer_type == 'selfsigned' else cert_manager_issuer_type }}"
+      - "{{ 'ca-cluster-issuer' if cert_manager_issuer_type == 'selfsigned' else omit }}"
       - --timeout=60s
   environment:
     KUBECONFIG: "{{ cert_manager_kubeconfig }}"

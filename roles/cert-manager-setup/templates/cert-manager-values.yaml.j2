@@ -31,7 +31,7 @@ cainjector:
       memory: 128Mi
 
 prometheus:
-  enabled: true
+  enabled: {{ cert_manager_prometheus_enabled | bool | lower }}
   servicemonitor:
-    enabled: true
-    namespace: monitoring
+    enabled: {{ cert_manager_servicemonitor_enabled | bool | lower }}
+    namespace: {{ cert_manager_servicemonitor_namespace }}

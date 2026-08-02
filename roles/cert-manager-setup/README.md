@@ -22,6 +22,12 @@ Defined in `defaults/main.yml`:
 | `cert_manager_kubeconfig` | `/etc/rancher/k3s/k3s.yaml` | Path to kubeconfig |
 | `cert_manager_issuer_type` | `selfsigned` | ClusterIssuer type: `selfsigned`, `letsencrypt-staging`, `letsencrypt-production` |
 | `cert_manager_letsencrypt_email` | `""` | Required for Let's Encrypt issuers |
+| `cert_manager_prometheus_enabled` | `true` | Enable Prometheus metrics endpoint |
+| `cert_manager_servicemonitor_enabled` | `false` | Enable Prometheus ServiceMonitor (Requires `monitoring.coreos.com/v1` ServiceMonitor CRD) |
+| `cert_manager_servicemonitor_namespace` | `monitoring` | Namespace for the ServiceMonitor resource |
+
+> [!NOTE]
+> Setting `cert_manager_servicemonitor_enabled: true` requires the Prometheus Operator (`monitoring.coreos.com/v1` ServiceMonitor CRD) to be installed in the cluster prior to deployment (e.g. via `prometheus-stack-setup`).
 
 ## ClusterIssuer Types
 
