@@ -59,10 +59,30 @@ spec:
             deny:
               conditions:
                 any:
-                  - key: "{{ `{{element.image}}` }}"
+                  - key: "{{ '{{element.image}}' }}"
                     operator: Equals
                     value: "*:latest"
-                  - key: "{{ `{{element.image}}` }}"
+                  - key: "{{ '{{element.image}}' }}"
+                    operator: NotContains
+                    value: ":"
+          - list: "request.object.spec.initContainers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ '{{element.image}}' }}"
+                    operator: Equals
+                    value: "*:latest"
+                  - key: "{{ '{{element.image}}' }}"
+                    operator: NotContains
+                    value: ":"
+          - list: "request.object.spec.ephemeralContainers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ '{{element.image}}' }}"
+                    operator: Equals
+                    value: "*:latest"
+                  - key: "{{ '{{element.image}}' }}"
                     operator: NotContains
                     value: ":"
 ---
@@ -93,6 +113,15 @@ spec:
         message: "All containers must define cpu and memory requests and limits."
         foreach:
           - list: "request.object.spec.containers"
+            pattern:
+              resources:
+                requests:
+                  memory: "?*"
+                  cpu: "?*"
+                limits:
+                  memory: "?*"
+                  cpu: "?*"
+          - list: "request.object.spec.initContainers"
             pattern:
               resources:
                 requests:
@@ -132,7 +161,21 @@ spec:
             deny:
               conditions:
                 any:
-                  - key: "{{ `{{element.securityContext.privileged}}` }}"
+                  - key: "{{ '{{element.securityContext.privileged}}' }}"
+                    operator: Equals
+                    value: true
+          - list: "request.object.spec.initContainers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ '{{element.securityContext.privileged}}' }}"
+                    operator: Equals
+                    value: true
+          - list: "request.object.spec.ephemeralContainers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ '{{element.securityContext.privileged}}' }}"
                     operator: Equals
                     value: true
 {% endif %}

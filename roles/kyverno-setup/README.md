@@ -33,7 +33,7 @@ Defined in `defaults/main.yml`:
 | `require-pod-labels` | Best Practices | Medium | Pods must have `app` and `env` labels |
 | `disallow-latest-tag` | Best Practices | Medium | Reject `:latest` or untagged images |
 | `require-resource-limits` | Best Practices | Medium | All containers must define CPU/memory requests and limits |
-| `disallow-privileged-containers` | Pod Security | High | Block containers with `privileged: true` |
+| `disallow-privileged-containers` | Pod Security | High | Detect containers running with `privileged: true` (blocks in enforce mode) |
 
 ## Policy Modes
 

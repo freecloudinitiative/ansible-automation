@@ -79,6 +79,7 @@
       policy_mode: "{{ kyverno_policy_mode }}"
       namespace: "{{ kyverno_namespace }}"
       access_url: "http://{{ k3s_master_ip }}:8000"
+      check_policy_reports_command: "kubectl get policyreport -A --kubeconfig {{ kyverno_kubeconfig }}"
       active_policies: "{{ kyverno_policies_list.stdout_lines }}"
       note: >-
         Policies are in '{{ kyverno_policy_mode }}' mode.
