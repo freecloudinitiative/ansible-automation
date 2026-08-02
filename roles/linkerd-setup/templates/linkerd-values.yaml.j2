@@ -1,0 +1,31 @@
+identity:
+  externalCA: true
+  issuer:
+    scheme: kubernetes.io/tls
+
+controllerResources:
+  cpu:
+    request: 50m
+    limit: 250m
+  memory:
+    request: 64Mi
+    limit: 256Mi
+
+proxyResources:
+  cpu:
+    request: 10m
+    limit: 100m
+  memory:
+    request: 20Mi
+    limit: 64Mi
+
+proxyInit:
+  resources:
+    cpu:
+      request: 10m
+      limit: 100m
+    memory:
+      request: 10Mi
+      limit: 50Mi
+
+highAvailability: false
