@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  role_name: argocd_bootstrap
+  author: freecloudinitiative
+  description: Bootstraps the K3s cluster by applying the ArgoCD root application (App of Apps) manifest.
+  license: MIT
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+  galaxy_tags:
+    - kubernetes
+    - argocd
+    - GitOps
+    - bootstrap
+    - k3s
+
+collections:
+  - kubernetes.core

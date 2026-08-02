@@ -26,6 +26,9 @@
   roles:
     - k3s-node-labeling
     - argocd-setup
+    - gitea-setup
+    - argocd-bootstrap
+    - sealed-secret-setup
     - cert-manager-setup
     - prometheus-stack-setup
     - loki-setup
@@ -34,3 +37,4 @@
     - open-telemetry-setup
     - kyverno-setup
     - linkerd-setup
+    - harbor-setup

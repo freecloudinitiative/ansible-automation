@@ -1,0 +1,30 @@
+---
+- name: Wait for ArgoCD Application CRD to be established
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    name: applications.argoproj.io
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context if (context | default('') | length > 0) else omit }}"
+  register: app_crd_info
+  until:
+    - app_crd_info.resources is defined
+    - app_crd_info.resources | length > 0
+    - app_crd_info.resources[0].status.conditions is defined
+    - >-
+      app_crd_info.resources[0].status.conditions
+      | selectattr('type', 'equalto', 'Established')
+      | selectattr('status', 'equalto', 'True')
+      | list
+      | length > 0
+  retries: 24
+  delay: 5
+  when: argocd_bootstrap_enabled | bool
+
+- name: Apply ArgoCD bootstrap root application from template
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('ansible.builtin.template', 'root-app.yaml.j2') | from_yaml }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context if (context | default('') | length > 0) else omit }}"
+  when: argocd_bootstrap_enabled | bool
