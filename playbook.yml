@@ -1,14 +1,9 @@
 ---
-- name: Prepare nodes for K3s installation
-  hosts: all
-  become: true
-  roles:
-    - k3s-pre-setup
-
 - name: Setup K3s master node
   hosts: masters
   become: true
   roles:
+    - k3s-pre-setup
     - k3s-master-setup
     - k3s-fact-gathering
 
@@ -19,6 +14,7 @@
     k3s_master_ip: "{{ hostvars[groups['masters'][0]]['k3s_master_ip'] }}"
     k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
   roles:
+    - k3s-pre-setup
     - k3s-worker-setup
 
 - name: Install K3S Components
