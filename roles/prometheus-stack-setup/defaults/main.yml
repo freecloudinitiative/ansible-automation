@@ -13,4 +13,3 @@ grafana_port_forward_enabled: true
 grafana_port_forward_address: "127.0.0.1"
 grafana_port_forward_local_port: 3000
 grafana_port_forward_remote_port: 80
-grafana_service_name: "svc/kube-prometheus-stack-grafana"
