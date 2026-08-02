@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  role_name: harbor_setup
+  author: freecloudinitiative
+  description: Installs Harbor container registry via Helm into a K3s cluster.
+  license: MIT
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+  galaxy_tags:
+    - kubernetes
+    - registry
+    - harbor
+    - helm
+    - k3s
+
+collections:
+  - kubernetes.core
