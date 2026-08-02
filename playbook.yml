@@ -18,7 +18,7 @@
     - k3s-worker-setup
 
 - name: Install K3S Components
-  hosts: masters
+  hosts: "{{ groups['masters'][0] }}"
   become: true
   vars:
     k3s_master_ip: "{{ hostvars[groups['masters'][0]]['k3s_master_ip'] }}"
