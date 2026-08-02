@@ -96,6 +96,6 @@
     msg:
       status: "Port-forwarding started and validated"
       job_id: "{{ port_forward_job.ansible_job_id }}"
-      local_port: "{{ otel_port_forward_local_port }}"
+      access_url: "http://{{ k3s_master_ip }}:{{ otel_port_forward_local_port }}"
       remote_service: "{{ otel_service_name }}:{{ otel_port_forward_remote_port }}"
   when: otel_port_forward_enabled | bool and port_forward_job.ansible_job_id is defined

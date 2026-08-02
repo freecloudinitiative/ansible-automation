@@ -9,4 +9,3 @@ alloy_port_forward_enabled: true
 alloy_port_forward_address: "127.0.0.1"
 alloy_port_forward_local_port: 12345
 alloy_port_forward_remote_port: 12345
-alloy_service_name: daemonset/alloy

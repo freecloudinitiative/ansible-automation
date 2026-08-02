@@ -33,6 +33,28 @@
     wait_timeout: 10m
     state: present
 
+- name: Discover Tempo service name
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - get
+      - svc
+      - -n
+      - "{{ prometheus_namespace }}"
+      - -l
+      - "app.kubernetes.io/instance={{ tempo_release_name }}"
+      - -o
+      - "jsonpath={.items[0].metadata.name}"
+  environment:
+    KUBECONFIG: "{{ tempo_kubeconfig }}"
+  register: tempo_svc_discovery
+  changed_when: false
+  failed_when: tempo_svc_discovery.rc != 0 or tempo_svc_discovery.stdout == ''
+
+- name: Set tempo_service_name from discovered service
+  ansible.builtin.set_fact:
+    tempo_service_name: "service/{{ tempo_svc_discovery.stdout }}"
+
 - name: Setup Tempo port-forwarding
   ansible.builtin.command:
     argv:
@@ -52,11 +74,28 @@
   register: port_forward_job
   when: tempo_port_forward_enabled | bool
 
+- name: Check Tempo port-forward job status
+  ansible.builtin.async_status:
+    jid: "{{ port_forward_job.ansible_job_id }}"
+  register: job_result
+  until: job_result.finished or (job_result.started is defined and job_result.started == 1)
+  retries: 5
+  delay: 1
+  when: tempo_port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
+  failed_when: job_result.finished and job_result.rc != 0
+
+- name: Verify Tempo port-forward local port is accepting connections
+  ansible.builtin.wait_for:
+    host: "{{ '127.0.0.1' if tempo_port_forward_address == '0.0.0.0' else tempo_port_forward_address }}"
+    port: "{{ tempo_port_forward_local_port }}"
+    timeout: 10
+  when: tempo_port_forward_enabled | bool
+
 - name: Display Tempo port-forward job info
   ansible.builtin.debug:
     msg:
-      status: "Port-forwarding started in background"
+      status: "Port-forwarding started and validated"
       job_id: "{{ port_forward_job.ansible_job_id }}"
-      local_port: "{{ tempo_port_forward_local_port }}"
+      access_url: "http://{{ k3s_master_ip }}:{{ tempo_port_forward_local_port }}"
       remote_service: "{{ tempo_service_name }}:{{ tempo_port_forward_remote_port }}"
   when: tempo_port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
