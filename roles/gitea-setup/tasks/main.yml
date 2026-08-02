@@ -1,0 +1,157 @@
+---
+- name: Add Gitea Helm repo
+  kubernetes.core.helm_repository:
+    name: gitea
+    repo_url: "{{ gitea_helm_repo_url }}"
+
+- name: Update Helm repos
+  ansible.builtin.command: helm repo update
+  changed_when: false
+
+- name: Ensure Gitea namespace exists
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ gitea_namespace }}"
+    state: present
+    kubeconfig: "{{ gitea_kubeconfig }}"
+
+- name: Install Gitea via Helm
+  kubernetes.core.helm:
+    name: "{{ gitea_release_name }}"
+    chart_ref: gitea/gitea
+    release_namespace: "{{ gitea_namespace }}"
+    create_namespace: false
+    kubeconfig: "{{ gitea_kubeconfig }}"
+    wait: true
+    wait_timeout: 5m
+    state: present
+    values:
+      nodeSelector:
+        node-tier: "{{ gitea_node_tier }}"
+
+- name: Wait for Gitea deployment to be ready
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - wait
+      - --for=condition=Available
+      - deployment/gitea
+      - -n
+      - "{{ gitea_namespace }}"
+      - --timeout=120s
+  environment:
+    KUBECONFIG: "{{ gitea_kubeconfig }}"
+  changed_when: false
+
+- name: Get Gitea pods
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - get
+      - pods
+      - -n
+      - "{{ gitea_namespace }}"
+  environment:
+    KUBECONFIG: "{{ gitea_kubeconfig }}"
+  register: gitea_pods
+  changed_when: false
+
+- name: Display Gitea pods info
+  ansible.builtin.debug:
+    msg: "{{ gitea_pods.stdout_lines }}"
+
+- name: Discover Gitea service name
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - get
+      - svc
+      - -n
+      - "{{ gitea_namespace }}"
+      - -l
+      - "app.kubernetes.io/name=gitea,app.kubernetes.io/instance={{ gitea_release_name }}"
+      - -o
+      - "jsonpath={.items[?(@.spec.ports[*].port==3000)].metadata.name}"
+  environment:
+    KUBECONFIG: "{{ gitea_kubeconfig }}"
+  register: gitea_svc_discovery
+  changed_when: false
+  failed_when: gitea_svc_discovery.rc != 0 or gitea_svc_discovery.stdout == ''
+  when: gitea_port_forward_enabled | bool
+
+- name: Set gitea_service_name from discovered service
+  ansible.builtin.set_fact:
+    gitea_service_name: "service/{{ gitea_svc_discovery.stdout }}"
+  when: gitea_port_forward_enabled | bool
+
+- name: Stop existing Gitea port-forward process
+  ansible.builtin.shell: |
+    pkill -f "kubectl port-forward.*{{ gitea_port_forward_local_port }}:{{ gitea_port_forward_remote_port }}" || true
+  changed_when: false
+  when: gitea_port_forward_enabled | bool
+
+- name: Wait for Gitea port-forward port to be released
+  ansible.builtin.wait_for:
+    host: "{{ '127.0.0.1' if gitea_port_forward_address == '0.0.0.0' else gitea_port_forward_address }}"
+    port: "{{ gitea_port_forward_local_port }}"
+    state: stopped
+    timeout: 10
+  when: gitea_port_forward_enabled | bool
+
+- name: Setup Gitea port-forwarding
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - port-forward
+      - --address
+      - "{{ gitea_port_forward_address }}"
+      - "{{ gitea_service_name }}"
+      - -n
+      - "{{ gitea_namespace }}"
+      - "{{ gitea_port_forward_local_port }}:{{ gitea_port_forward_remote_port }}"
+  environment:
+    KUBECONFIG: "{{ gitea_kubeconfig }}"
+  changed_when: false
+  async: "{{ gitea_port_forward_timeout }}"
+  poll: 0
+  register: port_forward_job
+  when: gitea_port_forward_enabled | bool
+
+- name: Check Gitea port-forward job status
+  ansible.builtin.async_status:
+    jid: "{{ port_forward_job.ansible_job_id }}"
+  register: job_result
+  until: job_result.finished or (job_result.started is defined and job_result.started == 1)
+  retries: 5
+  delay: 1
+  when: gitea_port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
+  failed_when: job_result.finished and job_result.rc != 0
+
+- name: Verify Gitea port-forward local port is accepting connections
+  ansible.builtin.wait_for:
+    host: "{{ '127.0.0.1' if gitea_port_forward_address == '0.0.0.0' else gitea_port_forward_address }}"
+    port: "{{ gitea_port_forward_local_port }}"
+    timeout: 10
+  when: gitea_port_forward_enabled | bool
+
+- name: Display Gitea port-forward job info
+  ansible.builtin.debug:
+    msg:
+      status: "Port-forwarding started and validated"
+      job_id: "{{ port_forward_job.ansible_job_id }}"
+      access_url: >-
+        {{
+          'http://' ~ (ansible_host | default(ansible_facts['default_ipv4']['address'] | default('localhost'))) ~ ':' ~ gitea_port_forward_local_port
+          if gitea_port_forward_address not in ['127.0.0.1', 'localhost', '::1']
+          else 'http://127.0.0.1:' ~ gitea_port_forward_local_port
+        }}
+      remote_service: "{{ gitea_service_name }}:{{ gitea_port_forward_remote_port }}"
+      connection_instructions: >-
+        {{
+          'Port-forward is binding to a reachable address. Access directly via the access_url.'
+          if gitea_port_forward_address not in ['127.0.0.1', 'localhost', '::1']
+          else 'Port-forward is binding to loopback. To access from your local machine, use SSH tunnel: ssh -L ' ~ gitea_port_forward_local_port ~ ':127.0.0.1:' ~ gitea_port_forward_local_port ~ ' ' ~ (ansible_user | default('<user>')) ~ '@' ~ (ansible_host | default('<target_host>'))
+        }}
+  when: gitea_port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
+

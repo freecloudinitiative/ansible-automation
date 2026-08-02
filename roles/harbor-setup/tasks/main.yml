@@ -1,0 +1,69 @@
+---
+- name: Add Harbor Helm repo
+  kubernetes.core.helm_repository:
+    name: harbor
+    repo_url: "{{ harbor_helm_repo_url }}"
+
+- name: Update Helm repos
+  ansible.builtin.command: helm repo update
+  changed_when: false
+
+- name: Ensure Harbor namespace exists
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ harbor_namespace }}"
+    state: present
+    kubeconfig: "{{ harbor_kubeconfig }}"
+
+- name: Install Harbor via Helm
+  kubernetes.core.helm:
+    name: "{{ harbor_release_name }}"
+    chart_ref: harbor/harbor
+    release_namespace: "{{ harbor_namespace }}"
+    create_namespace: false
+    kubeconfig: "{{ harbor_kubeconfig }}"
+    wait: true
+    wait_timeout: 10m
+    state: present
+    values:
+      expose:
+        type: "{{ harbor_expose_type }}"
+        ingress:
+          hosts:
+            core: harbor.local
+      externalURL: "{{ harbor_external_url }}"
+      harborAdminPassword: "{{ harbor_admin_password }}"
+      nodeSelector:
+        node-tier: "{{ harbor_node_tier }}"
+
+- name: Wait for Harbor core deployment to be ready
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - wait
+      - --for=condition=Available
+      - deployment/harbor-core
+      - -n
+      - "{{ harbor_namespace }}"
+      - --timeout=180s
+  environment:
+    KUBECONFIG: "{{ harbor_kubeconfig }}"
+  changed_when: false
+
+- name: Get Harbor pods
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - get
+      - pods
+      - -n
+      - "{{ harbor_namespace }}"
+  environment:
+    KUBECONFIG: "{{ harbor_kubeconfig }}"
+  register: harbor_pods
+  changed_when: false
+
+- name: Display Harbor pods info
+  ansible.builtin.debug:
+    msg: "{{ harbor_pods.stdout_lines }}"
