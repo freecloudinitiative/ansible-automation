@@ -1,0 +1,138 @@
+---
+{% if kyverno_policy_require_labels %}
+# Require app and environment labels on all Pods
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-pod-labels
+  annotations:
+    policies.kyverno.io/title: Require Pod Labels
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Pods must carry 'app' and 'env' labels for observability and cost attribution.
+spec:
+  validationFailureAction: {{ kyverno_policy_mode }}
+  background: true
+  rules:
+    - name: check-pod-labels
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Pods must have 'app' and 'env' labels."
+        pattern:
+          metadata:
+            labels:
+              app: "?*"
+              env: "?*"
+---
+{% endif %}
+{% if kyverno_policy_disallow_latest_tag %}
+# Disallow :latest image tag — forces explicit, reproducible image references
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+  annotations:
+    policies.kyverno.io/title: Disallow Latest Tag
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      The :latest image tag is mutable and unpredictable. Require digest or explicit version tags.
+spec:
+  validationFailureAction: {{ kyverno_policy_mode }}
+  background: true
+  rules:
+    - name: require-image-tag
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Image tag ':latest' is not allowed. Use an explicit version or digest."
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ `{{element.image}}` }}"
+                    operator: Equals
+                    value: "*:latest"
+                  - key: "{{ `{{element.image}}` }}"
+                    operator: NotContains
+                    value: ":"
+---
+{% endif %}
+{% if kyverno_policy_require_resource_limits %}
+# Require CPU and memory requests + limits on all containers
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resource-limits
+  annotations:
+    policies.kyverno.io/title: Require Resource Limits
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      All containers must define CPU and memory requests and limits to prevent resource exhaustion.
+spec:
+  validationFailureAction: {{ kyverno_policy_mode }}
+  background: true
+  rules:
+    - name: check-container-resources
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "All containers must define cpu and memory requests and limits."
+        foreach:
+          - list: "request.object.spec.containers"
+            pattern:
+              resources:
+                requests:
+                  memory: "?*"
+                  cpu: "?*"
+                limits:
+                  memory: "?*"
+                  cpu: "?*"
+---
+{% endif %}
+{% if kyverno_policy_disallow_privileged %}
+# Disallow privileged containers — core security baseline
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-privileged-containers
+  annotations:
+    policies.kyverno.io/title: Disallow Privileged Containers
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Privileged containers share the host's kernel and can break cluster isolation.
+spec:
+  validationFailureAction: {{ kyverno_policy_mode }}
+  background: true
+  rules:
+    - name: check-privileged
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Privileged containers are not allowed."
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ `{{element.securityContext.privileged}}` }}"
+                    operator: Equals
+                    value: true
+{% endif %}

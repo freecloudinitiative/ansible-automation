@@ -1,0 +1,85 @@
+---
+- name: Create Kyverno stack directory
+  ansible.builtin.file:
+    path: "{{ kyverno_stack_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Add Kyverno Helm repo
+  kubernetes.core.helm_repository:
+    name: kyverno
+    repo_url: "{{ kyverno_helm_repo_url }}"
+
+- name: Update Helm repos
+  ansible.builtin.command: helm repo update
+  changed_when: false
+
+- name: Render Kyverno values from template
+  ansible.builtin.template:
+    src: kyverno-values.yaml.j2
+    dest: "{{ kyverno_stack_dir }}/kyverno-values.yaml"
+    mode: "0644"
+
+- name: Install Kyverno via Helm
+  kubernetes.core.helm:
+    name: "{{ kyverno_release_name }}"
+    chart_ref: kyverno/kyverno
+    release_namespace: "{{ kyverno_namespace }}"
+    create_namespace: true
+    values_files:
+      - "{{ kyverno_stack_dir }}/kyverno-values.yaml"
+    kubeconfig: "{{ kyverno_kubeconfig }}"
+    wait: true
+    wait_timeout: 5m
+    state: present
+
+- name: Wait for Kyverno admission controller to be ready
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - wait
+      - --for=condition=Available
+      - deployment/kyverno-admission-controller
+      - -n
+      - "{{ kyverno_namespace }}"
+      - --timeout=120s
+  environment:
+    KUBECONFIG: "{{ kyverno_kubeconfig }}"
+  changed_when: false
+
+- name: Render ClusterPolicies from template
+  ansible.builtin.template:
+    src: kyverno-policies.yaml.j2
+    dest: "{{ kyverno_stack_dir }}/kyverno-policies.yaml"
+    mode: "0644"
+
+- name: Apply ClusterPolicies
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ kyverno_stack_dir }}/kyverno-policies.yaml"
+    kubeconfig: "{{ kyverno_kubeconfig }}"
+
+- name: List applied ClusterPolicies
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - get
+      - clusterpolicy
+      - -o
+      - "custom-columns=NAME:.metadata.name,MODE:.spec.validationFailureAction,BACKGROUND:.spec.background"
+  environment:
+    KUBECONFIG: "{{ kyverno_kubeconfig }}"
+  register: kyverno_policies_list
+  changed_when: false
+
+- name: Display Kyverno setup info
+  ansible.builtin.debug:
+    msg:
+      status: "Kyverno installed and ClusterPolicies applied"
+      policy_mode: "{{ kyverno_policy_mode }}"
+      namespace: "{{ kyverno_namespace }}"
+      access_url: "http://{{ k3s_master_ip }}:8000"
+      active_policies: "{{ kyverno_policies_list.stdout_lines }}"
+      note: >-
+        Policies are in '{{ kyverno_policy_mode }}' mode.
+        Change kyverno_policy_mode to 'enforce' when ready to block violations.

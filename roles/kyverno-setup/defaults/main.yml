@@ -1,0 +1,13 @@
+---
+kyverno_namespace: kyverno
+kyverno_stack_dir: "{{ '~/k3s-stack/kyverno' | expanduser }}"
+kyverno_release_name: kyverno
+kyverno_helm_repo_url: https://kyverno.github.io/kyverno/
+kyverno_kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+
+kyverno_policy_mode: audit
+
+kyverno_policy_require_labels: true
+kyverno_policy_disallow_latest_tag: true
+kyverno_policy_require_resource_limits: true
+kyverno_policy_disallow_privileged: true
