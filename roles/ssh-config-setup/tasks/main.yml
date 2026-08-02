@@ -1,0 +1,39 @@
+---
+- name: Ensure SSH directory exists
+  ansible.builtin.file:
+    path: "{{ ssh_config_dir }}"
+    state: directory
+    mode: "0700"
+
+- name: Ensure known_hosts file exists
+  ansible.builtin.file:
+    path: "{{ ssh_known_hosts_file }}"
+    state: touch
+    mode: "0600"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Remove stale host keys from known_hosts via ssh-keygen (by IP)
+  ansible.builtin.command:
+    cmd: >-
+      ssh-keygen -R {{ item.value if (item.value is string) else (item.value.hostname | default(item.value.ip)) }}
+  loop: "{{ (ssh_hosts | default({})) | dict2items }}"
+  when:
+    - ssh_config_clean_known_hosts | bool
+    - (item.value if (item.value is string) else (item.value.hostname | default(item.value.ip))) is defined
+  changed_when: false
+  failed_when: false
+
+- name: Remove stale host keys from known_hosts via ssh-keygen (by hostname)
+  ansible.builtin.command:
+    cmd: "ssh-keygen -R {{ item.key }}"
+  loop: "{{ (ssh_hosts | default({})) | dict2items }}"
+  when: ssh_config_clean_known_hosts | bool
+  changed_when: false
+  failed_when: false
+
+- name: Generate local SSH configuration file
+  ansible.builtin.template:
+    src: config.j2
+    dest: "{{ ssh_config_file }}"
+    mode: "0600"

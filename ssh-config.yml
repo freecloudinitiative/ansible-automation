@@ -1,0 +1,15 @@
+---
+- name: Configure Local SSH & Clean Known Hosts
+  hosts: localhost
+  connection: local
+  become: false
+
+  vars:
+    ssh_hosts:
+      master: "34.72.134.11"
+      worker-1: "35.188.150.22"
+      worker-2: "34.136.163.33"
+      worker-3: "35.223.77.44"
+
+  roles:
+    - ssh-config-setup
