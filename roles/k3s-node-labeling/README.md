@@ -5,7 +5,7 @@ An Ansible role that manages and reconciles K3s cluster node labels and taints b
 ## Requirements
 
 - `kubernetes.core` Ansible collection (pinned version recommended, e.g. `>= 2.4.0` or requirements file).
-- Python dependencies installed on `groups['master'][0]` (the control plane host performing delegated tasks):
+- Python dependencies installed on `groups['masters'][0]` (the control plane host performing delegated tasks):
   - Python 3.9+
   - `kubernetes` >= 24.2.0
   - `PyYAML` >= 3.11

@@ -1,17 +1,4 @@
 ---
-- name: Prepare nodes for K3s installation
-  hosts: all
-  become: true
-  roles:
-    - k3s-pre-setup
-
-- name: Setup K3s master node
-  hosts: masters
-  become: true
-  roles:
-    - k3s-master-setup
-    - k3s-fact-gathering
-
 - name: Setup K3s worker nodes
   hosts: workers
   become: true

@@ -8,8 +8,6 @@
     argv:
       - swapoff
       - -a
-  when: ansible_facts['swaptotal_mb'] > 0
-  changed_when: ansible_facts['swaptotal_mb'] > 0
 
 - name: Disable swap in fstab
   ansible.builtin.replace:
@@ -25,7 +23,6 @@
     name: dphys-swapfile
     enabled: false
     state: stopped
-  when: "'dphys-swapfile.service' in ansible_facts.services"
 
 # ============================================================================
 # Install Requirements

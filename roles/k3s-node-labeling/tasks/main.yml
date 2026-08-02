@@ -7,7 +7,7 @@
   register: ready_nodes_cmd
   changed_when: false
   failed_when: false
-  delegate_to: "{{ groups['master'][0] }}"
+  delegate_to: "{{ groups['masters'][0] }}"
   run_once: true
 
 - name: Set cluster_nodes fact
@@ -22,7 +22,7 @@
     KUBECONFIG: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
   loop: "{{ groups['high_memory'] | default([]) | map('regex_replace', '\\..*', '') | list }}"
   when: item in cluster_nodes
-  delegate_to: "{{ groups['master'][0] }}"
+  delegate_to: "{{ groups['masters'][0] }}"
   run_once: true
 
 - name: Label mid-memory nodes
@@ -32,7 +32,7 @@
     KUBECONFIG: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
   loop: "{{ groups['mid_memory'] | default([]) | map('regex_replace', '\\..*', '') | list }}"
   when: item in cluster_nodes
-  delegate_to: "{{ groups['master'][0] }}"
+  delegate_to: "{{ groups['masters'][0] }}"
   run_once: true
 
 - name: Label low-memory nodes
@@ -42,7 +42,7 @@
     KUBECONFIG: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
   loop: "{{ groups['low_memory'] | default([]) | map('regex_replace', '\\..*', '') | list }}"
   when: item in cluster_nodes
-  delegate_to: "{{ groups['master'][0] }}"
+  delegate_to: "{{ groups['masters'][0] }}"
   run_once: true
 
 - name: Taint low-memory nodes
@@ -52,7 +52,7 @@
     KUBECONFIG: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
   loop: "{{ groups['low_memory'] | default([]) | map('regex_replace', '\\..*', '') | list }}"
   when: item in cluster_nodes
-  delegate_to: "{{ groups['master'][0] }}"
+  delegate_to: "{{ groups['masters'][0] }}"
   run_once: true
 
 - name: Taint master nodes
@@ -60,9 +60,9 @@
     cmd: "kubectl taint node {{ item }} node-role.kubernetes.io/master=:NoSchedule --overwrite"
   environment:
     KUBECONFIG: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
-  loop: "{{ groups['master'] | default([]) | map('regex_replace', '\\..*', '') | list }}"
+  loop: "{{ groups['masters'] | default([]) | map('regex_replace', '\\..*', '') | list }}"
   when: item in cluster_nodes
-  delegate_to: "{{ groups['master'][0] }}"
+  delegate_to: "{{ groups['masters'][0] }}"
   run_once: true
 
 - name: Display node configuration
@@ -72,7 +72,7 @@
     KUBECONFIG: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
   register: nodes_status
   changed_when: false
-  delegate_to: "{{ groups['master'][0] }}"
+  delegate_to: "{{ groups['masters'][0] }}"
   run_once: true
 
 - name: Print node configuration
