@@ -1,0 +1,15 @@
+---
+metallb_namespace: metallb-system
+metallb_stack_dir: "{{ '~/k3s-stack/load-balancer' | expanduser }}"
+metallb_release_name: metallb
+metallb_helm_repo_url: https://metallb.github.io/metallb
+metallb_kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+
+metallb_ip_pool_range: "192.168.1.100-192.168.1.110"
+
+metallb_port_forward_enabled: true
+metallb_port_forward_address: "127.0.0.1"
+metallb_port_forward_local_port: 80
+metallb_port_forward_remote_port: 80
+metallb_service_name: daemonset/speaker
+
