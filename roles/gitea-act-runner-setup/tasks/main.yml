@@ -1,0 +1,120 @@
+---
+- name: Ensure Gitea Act Runner namespace exists
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ gitea_act_runner_namespace }}"
+    state: present
+    kubeconfig: "{{ gitea_act_runner_kubeconfig }}"
+
+- name: Auto-generate Gitea runner registration token if not provided
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - exec
+      - -n
+      - "{{ gitea_act_runner_namespace }}"
+      - deployment/gitea
+      - -c
+      - gitea
+      - --
+      - gitea
+      - actions
+      - generate-runner-token
+  environment:
+    KUBECONFIG: "{{ gitea_act_runner_kubeconfig }}"
+  register: auto_runner_token
+  changed_when: false
+  when:
+    - (gitea_act_runner_registration_token is not defined) or (gitea_act_runner_registration_token == '')
+    - gitea_act_runner_auto_generate_token | bool
+
+- name: Set gitea_act_runner_token fact
+  ansible.builtin.set_fact:
+    gitea_act_runner_token: >-
+      {{
+        gitea_act_runner_registration_token
+        if (gitea_act_runner_registration_token is defined and gitea_act_runner_registration_token != '')
+        else (auto_runner_token.stdout | trim)
+      }}
+
+- name: Apply Gitea Act Runner Secret
+  kubernetes.core.k8s:
+    kubeconfig: "{{ gitea_act_runner_kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: gitea-act-runner-secret
+        namespace: "{{ gitea_act_runner_namespace }}"
+      type: Opaque
+      stringData:
+        GITEA_INSTANCE_URL: "{{ gitea_act_runner_gitea_url }}"
+        GITEA_RUNNER_REGISTRATION_TOKEN: "{{ gitea_act_runner_token }}"
+
+- name: Apply Gitea Act Runner Deployment
+  kubernetes.core.k8s:
+    kubeconfig: "{{ gitea_act_runner_kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: "{{ gitea_act_runner_name }}"
+        namespace: "{{ gitea_act_runner_namespace }}"
+        labels:
+          app.kubernetes.io/name: gitea-act-runner
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: gitea-act-runner
+        template:
+          metadata:
+            labels:
+              app.kubernetes.io/name: gitea-act-runner
+          spec:
+            nodeSelector:
+              node-tier: "{{ gitea_act_runner_node_tier }}"
+            containers:
+              - name: runner
+                image: "{{ gitea_act_runner_image }}"
+                imagePullPolicy: IfNotPresent
+                env:
+                  - name: GITEA_INSTANCE_URL
+                    valueFrom:
+                      secretKeyRef:
+                        name: gitea-act-runner-secret
+                        key: GITEA_INSTANCE_URL
+                  - name: GITEA_RUNNER_REGISTRATION_TOKEN
+                    valueFrom:
+                      secretKeyRef:
+                        name: gitea-act-runner-secret
+                        key: GITEA_RUNNER_REGISTRATION_TOKEN
+                  - name: GITEA_RUNNER_NAME
+                    value: "{{ gitea_act_runner_name }}"
+                  - name: GITEA_RUNNER_LABELS
+                    value: "{{ gitea_act_runner_labels }}"
+                securityContext:
+                  privileged: true
+                volumeMounts:
+                  - name: runner-data
+                    mountPath: /data
+            volumes:
+              - name: runner-data
+                emptyDir: {}
+
+- name: Wait for Gitea Act Runner deployment to be ready
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - wait
+      - --for=condition=Available
+      - "deployment/{{ gitea_act_runner_name }}"
+      - -n
+      - "{{ gitea_act_runner_namespace }}"
+      - --timeout=120s
+  environment:
+    KUBECONFIG: "{{ gitea_act_runner_kubeconfig }}"
+  changed_when: false
