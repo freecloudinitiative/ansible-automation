@@ -29,6 +29,10 @@
     values:
       nodeSelector:
         node-tier: "{{ gitea_node_tier }}"
+      gitea:
+        config:
+          actions:
+            ENABLED: "{{ gitea_actions_enabled }}"
 
 - name: Wait for Gitea deployment to be ready
   ansible.builtin.command:

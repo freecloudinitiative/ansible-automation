@@ -27,6 +27,7 @@
     - k3s-node-labeling
     - argocd-setup
     - gitea-setup
+    - gitea-act-runner-setup
     - argocd-bootstrap
     - sealed-secret-setup
     - traefik-setup
