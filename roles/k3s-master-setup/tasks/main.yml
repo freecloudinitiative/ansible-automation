@@ -12,7 +12,7 @@
     path: /usr/local/bin/k3s
   register: k3s_binary
 
-- name: Install k3s server with cluster-init
+- name: Install k3s server on primary master node with cluster-init
   ansible.builtin.command:
     argv:
       - /tmp/k3s-install.sh
@@ -22,14 +22,39 @@
       - metrics-server
       - --disable
       - traefik
-      - --node-name=master
+      - "--node-name={{ inventory_hostname }}"
       - "--node-ip={{ ansible_facts.default_ipv4.address }}"
       - "--advertise-address={{ ansible_facts.default_ipv4.address }}"
       - "--tls-san={{ ansible_facts.default_ipv4.address }}"
   become: true
-  when: not k3s_binary.stat.exists or k3s_script_download.changed
-  register: k3s_install
-  changed_when: "'k3s' in k3s_install.stdout"
+  when:
+    - inventory_hostname == groups['masters'][0]
+    - not k3s_binary.stat.exists or k3s_script_download.changed
+  register: k3s_install_primary
+  changed_when: "'k3s' in k3s_install_primary.stdout or k3s_install_primary.rc == 0"
+
+- name: Join secondary k3s master nodes to the HA cluster
+  ansible.builtin.command:
+    argv:
+      - /tmp/k3s-install.sh
+      - server
+      - "--server=https://{{ k3s_master_ip }}:6443"
+      - "--token={{ k3s_node_token }}"
+      - --disable
+      - metrics-server
+      - --disable
+      - traefik
+      - "--node-name={{ inventory_hostname }}"
+      - "--node-ip={{ ansible_facts.default_ipv4.address }}"
+      - "--advertise-address={{ ansible_facts.default_ipv4.address }}"
+      - "--tls-san={{ ansible_facts.default_ipv4.address }}"
+  become: true
+  no_log: true
+  when:
+    - inventory_hostname != groups['masters'][0]
+    - not k3s_binary.stat.exists or k3s_script_download.changed
+  register: k3s_install_secondary
+  changed_when: "'k3s' in k3s_install_secondary.stdout or k3s_install_secondary.rc == 0"
 
 - name: Wait for k3s to be ready
   ansible.builtin.command:
