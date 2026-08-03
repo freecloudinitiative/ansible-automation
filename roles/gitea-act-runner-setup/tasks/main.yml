@@ -53,6 +53,25 @@
         GITEA_INSTANCE_URL: "{{ gitea_act_runner_gitea_url }}"
         GITEA_RUNNER_REGISTRATION_TOKEN: "{{ gitea_act_runner_token }}"
 
+- name: Apply Gitea Act Runner PVC
+  kubernetes.core.k8s:
+    kubeconfig: "{{ gitea_act_runner_kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: gitea-act-runner-pvc
+        namespace: "{{ gitea_act_runner_namespace }}"
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: "{{ gitea_act_runner_pvc_storage_size }}"
+        storageClassName: "{{ gitea_act_runner_pvc_storage_class if (gitea_act_runner_pvc_storage_class is defined and gitea_act_runner_pvc_storage_class != '') else omit }}"
+  when: gitea_act_runner_pvc_enabled | bool
+
 - name: Apply Gitea Act Runner Deployment
   kubernetes.core.k8s:
     kubeconfig: "{{ gitea_act_runner_kubeconfig }}"
@@ -96,13 +115,27 @@
                     value: "{{ gitea_act_runner_name }}"
                   - name: GITEA_RUNNER_LABELS
                     value: "{{ gitea_act_runner_labels }}"
-                securityContext:
-                  privileged: true
+                  - name: DOCKER_HOST
+                    value: tcp://localhost:2375
                 volumeMounts:
                   - name: runner-data
                     mountPath: /data
+              - name: dind
+                image: "{{ gitea_act_runner_dind_image }}"
+                imagePullPolicy: IfNotPresent
+                env:
+                  - name: DOCKER_TLS_CERTDIR
+                    value: ""
+                securityContext:
+                  privileged: true
+                volumeMounts:
+                  - name: dind-storage
+                    mountPath: /var/lib/docker
             volumes:
               - name: runner-data
+                persistentVolumeClaim: "{{ {'claimName': 'gitea-act-runner-pvc'} if (gitea_act_runner_pvc_enabled | bool) else omit }}"
+                emptyDir: "{{ {} if not (gitea_act_runner_pvc_enabled | bool) else omit }}"
+              - name: dind-storage
                 emptyDir: {}
 
 - name: Wait for Gitea Act Runner deployment to be ready

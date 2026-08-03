@@ -20,8 +20,12 @@ Deploys and registers the Gitea Act Runner in Kubernetes to execute Gitea Action
 | `gitea_act_runner_registration_token` | `""` | Optional explicit registration token |
 | `gitea_act_runner_auto_generate_token` | `true` | Auto-generate token from Gitea pod if not provided |
 | `gitea_act_runner_image` | `gitea/act_runner:latest` | Act Runner container image |
+| `gitea_act_runner_dind_image` | `docker:24-dind` | Docker-in-Docker sidecar image for container execution |
 | `gitea_act_runner_node_tier` | `mid-memory` | Target node tier for scheduling the runner pod |
 | `gitea_act_runner_labels` | `ubuntu-latest:docker://node:18-bullseye...` | Comma-separated runner labels |
+| `gitea_act_runner_pvc_enabled` | `true` | Enable PVC for persistent runner registration state |
+| `gitea_act_runner_pvc_storage_size` | `1Gi` | Storage size for runner-data PVC |
+| `gitea_act_runner_pvc_storage_class` | `""` | Optional custom storage class for PVC |
 
 ## Dependencies
 
