@@ -15,22 +15,33 @@
 
 - name: Remove stale host keys from known_hosts via ssh-keygen (by IP)
   ansible.builtin.command:
-    cmd: >-
-      ssh-keygen -R {{ item.value if (item.value is string) else (item.value.hostname | default(item.value.ip)) }}
+    argv:
+      - ssh-keygen
+      - -f
+      - "{{ ssh_known_hosts_file }}"
+      - -R
+      - "{{ item.value if (item.value is string) else (item.value.hostname | default(item.value.ip)) }}"
   loop: "{{ (ssh_hosts | default({})) | dict2items }}"
   when:
     - ssh_config_clean_known_hosts | bool
     - (item.value if (item.value is string) else (item.value.hostname | default(item.value.ip))) is defined
-  changed_when: false
-  failed_when: false
+  register: ssh_keygen_ip_result
+  changed_when:
+    - "'updated' in (ssh_keygen_ip_result.stderr | default('')) or 'found' in (ssh_keygen_ip_result.stdout | default(''))"
 
 - name: Remove stale host keys from known_hosts via ssh-keygen (by hostname)
   ansible.builtin.command:
-    cmd: "ssh-keygen -R {{ item.key }}"
+    argv:
+      - ssh-keygen
+      - -f
+      - "{{ ssh_known_hosts_file }}"
+      - -R
+      - "{{ item.key }}"
   loop: "{{ (ssh_hosts | default({})) | dict2items }}"
   when: ssh_config_clean_known_hosts | bool
-  changed_when: false
-  failed_when: false
+  register: ssh_keygen_host_result
+  changed_when:
+    - "'updated' in (ssh_keygen_host_result.stderr | default('')) or 'found' in (ssh_keygen_host_result.stdout | default(''))"
 
 - name: Generate local SSH configuration file
   ansible.builtin.template:

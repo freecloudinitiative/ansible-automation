@@ -18,9 +18,9 @@ Available variables and their default values (see `defaults/main.yml`):
 | `ssh_config_dir` | `"{{ '~/.ssh' \| expanduser }}"` | Path to local SSH configuration directory |
 | `ssh_config_file` | `"{{ '~/.ssh/config' \| expanduser }}"` | Path to local `config` file |
 | `ssh_known_hosts_file` | `"{{ '~/.ssh/known_hosts' \| expanduser }}"` | Path to local `known_hosts` file |
-| `ssh_config_clean_known_hosts` | `true` | Purges old keys for target host IPs using `ssh-keygen -R` |
-| `ssh_hosts` | `{ master: "...", worker-1: "...", ... }` | Map of hostname to IP address (or host dict) |
-| `ssh_config_custom_hosts` | `[...]` | Additional custom SSH host blocks (e.g. `github.com`) |
+| `ssh_config_clean_known_hosts` | `false` | Purges old keys for target host IPs using `ssh-keygen -R` |
+| `ssh_hosts` | `{}` | Map of hostname to IP address (supplied via playbook `vars` or `group_vars`) |
+| `ssh_config_custom_hosts` | `[]` | Additional custom SSH host blocks (e.g. `github.com`) |
 
 ## Example Usage
 
@@ -32,6 +32,13 @@ Available variables and their default values (see `defaults/main.yml`):
   hosts: localhost
   connection: local
   become: false
+  vars:
+    ssh_config_clean_known_hosts: true
+    ssh_hosts:
+      master: "34.72.134.198"
+      worker-1: "35.188.150.0"
+      worker-2: "34.136.163.177"
+      worker-3: "35.223.77.196"
   roles:
     - ssh-config-setup
 ```

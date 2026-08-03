@@ -1,4 +1,11 @@
 ---
+- name: Validate grafana_admin_password is set
+  ansible.builtin.assert:
+    that:
+      - grafana_admin_password is defined
+      - grafana_admin_password | length > 0
+    fail_msg: "grafana_admin_password must be defined and non-empty."
+
 - name: Create monitoring stack directory
   ansible.builtin.file:
     path: "{{ prometheus_stack_dir }}"

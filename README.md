@@ -4,18 +4,18 @@ This repository contains the Ansible automation for provisioning and managing a 
 
 ## Repository Structure
 
-| Path | Type | Description |
-| :--- | :--- | :--- |
-| [**roles/**](./roles/) | Directory | Contains all individual Ansible roles for specific tasks and service installations. |
-| [**collections/**](./collections/) | Directory | Defines the required Ansible collections (`kubernetes.core`, `community.general`, `ansible.posix`). |
-| [**group_vars/**](./group_vars/) | Directory | Global and group-specific variable definitions (`group_vars/all/secret.yml`). |
-| [**playbook.yml**](./playbook.yml) | File | The primary playbook for full K3s cluster deployment and service configuration. |
-| [**ssh-config.yml**](./ssh-config.yml) | File | Playbook for generating local `~/.ssh/config` and clearing stale host keys from `known_hosts`. |
-| [**pi-boot.yml**](./pi-boot.yml) | File | Playbook for configuring Raspberry Pi specific `config.txt` settings. |
-| [**thermal-check.yml**](./thermal-check.yml) | File | Playbook for checking Raspberry Pi CPU temperature and thermal status. |
-| [**inventory.ini**](./inventory.ini) | File | Defines the cluster inventory, grouped by node roles (master/worker) and resources. |
-| [**ansible.cfg**](./ansible.cfg) | File | Local Ansible configuration (inventory path, roles path, etc.). |
-| [**README.md**](./README.md) | File | Main repository documentation. |
+| Path                                         | Type      | Description                                                                                         |
+| :------------------------------------------- | :-------- | :-------------------------------------------------------------------------------------------------- |
+| [**roles/**](./roles/)                       | Directory | Contains all individual Ansible roles for specific tasks and service installations.                 |
+| [**collections/**](./collections/)           | Directory | Defines the required Ansible collections (`kubernetes.core`, `community.general`, `ansible.posix`). |
+| [**group_vars/**](./group_vars/)             | Directory | Global and group-specific variable definitions (`group_vars/all/secret.yml`).                       |
+| [**playbook.yml**](./playbook.yml)           | File      | The primary playbook for full K3s cluster deployment and service configuration.                     |
+| [**ssh-config.yml**](./ssh-config.yml)       | File      | Playbook for generating local `~/.ssh/config` and clearing stale host keys from `known_hosts`.      |
+| [**pi-boot.yml**](./pi-boot.yml)             | File      | Playbook for configuring Raspberry Pi specific `config.txt` settings.                               |
+| [**thermal-check.yml**](./thermal-check.yml) | File      | Playbook for checking Raspberry Pi CPU temperature and thermal status.                              |
+| [**inventory.ini**](./inventory.ini)         | File      | Defines the cluster inventory, grouped by node roles (master/worker) and resources.                 |
+| [**ansible.cfg**](./ansible.cfg)             | File      | Local Ansible configuration (inventory path, roles path, etc.).                                     |
+| [**README.md**](./README.md)                 | File      | Main repository documentation.                                                                      |
 
 ---
 
@@ -26,23 +26,21 @@ Sensitive variables, admin credentials (e.g. `harbor_admin_password`, `grafana_a
 ### Encrypting Secrets
 
 To encrypt the secrets file with Ansible Vault:
+
 ```bash
 ansible-vault encrypt group_vars/all/secret.yml
 ```
 
 To edit an encrypted secrets file:
+
 ```bash
 ansible-vault edit group_vars/all/secret.yml
 ```
 
 ### Running Playbooks with Vault
 
-When `secret.yml` is encrypted, pass `--ask-vault-pass` or specify a vault password file:
-
 ```bash
-ansible-playbook playbook.yml --ask-vault-pass
-# or
-ansible-playbook playbook.yml --vault-password-file .vault_pass
+ansible-playbook playbook.yml
 ```
 
 ---

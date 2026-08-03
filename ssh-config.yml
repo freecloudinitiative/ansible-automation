@@ -5,6 +5,7 @@
   become: false
 
   vars:
+    ssh_config_clean_known_hosts: true
     ssh_hosts:
       master: "34.72.134.11"
       worker-1: "35.188.150.22"

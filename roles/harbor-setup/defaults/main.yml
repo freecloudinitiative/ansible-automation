@@ -7,4 +7,3 @@ harbor_node_tier: high-memory
 
 harbor_expose_type: ingress
 harbor_external_url: "http://harbor.local"
-harbor_admin_password: "ChangeMeIfYouCan"
