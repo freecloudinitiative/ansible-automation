@@ -2,9 +2,9 @@
 - name: Validate harbor_admin_password is set
   ansible.builtin.assert:
     that:
-      - harbor_admin_password is defined
-      - harbor_admin_password | length > 0
-    fail_msg: "harbor_admin_password must be defined and non-empty."
+      - harbor_admin_password is string
+      - (harbor_admin_password | trim | length) > 0
+    fail_msg: "harbor_admin_password must be a non-empty string."
 
 - name: Add Harbor Helm repo
   kubernetes.core.helm_repository:

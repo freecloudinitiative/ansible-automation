@@ -2,9 +2,9 @@
 - name: Validate grafana_admin_password is set
   ansible.builtin.assert:
     that:
-      - grafana_admin_password is defined
-      - grafana_admin_password | length > 0
-    fail_msg: "grafana_admin_password must be defined and non-empty."
+      - grafana_admin_password is string
+      - (grafana_admin_password | trim | length) > 0
+    fail_msg: "grafana_admin_password must be a non-empty string."
 
 - name: Create monitoring stack directory
   ansible.builtin.file:
