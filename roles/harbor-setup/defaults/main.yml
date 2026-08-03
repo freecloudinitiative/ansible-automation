@@ -5,7 +5,5 @@ harbor_helm_repo_url: https://helm.goharbor.io
 harbor_kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
 harbor_node_tier: high-memory
 
-# Harbor configuration defaults
 harbor_expose_type: ingress
 harbor_external_url: "http://harbor.local"
-harbor_admin_password: "HarborMeBusGole"

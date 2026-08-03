@@ -66,6 +66,8 @@ These roles deploy local developer tools and registries for hosting code and con
 |---|---|---|
 | [`gitea-setup`](gitea-setup) | `masters` | Installs Gitea Git service via Helm and configures port-forwarding. |
 | [`harbor-setup`](harbor-setup) | `masters` | Installs Harbor container registry via Helm and configures port-forwarding. |
+| [`ssh-config-setup`](ssh-config-setup) | `localhost` | Generates local `~/.ssh/config` and removes stale host key entries from `~/.ssh/known_hosts`. |
+
 
 ---
 

@@ -1,0 +1,12 @@
+---
+ssh_config_default_user: "entelektuelmaganda"
+ssh_config_default_identity_file: "~/.ssh/gcp_k3s"
+
+ssh_config_dir: "{{ '~/.ssh' | expanduser }}"
+ssh_config_file: "{{ '~/.ssh/config' | expanduser }}"
+ssh_known_hosts_file: "{{ '~/.ssh/known_hosts' | expanduser }}"
+
+ssh_config_clean_known_hosts: false
+
+ssh_hosts: {}
+ssh_config_custom_hosts: []
