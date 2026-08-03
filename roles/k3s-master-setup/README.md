@@ -10,7 +10,7 @@ Ansible role for initializing the primary master node (`--cluster-init`) and joi
 - Disables default `metrics-server` and `traefik` to allow custom component deployments.
 - Configures dynamic IP binding (`--node-ip`, `--advertise-address`, and `--tls-san`) using host Facts (`ansible_facts.default_ipv4.address`).
 - Sets dynamic `--node-name` using `inventory_hostname`.
-- Configures secure kubeconfig permissions (`0600`) and user environment setup.
+- Configures secure kubeconfig permissions (`0644`) for `{{ kubeconfig_path }}` and non-root user ownership on `~/.kube/config`.
 - Installs Helm on master nodes.
 
 ## Requirements
@@ -20,14 +20,13 @@ Ansible role for initializing the primary master node (`--cluster-init`) and joi
 
 ## Role Variables
 
-| Variable          | Default            | Description                                                            |
-| ----------------- | ------------------ | ---------------------------------------------------------------------- |
-| `kubeconfig_path` | `/etc/rancher/k3s/k3s.yaml` | Path to the generated cluster kubeconfig file                   |
-| `k3s_master_ip`   | Required for secondary masters | IP address of the primary master node                           |
-| `k3s_node_token`  | Required for secondary masters | K3s node token for joining the HA cluster                       |
+| Variable          | Default                        | Description                                   |
+| ----------------- | ------------------------------ | --------------------------------------------- |
+| `kubeconfig_path` | `/etc/rancher/k3s/k3s.yaml`    | Path to the generated cluster kubeconfig file |
+| `k3s_master_ip`   | Required for secondary masters | IP address of the primary master node         |
+| `k3s_node_token`  | Required for secondary masters | K3s node token for joining the HA cluster     |
 
 ## Output Registered Variables / Facts
 
 - `k3s_node_token`: Contains the slurped node token (`k3s_node_token.content | b64decode`) for joining additional master/worker nodes.
 - `k3s_master_ip`: Fact variable storing the primary master node's IPv4 address.
-

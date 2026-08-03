@@ -99,6 +99,8 @@
     path: "{{ ansible_facts.env.HOME }}/.kube"
     state: directory
     mode: '0755'
+    owner: "{{ ansible_facts.env.USER }}"
+    group: "{{ ansible_facts.env.USER }}"
 
 - name: Copy k3s kubeconfig to user .kube directory
   ansible.builtin.copy:
@@ -106,6 +108,8 @@
     dest: "{{ ansible_facts.env.HOME }}/.kube/config"
     remote_src: true
     mode: '0600'
+    owner: "{{ ansible_facts.env.USER }}"
+    group: "{{ ansible_facts.env.USER }}"
 
 - name: Ensure KUBECONFIG environment variable is set in .bashrc
   ansible.builtin.lineinfile:
