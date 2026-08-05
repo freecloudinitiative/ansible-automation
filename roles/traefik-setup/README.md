@@ -17,11 +17,15 @@ Installs Traefik Ingress Controller via Helm into a K3s cluster.
 | `traefik_helm_repo_url` | `https://traefik.github.io/charts` | Traefik Helm Repository URL |
 | `traefik_chart_version` | `34.0.0` | Traefik Helm chart version |
 | `traefik_image_tag` | `v3.3.2` | Traefik container image tag |
-| `traefik_kubeconfig` | `/etc/rancher/k3s/k3s.yaml` | Path to the kubeconfig file |
+| `kubeconfig_path` | `/etc/rancher/k3s/k3s.yaml` | Path to the kubeconfig file |
 | `traefik_node_tier` | `mid-memory` | Target node tier for scheduling Traefik |
 | `traefik_dashboard_enabled` | `true` | Enable or disable Traefik dashboard ingressRoute |
 | `traefik_ingress_class_enabled` | `true` | Enable IngressClass |
 | `traefik_ingress_class_is_default` | `true` | Set Traefik as the default IngressClass |
+| `traefik_port_forward_enabled` | `true` | Enable background port-forwarding for Traefik dashboard |
+| `traefik_port_forward_address` | `0.0.0.0` | Listening IP address for port-forwarding |
+| `traefik_port_forward_local_port` | `9000` | Local port to bind for port-forwarding |
+| `traefik_port_forward_remote_port` | `9000` | Remote service port for Traefik dashboard |
 
 ## Dependencies
 

@@ -1,0 +1,4 @@
+---
+port_forward_enabled: true
+port_forward_address: "0.0.0.0"
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"

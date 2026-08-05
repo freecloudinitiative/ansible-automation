@@ -20,7 +20,7 @@
     kind: Namespace
     name: "{{ monitoring_namespace }}"
     state: present
-    kubeconfig: "{{ loki_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
 
 - name: Render Loki values from template
   ansible.builtin.template:
@@ -36,7 +36,7 @@
     create_namespace: false
     values_files:
       - "{{ loki_stack_dir }}/loki-values.yaml"
-    kubeconfig: "{{ loki_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
     wait: true
     wait_timeout: 10m
     state: present
@@ -54,7 +54,7 @@
       - -o
       - "jsonpath={.items[0].metadata.name}"
   environment:
-    KUBECONFIG: "{{ loki_kubeconfig }}"
+    KUBECONFIG: "{{ kubeconfig_path }}"
   register: loki_svc_discovery
   changed_when: false
   failed_when: loki_svc_discovery.rc != 0 or loki_svc_discovery.stdout == ''
@@ -69,18 +69,18 @@
       - kubectl
       - port-forward
       - --address
-      - "{{ loki_port_forward_address }}"
+      - "{{ port_forward_address }}"
       - "{{ loki_service_name }}"
       - -n
       - "{{ monitoring_namespace }}"
       - "{{ loki_port_forward_local_port }}:{{ loki_port_forward_remote_port }}"
   environment:
-    KUBECONFIG: "{{ loki_kubeconfig }}"
+    KUBECONFIG: "{{ kubeconfig_path }}"
   changed_when: false
   async: 3600
   poll: 0
   register: port_forward_job
-  when: loki_port_forward_enabled | bool
+  when: port_forward_enabled | bool
 
 - name: Check Loki port-forward job status
   ansible.builtin.async_status:
@@ -89,21 +89,21 @@
   until: job_result.finished or (job_result.started is defined and job_result.started == 1)
   retries: 5
   delay: 1
-  when: loki_port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
+  when: port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
   failed_when: job_result.finished and job_result.rc != 0
 
 - name: Verify Loki port-forward local port is accepting connections
   ansible.builtin.wait_for:
-    host: "{{ '127.0.0.1' if loki_port_forward_address == '0.0.0.0' else loki_port_forward_address }}"
+    host: "{{ '127.0.0.1' if port_forward_address == '0.0.0.0' else port_forward_address }}"
     port: "{{ loki_port_forward_local_port }}"
     timeout: 10
-  when: loki_port_forward_enabled | bool
+  when: port_forward_enabled | bool
 
 - name: Display Loki port-forward job info
   ansible.builtin.debug:
     msg:
       status: "Port-forwarding started and validated"
       job_id: "{{ port_forward_job.ansible_job_id }}"
-      access_url: "http://{{ k3s_master_ip }}:{{ loki_port_forward_local_port }}"
+      access_url: "http://{{ k3s_master_public_ip | default(ansible_host | default(k3s_master_ip | default(ansible_facts['default_ipv4']['address']))) }}:{{ loki_port_forward_local_port }}"
       remote_service: "{{ loki_service_name }}:{{ loki_port_forward_remote_port }}"
-  when: loki_port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
+  when: port_forward_enabled | bool and port_forward_job.ansible_job_id is defined

@@ -17,8 +17,9 @@ argocd_deployments:
   - name: argocd-redis
     kind: Deployment
 
-kubeconfig_path: /etc/rancher/k3s/k3s.yaml
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
 
-argocd_port_forward_enabled: false
+port_forward_enabled: true
+port_forward_address: "0.0.0.0"
 argocd_port_forward_local_port: 8080
 argocd_port_forward_remote_port: 443

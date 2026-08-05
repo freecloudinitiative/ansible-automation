@@ -20,7 +20,7 @@
     kind: Namespace
     name: "{{ kyverno_namespace }}"
     state: present
-    kubeconfig: "{{ kyverno_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
 
 - name: Render Kyverno values from template
   ansible.builtin.template:
@@ -36,7 +36,7 @@
     create_namespace: false
     values_files:
       - "{{ kyverno_stack_dir }}/kyverno-values.yaml"
-    kubeconfig: "{{ kyverno_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
     wait: true
     wait_timeout: 5m
     state: present
@@ -52,7 +52,7 @@
       - "{{ kyverno_namespace }}"
       - --timeout=120s
   environment:
-    KUBECONFIG: "{{ kyverno_kubeconfig }}"
+    KUBECONFIG: "{{ kubeconfig_path }}"
   changed_when: false
 
 - name: Render ClusterPolicies from template
@@ -65,7 +65,7 @@
   kubernetes.core.k8s:
     state: present
     src: "{{ kyverno_stack_dir }}/kyverno-policies.yaml"
-    kubeconfig: "{{ kyverno_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
 
 - name: List applied ClusterPolicies
   ansible.builtin.command:
@@ -76,7 +76,7 @@
       - -o
       - "custom-columns=NAME:.metadata.name,MODE:.spec.validationFailureAction,BACKGROUND:.spec.background"
   environment:
-    KUBECONFIG: "{{ kyverno_kubeconfig }}"
+    KUBECONFIG: "{{ kubeconfig_path }}"
   register: kyverno_policies_list
   changed_when: false
 
@@ -86,8 +86,8 @@
       status: "Kyverno installed and ClusterPolicies applied"
       policy_mode: "{{ kyverno_policy_mode }}"
       namespace: "{{ kyverno_namespace }}"
-      access_url: "http://{{ k3s_master_ip }}:8000"
-      check_policy_reports_command: "kubectl get policyreport -A --kubeconfig {{ kyverno_kubeconfig }}"
+      access_url: "http://{{ k3s_master_public_ip | default(ansible_host | default(k3s_master_ip | default(ansible_facts['default_ipv4']['address']))) }}:8000"
+      check_policy_reports_command: "kubectl get policyreport -A --kubeconfig {{ kubeconfig_path }}"
       active_policies: "{{ kyverno_policies_list.stdout_lines }}"
       note: >-
         Policies are in '{{ kyverno_policy_mode }}' mode.

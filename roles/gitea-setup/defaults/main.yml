@@ -2,12 +2,12 @@
 gitea_namespace: gitea
 gitea_release_name: gitea
 gitea_helm_repo_url: https://dl.gitea.com/charts/
-gitea_kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
 gitea_node_tier: mid-memory
 gitea_actions_enabled: true
 
-gitea_port_forward_enabled: true
-gitea_port_forward_address: "127.0.0.1"
+port_forward_enabled: true
+port_forward_address: "0.0.0.0"
 gitea_port_forward_local_port: 3001
 gitea_port_forward_remote_port: 3000
 

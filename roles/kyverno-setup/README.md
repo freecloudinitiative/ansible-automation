@@ -19,7 +19,9 @@ Defined in `defaults/main.yml`:
 | `kyverno_stack_dir` | `~/k3s-stack/kyverno` | Local directory for rendered manifests |
 | `kyverno_release_name` | `kyverno` | Helm release name |
 | `kyverno_helm_repo_url` | `https://kyverno.github.io/kyverno/` | Kyverno Helm repo URL |
-| `kyverno_kubeconfig` | `/etc/rancher/k3s/k3s.yaml` | Path to kubeconfig |
+| `kubeconfig` | `/etc/rancher/k3s/k3s.yaml` | Path to kubeconfig |
+| `port_forward_enabled` | `true` | Enable background port-forwarding |
+| `port_forward_address` | `0.0.0.0` | Listening address for port-forwarding |
 | `kyverno_policy_mode` | `audit` | Policy enforcement mode: `audit` (log only) or `enforce` (block) |
 | `kyverno_policy_require_labels` | `true` | Enable: require `app` and `env` labels on Pods |
 | `kyverno_policy_disallow_latest_tag` | `true` | Enable: disallow `:latest` image tags |

@@ -28,9 +28,9 @@ Available variables are listed below, along with default values (see `defaults/m
 | `alloy_stack_dir`                | `~/k3s-stack/monitoring`                | Directory on target host for config files.   |
 | `alloy_release_name`             | `alloy`                                 | Helm release name.                           |
 | `alloy_helm_repo_url`            | `https://grafana.github.io/helm-charts` | Helm repository URL.                         |
-| `alloy_kubeconfig`               | `{{ kubeconfig_path \| default(...) }}` | Path to the kubeconfig file on target host.  |
-| `alloy_port_forward_enabled`     | `true`                                  | Whether to start background port-forwarding. |
-| `alloy_port_forward_address`     | `127.0.0.1`                             | Listening IP address for port-forwarding.    |
+| `kubeconfig_path`               | `{{ kubeconfig_path \| default(...) }}` | Path to the kubeconfig file on target host.  |
+| `port_forward_enabled`     | `true`                                  | Whether to start background port-forwarding. |
+| `port_forward_address`     | `0.0.0.0`                               | Listening IP address for port-forwarding.    |
 | `alloy_port_forward_local_port`  | `12345`                                 | Local port to bind for port-forwarding.      |
 | `alloy_port_forward_remote_port` | `12345`                                 | Remote port on the target service/resource.  |
 | `alloy_service_name`             | `daemonset/alloy`                       | Target resource for port-forwarding.         |

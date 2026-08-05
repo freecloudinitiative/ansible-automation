@@ -29,7 +29,7 @@
     kind: Namespace
     name: "{{ cert_manager_namespace }}"
     state: present
-    kubeconfig: "{{ cert_manager_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
 
 - name: Render cert-manager values from template
   ansible.builtin.template:
@@ -45,7 +45,7 @@
     create_namespace: false
     values_files:
       - "{{ cert_manager_stack_dir }}/cert-manager-values.yaml"
-    kubeconfig: "{{ cert_manager_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
     wait: true
     wait_timeout: 5m
     state: present
@@ -61,7 +61,7 @@
       - "{{ cert_manager_namespace }}"
       - --timeout=120s
   environment:
-    KUBECONFIG: "{{ cert_manager_kubeconfig }}"
+    KUBECONFIG: "{{ kubeconfig_path }}"
   changed_when: false
 
 - name: Render ClusterIssuer manifest from template
@@ -74,7 +74,7 @@
   kubernetes.core.k8s:
     state: present
     src: "{{ cert_manager_stack_dir }}/cluster-issuer.yaml"
-    kubeconfig: "{{ cert_manager_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
 
 - name: Verify ClusterIssuer is ready
   ansible.builtin.command:
@@ -87,7 +87,7 @@
       - "{{ 'ca-cluster-issuer' if cert_manager_issuer_type == 'selfsigned' else omit }}"
       - --timeout=60s
   environment:
-    KUBECONFIG: "{{ cert_manager_kubeconfig }}"
+    KUBECONFIG: "{{ kubeconfig_path }}"
   changed_when: false
 
 - name: Display cert-manager setup info
@@ -96,7 +96,7 @@
       status: "cert-manager installed and ClusterIssuer ready"
       issuer_type: "{{ cert_manager_issuer_type }}"
       namespace: "{{ cert_manager_namespace }}"
-      access_url: "http://{{ k3s_master_ip }}:9402/metrics"
+      access_url: "http://{{ k3s_master_public_ip | default(ansible_host | default(k3s_master_ip | default(ansible_facts['default_ipv4']['address']))) }}:9402/metrics"
       note: >-
         Use 'ca-cluster-issuer' (selfsigned) or 'letsencrypt-production'
         in your Certificate and Ingress resources

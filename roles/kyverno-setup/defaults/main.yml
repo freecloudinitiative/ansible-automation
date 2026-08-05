@@ -3,7 +3,10 @@ kyverno_namespace: kyverno
 kyverno_stack_dir: "{{ '~/k3s-stack/kyverno' | expanduser }}"
 kyverno_release_name: kyverno
 kyverno_helm_repo_url: https://kyverno.github.io/kyverno/
-kyverno_kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
+
+port_forward_enabled: true
+port_forward_address: "0.0.0.0"
 
 kyverno_policy_mode: audit
 

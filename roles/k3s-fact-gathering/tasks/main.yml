@@ -8,5 +8,6 @@
 
 - name: Store master node IP address and kubeconfig path
   ansible.builtin.set_fact:
-    k3s_master_ip: "{{ ansible_facts.default_ipv4.address }}"
-    kubeconfig_path: "{{ kubeconfig_path }}"
+    k3s_master_ip: "{{ ansible_host | default(ansible_facts.default_ipv4.address) }}"
+    k3s_master_public_ip: "{{ ansible_host | default(ansible_facts.default_ipv4.address) }}"
+    kubeconfig_path: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"

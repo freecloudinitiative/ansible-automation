@@ -5,9 +5,14 @@ traefik_stack_dir: "{{ '~/k3s-stack/traefik' | expanduser }}"
 traefik_helm_repo_url: https://traefik.github.io/charts
 traefik_chart_version: "34.0.0"
 traefik_image_tag: "v3.3.2"
-traefik_kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
 traefik_node_tier: mid-memory
 
 traefik_dashboard_enabled: true
 traefik_ingress_class_enabled: true
 traefik_ingress_class_is_default: true
+
+port_forward_enabled: true
+port_forward_address: "0.0.0.0"
+traefik_port_forward_local_port: 9000
+traefik_port_forward_remote_port: 9000

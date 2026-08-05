@@ -33,6 +33,9 @@
   vars:
     k3s_master_ip: "{{ hostvars[groups['masters'][0]]['k3s_master_ip'] }}"
     k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
+    port_forward_enabled: true
+    port_forward_address: "0.0.0.0"
+    kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
   roles:
     - k3s-node-labeling
     - argocd-setup

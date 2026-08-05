@@ -5,7 +5,7 @@
     kind: Namespace
     name: "{{ gitea_act_runner_namespace }}"
     state: present
-    kubeconfig: "{{ gitea_act_runner_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
 
 - name: Auto-generate Gitea runner registration token if not provided
   ansible.builtin.command:
@@ -22,7 +22,7 @@
       - actions
       - generate-runner-token
   environment:
-    KUBECONFIG: "{{ gitea_act_runner_kubeconfig }}"
+    KUBECONFIG: "{{ kubeconfig_path }}"
   register: auto_runner_token
   changed_when: false
   when:
@@ -40,7 +40,7 @@
 
 - name: Apply Gitea Act Runner Secret
   kubernetes.core.k8s:
-    kubeconfig: "{{ gitea_act_runner_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
     state: present
     definition:
       apiVersion: v1
@@ -55,7 +55,7 @@
 
 - name: Apply Gitea Act Runner PVC
   kubernetes.core.k8s:
-    kubeconfig: "{{ gitea_act_runner_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
     state: present
     definition:
       apiVersion: v1
@@ -74,7 +74,7 @@
 
 - name: Apply Gitea Act Runner Deployment
   kubernetes.core.k8s:
-    kubeconfig: "{{ gitea_act_runner_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
     state: present
     definition:
       apiVersion: apps/v1
@@ -149,5 +149,5 @@
       - "{{ gitea_act_runner_namespace }}"
       - --timeout=120s
   environment:
-    KUBECONFIG: "{{ gitea_act_runner_kubeconfig }}"
+    KUBECONFIG: "{{ kubeconfig_path }}"
   changed_when: false

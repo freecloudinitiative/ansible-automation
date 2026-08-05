@@ -3,9 +3,9 @@ monitoring_namespace: monitoring
 otel_stack_dir: "{{ '~/k3s-stack/monitoring' | expanduser }}"
 otel_release_name: opentelemetry
 otel_helm_repo_url: https://open-telemetry.github.io/opentelemetry-helm-charts
-otel_kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
 
-otel_port_forward_enabled: true
-otel_port_forward_address: "127.0.0.1"
+port_forward_enabled: true
+port_forward_address: "0.0.0.0"
 otel_port_forward_local_port: 4317
 otel_port_forward_remote_port: 4317

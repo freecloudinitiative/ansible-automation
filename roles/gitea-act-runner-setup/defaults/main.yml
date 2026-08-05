@@ -1,7 +1,7 @@
 ---
 gitea_act_runner_namespace: gitea
 gitea_act_runner_name: gitea-act-runner
-gitea_act_runner_kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
 gitea_act_runner_gitea_url: "http://gitea-http.{{ gitea_act_runner_namespace }}.svc.cluster.local:3000"
 gitea_act_runner_registration_token: ""
 gitea_act_runner_auto_generate_token: true

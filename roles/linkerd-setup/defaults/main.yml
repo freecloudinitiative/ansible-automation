@@ -3,7 +3,10 @@ linkerd_namespace: linkerd
 linkerd_stack_dir: "{{ '~/k3s-stack/linkerd' | expanduser }}"
 linkerd_release_name: linkerd
 linkerd_helm_repo_url: https://helm.linkerd.io/stable
-linkerd_kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
+
+port_forward_enabled: true
+port_forward_address: "0.0.0.0"
 
 # cert-manager ClusterIssuer to use for the Linkerd trust anchor
 # Must match the issuer created by the cert-manager-setup role

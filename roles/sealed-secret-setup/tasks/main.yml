@@ -14,7 +14,7 @@
     kind: Namespace
     name: "{{ sealed_secret_namespace }}"
     state: present
-    kubeconfig: "{{ sealed_secret_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
 
 - name: Install Sealed Secrets via Helm
   kubernetes.core.helm:
@@ -22,7 +22,7 @@
     chart_ref: sealed-secrets/sealed-secrets
     release_namespace: "{{ sealed_secret_namespace }}"
     create_namespace: false
-    kubeconfig: "{{ sealed_secret_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
     wait: true
     wait_timeout: 5m
     state: present
@@ -42,7 +42,7 @@
       - "{{ sealed_secret_namespace }}"
       - --timeout=120s
   environment:
-    KUBECONFIG: "{{ sealed_secret_kubeconfig }}"
+    KUBECONFIG: "{{ kubeconfig_path }}"
   changed_when: false
 
 - name: Get Sealed Secrets controller pods
@@ -54,7 +54,7 @@
       - -n
       - "{{ sealed_secret_namespace }}"
   environment:
-    KUBECONFIG: "{{ sealed_secret_kubeconfig }}"
+    KUBECONFIG: "{{ kubeconfig_path }}"
   register: sealed_secrets_pods
   changed_when: false
 

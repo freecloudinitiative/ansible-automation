@@ -18,9 +18,9 @@ Defined in `defaults/main.yml`:
 | `otel_stack_dir`                | `~/k3s-stack/monitoring`                                     | Directory where `otel-values.yaml` will be rendered  |
 | `otel_release_name`             | `opentelemetry`                                              | Helm release name                                    |
 | `otel_helm_repo_url`            | `https://open-telemetry.github.io/opentelemetry-helm-charts` | OpenTelemetry Helm repository URL                    |
-| `otel_kubeconfig`               | `/etc/rancher/k3s/k3s.yaml`                                  | Path to kubeconfig                                   |
-| `otel_port_forward_enabled`     | `true`                                                       | Enable port-forwarding for the OpenTelemetry service |
-| `otel_port_forward_address`     | `127.0.0.1`                                                  | Local address to bind for port-forwarding            |
+| `kubeconfig_path`               | `/etc/rancher/k3s/k3s.yaml`                                  | Path to kubeconfig                                   |
+| `port_forward_enabled`     | `true`                                                       | Enable background port-forwarding                    |
+| `port_forward_address`     | `0.0.0.0`                                                    | Listening address for port-forwarding                |
 | `otel_port_forward_local_port`  | `4317`                                                       | Local port for port-forwarding                       |
 | `otel_port_forward_remote_port` | `4317`                                                       | Remote service port                                  |
 
