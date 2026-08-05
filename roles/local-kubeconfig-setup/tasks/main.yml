@@ -33,6 +33,7 @@
     replace: 'insecure-skip-tls-verify: true'
   delegate_to: localhost
   become: false
+  when: set_insecure_tls | default(true) | bool
 
 - name: Ensure correct permissions on local kubeconfig
   ansible.builtin.file:
