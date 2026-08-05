@@ -21,6 +21,22 @@ on:
           - aws
           - azure
           - auto
+      master_1_ip:
+        description: 'IP for master-1 (optional override)'
+        required: false
+        type: string
+      worker_1_ip:
+        description: 'IP for worker-1 (optional override)'
+        required: false
+        type: string
+      worker_2_ip:
+        description: 'IP for worker-2 (optional override)'
+        required: false
+        type: string
+      worker_3_ip:
+        description: 'IP for worker-3 (optional override)'
+        required: false
+        type: string
 
 jobs:
   run-playbook:
@@ -56,8 +72,23 @@ jobs:
 
 
       - name: Configure SSH host mapping
+        env:
+          MASTER_1_IP: ${{ github.event.inputs.master_1_ip }}
+          WORKER_1_IP: ${{ github.event.inputs.worker_1_ip }}
+          WORKER_2_IP: ${{ github.event.inputs.worker_2_ip }}
+          WORKER_3_IP: ${{ github.event.inputs.worker_3_ip }}
         run: |
-          ansible-playbook ssh-config.yml
+          EXTRA_VARS=""
+          PAIRS=""
+          [ -n "$MASTER_1_IP" ] && PAIRS="'master-1':'$MASTER_1_IP'"
+          [ -n "$WORKER_1_IP" ] && PAIRS="${PAIRS:+$PAIRS,}'worker-1':'$WORKER_1_IP'"
+          [ -n "$WORKER_2_IP" ] && PAIRS="${PAIRS:+$PAIRS,}'worker-2':'$WORKER_2_IP'"
+          [ -n "$WORKER_3_IP" ] && PAIRS="${PAIRS:+$PAIRS,}'worker-3':'$WORKER_3_IP'"
+          if [ -n "$PAIRS" ]; then
+            EXTRA_VARS="--extra-vars ssh_hosts={$PAIRS}"
+          fi
+          ansible-playbook ssh-config.yml $EXTRA_VARS
+
 
       - name: Populate known hosts dynamically
         run: |
