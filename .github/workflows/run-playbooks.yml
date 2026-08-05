@@ -7,10 +7,10 @@ on:
         description: 'Select the playbook to execute'
         required: true
         type: choice
+        default: 'playbook'
         options:
-          - pi-boot
           - playbook
-          - thermal check
+
       cloud_provider:
         description: 'Select Cloud Provider'
         required: true
@@ -68,14 +68,38 @@ jobs:
           python -m pip install --upgrade pip
           pip install ansible
 
+      - name: Select SSH key for target cloud provider
+        id: select-ssh-key
+        env:
+          CLOUD_PROVIDER: ${{ github.event.inputs.cloud_provider }}
+          GCP_KEY: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
+          AWS_KEY: ${{ secrets.AWS_SSH_PRIVATE_KEY }}
+          AZURE_KEY: ${{ secrets.AZURE_SSH_PRIVATE_KEY }}
+        run: |
+          SELECTED_KEY=""
+          if [ "$CLOUD_PROVIDER" = "gcp" ]; then
+            SELECTED_KEY="$GCP_KEY"
+          elif [ "$CLOUD_PROVIDER" = "aws" ]; then
+            SELECTED_KEY="$AWS_KEY"
+          elif [ "$CLOUD_PROVIDER" = "azure" ]; then
+            SELECTED_KEY="$AZURE_KEY"
+          fi
+
+          if [ -z "$SELECTED_KEY" ]; then
+            echo "Error: Secret for cloud provider '$CLOUD_PROVIDER' is empty or not set."
+            exit 1
+          fi
+
+          echo "key<<EOF" >> $GITHUB_OUTPUT
+          echo "$SELECTED_KEY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+
       - name: Set up SSH agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: |
-            ${{ secrets.GCP_SSH_PRIVATE_KEY }}
-            ${{ secrets.AWS_SSH_PRIVATE_KEY }}
-            ${{ secrets.AZURE_SSH_PRIVATE_KEY }}
-            ${{ secrets.SSH_PRIVATE_KEY }}
+          ssh-private-key: ${{ steps.select-ssh-key.outputs.key }}
+
 
 
       - name: Create Vault password file
@@ -122,12 +146,8 @@ jobs:
         id: determine-playbook
         run: |
           PLAYBOOK="${{ github.event.inputs.playbook }}"
-          if [ "$PLAYBOOK" = "pi-boot" ]; then
-            echo "file=pi-boot.yml" >> $GITHUB_OUTPUT
-          elif [ "$PLAYBOOK" = "playbook" ]; then
+          if [ "$PLAYBOOK" = "playbook" ]; then
             echo "file=playbook.yml" >> $GITHUB_OUTPUT
-          elif [ "$PLAYBOOK" = "thermal check" ]; then
-            echo "file=thermal-check.yml" >> $GITHUB_OUTPUT
           else
             echo "Unsupported playbook choice: $PLAYBOOK"
             exit 1
@@ -147,6 +167,3 @@ jobs:
       - name: Clean up Vault password file
         if: always()
         run: rm -f .vault_pass
-
-
-
