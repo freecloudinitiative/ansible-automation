@@ -20,9 +20,16 @@ on:
           - gcp
           - aws
           - azure
-          - auto
       master_1_ip:
         description: 'IP for master-1 (optional override)'
+        required: false
+        type: string
+      master_2_ip:
+        description: 'IP for master-2 (optional HA master)'
+        required: false
+        type: string
+      master_3_ip:
+        description: 'IP for master-3 (optional HA master)'
         required: false
         type: string
       worker_1_ip:
@@ -74,6 +81,8 @@ jobs:
       - name: Configure SSH host mapping
         env:
           MASTER_1_IP: ${{ github.event.inputs.master_1_ip }}
+          MASTER_2_IP: ${{ github.event.inputs.master_2_ip }}
+          MASTER_3_IP: ${{ github.event.inputs.master_3_ip }}
           WORKER_1_IP: ${{ github.event.inputs.worker_1_ip }}
           WORKER_2_IP: ${{ github.event.inputs.worker_2_ip }}
           WORKER_3_IP: ${{ github.event.inputs.worker_3_ip }}
@@ -81,6 +90,8 @@ jobs:
           EXTRA_VARS=""
           PAIRS=""
           [ -n "$MASTER_1_IP" ] && PAIRS="'master-1':'$MASTER_1_IP'"
+          [ -n "$MASTER_2_IP" ] && PAIRS="${PAIRS:+$PAIRS,}'master-2':'$MASTER_2_IP'"
+          [ -n "$MASTER_3_IP" ] && PAIRS="${PAIRS:+$PAIRS,}'master-3':'$MASTER_3_IP'"
           [ -n "$WORKER_1_IP" ] && PAIRS="${PAIRS:+$PAIRS,}'worker-1':'$WORKER_1_IP'"
           [ -n "$WORKER_2_IP" ] && PAIRS="${PAIRS:+$PAIRS,}'worker-2':'$WORKER_2_IP'"
           [ -n "$WORKER_3_IP" ] && PAIRS="${PAIRS:+$PAIRS,}'worker-3':'$WORKER_3_IP'"
@@ -88,6 +99,7 @@ jobs:
             EXTRA_VARS="--extra-vars ssh_hosts={$PAIRS}"
           fi
           ansible-playbook ssh-config.yml $EXTRA_VARS
+
 
 
       - name: Populate known hosts dynamically
