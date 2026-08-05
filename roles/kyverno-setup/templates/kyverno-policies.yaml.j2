@@ -62,9 +62,9 @@ spec:
                   - key: "{{ '{{element.image}}' }}"
                     operator: Equals
                     value: "*:latest"
-                  - key: "{{ '{{element.image}}' }}"
-                    operator: NotContains
-                    value: ":"
+                  - key: "{{ '{{contains(element.image, \':\')}}' }}"
+                    operator: Equals
+                    value: false
           - list: "request.object.spec.initContainers"
             deny:
               conditions:
@@ -72,9 +72,9 @@ spec:
                   - key: "{{ '{{element.image}}' }}"
                     operator: Equals
                     value: "*:latest"
-                  - key: "{{ '{{element.image}}' }}"
-                    operator: NotContains
-                    value: ":"
+                  - key: "{{ '{{contains(element.image, \':\')}}' }}"
+                    operator: Equals
+                    value: false
           - list: "request.object.spec.ephemeralContainers"
             deny:
               conditions:
@@ -82,9 +82,9 @@ spec:
                   - key: "{{ '{{element.image}}' }}"
                     operator: Equals
                     value: "*:latest"
-                  - key: "{{ '{{element.image}}' }}"
-                    operator: NotContains
-                    value: ":"
+                  - key: "{{ '{{contains(element.image, \':\')}}' }}"
+                    operator: Equals
+                    value: false
 ---
 {% endif %}
 {% if kyverno_policy_require_resource_limits %}

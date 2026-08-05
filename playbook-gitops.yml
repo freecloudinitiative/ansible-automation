@@ -48,13 +48,4 @@
     - argocd-setup
     - gitea-setup
     - gitea-act-runner-setup
-    - sealed-secret-setup
-    - traefik-setup
-    - cert-manager-setup
-    - prometheus-stack-setup
-    - loki-setup
-    - tempo-setup
-    - open-telemetry-setup
-    - harbor-setup
-    - kyverno-setup
-    - alloy-setup
+    - argocd-bootstrap

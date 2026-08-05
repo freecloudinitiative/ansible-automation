@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  role_name: k9s_setup
+  author: freecloudinitiative
+  description: Downloads and installs the K9s terminal UI for Kubernetes cluster management
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - focal
+  galaxy_tags:
+    - kubernetes
+    - k9s
+    - cli
+    - monitoring
