@@ -1,0 +1,5 @@
+---
+metrics_server_helm_repo_url: "https://kubernetes-sigs.github.io/metrics-server/"
+metrics_server_namespace: kube-system
+metrics_server_release_name: metrics-server
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"

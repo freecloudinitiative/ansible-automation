@@ -2,6 +2,7 @@
 - name: Pre-setup all nodes
   hosts: all
   become: true
+  gather_facts: false
   roles:
     - k3s-pre-setup
 
@@ -9,7 +10,7 @@
   hosts: "{{ groups['masters'][0] }}"
   become: true
   vars:
-    k3s_master_public_ip:  "x.x.x.x"
+    k3s_master_public_ip:  "34.57.46.169"
   roles:
     - k3s-master-setup
     - k3s-fact-gathering
@@ -48,6 +49,7 @@
     - argocd-setup
     - gitea-setup
     - gitea-act-runner-setup
+    # - gitea-repo-sync
     - sealed-secret-setup
     - traefik-setup
     - cert-manager-setup
@@ -55,6 +57,6 @@
     - loki-setup
     - tempo-setup
     - open-telemetry-setup
-    - harbor-setup
     - kyverno-setup
     - alloy-setup
+    - harbor-setup
