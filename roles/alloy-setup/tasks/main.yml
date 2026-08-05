@@ -38,30 +38,37 @@
       - "{{ alloy_stack_dir }}/alloy-values.yaml"
     kubeconfig: "{{ kubeconfig_path }}"
     wait: true
-    wait_timeout: 10m
+    wait_timeout: 15m
     state: present
 
-- name: Discover Alloy service name
+- name: Wait for Alloy DaemonSet rollout
   ansible.builtin.command:
     argv:
       - kubectl
-      - get
-      - svc
+      - rollout
+      - status
+      - "daemonset/{{ alloy_release_name }}"
       - -n
       - "{{ monitoring_namespace }}"
-      - -l
-      - "app.kubernetes.io/instance={{ alloy_release_name }}"
-      - -o
-      - "jsonpath={.items[0].metadata.name}"
+      - --timeout=300s
   environment:
     KUBECONFIG: "{{ kubeconfig_path }}"
+  changed_when: false
+
+- name: Discover Alloy service name
+  ansible.builtin.shell: |
+    SVC=$(kubectl get svc -n "{{ monitoring_namespace }}" -l "app.kubernetes.io/name=alloy,app.kubernetes.io/instance={{ alloy_release_name }}" -o "jsonpath={.items[0].metadata.name}" --kubeconfig "{{ kubeconfig_path }}" 2>/dev/null)
+    if [ -n "$SVC" ]; then
+      echo "service/$SVC"
+    else
+      echo "daemonset/{{ alloy_release_name }}"
+    fi
   register: alloy_svc_discovery
   changed_when: false
-  failed_when: alloy_svc_discovery.rc != 0 or alloy_svc_discovery.stdout == ''
 
 - name: Set alloy_service_name from discovered service
   ansible.builtin.set_fact:
-    alloy_service_name: "service/{{ alloy_svc_discovery.stdout }}"
+    alloy_service_name: "{{ alloy_svc_discovery.stdout | trim }}"
 
 - name: Setup Alloy port-forwarding
   ansible.builtin.command:

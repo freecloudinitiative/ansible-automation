@@ -3,14 +3,6 @@ name: Run Ansible Playbooks
 on:
   workflow_dispatch:
     inputs:
-      playbook:
-        description: 'Select the playbook to execute'
-        required: true
-        type: choice
-        default: 'playbook'
-        options:
-          - playbook
-
       cloud_provider:
         description: 'Select Cloud Provider'
         required: true
@@ -175,17 +167,6 @@ jobs:
           mkdir -p ~/.ssh
           grep -i HostName ~/.ssh/config | awk '{print $2}' | xargs -r ssh-keyscan >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      - name: Determine playbook file
-        id: determine-playbook
-        run: |
-          PLAYBOOK="${{ github.event.inputs.playbook }}"
-          if [ "$PLAYBOOK" = "playbook" ]; then
-            echo "file=playbook.yml" >> $GITHUB_OUTPUT
-          else
-            echo "Unsupported playbook choice: $PLAYBOOK"
-            exit 1
-          fi
-
       - name: Run Ansible playbook
         env:
           ANSIBLE_HOST_KEY_CHECKING: "False"
@@ -195,7 +176,7 @@ jobs:
           if [ -f .vault_pass ]; then
             VAULT_ARG="--vault-password-file .vault_pass"
           fi
-          ansible-playbook -i inventory.ini ${{ steps.determine-playbook.outputs.file }} $VAULT_ARG
+          ansible-playbook -i inventory.ini playbook.yml $VAULT_ARG
 
       - name: Clean up Vault password file
         if: always()
