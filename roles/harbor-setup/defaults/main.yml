@@ -3,6 +3,7 @@ harbor_namespace: harbor
 harbor_release_name: harbor
 harbor_helm_repo_url: https://helm.goharbor.io
 kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
+harbor_version: "v2.11.0"
 
 port_forward_enabled: true
 port_forward_address: "0.0.0.0"

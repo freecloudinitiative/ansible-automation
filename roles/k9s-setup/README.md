@@ -13,6 +13,8 @@ None.
 | `k9s_version` | `"v0.32.7"` | K9s release version to download |
 | `k9s_install_dir` | `"/usr/local/bin"` | Directory where the binary is installed |
 | `k9s_arch_map` | `{ x86_64: amd64, aarch64: arm64, armv7l: arm }` | Architecture mapping dictionary |
+| `k9s_namespaces` | `[gitea, argocd, kube-system, monitoring, traefik]` | Default namespaces for K9s view |
+| `k9s_config` | `{ ... }` | K9s options (refreshRate, thresholds, UI flags, etc.) |
 
 ## Dependencies
 
@@ -26,3 +28,4 @@ None.
   roles:
     - k9s-setup
 ```
+

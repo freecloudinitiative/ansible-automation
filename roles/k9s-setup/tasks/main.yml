@@ -81,3 +81,47 @@
     path: "{{ k9s_config_dir | expanduser }}/plugins.yaml"
     state: absent
 
+- name: Ensure K9s config & screen-dumps directories exist for root
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /root/.config/k9s
+    - /root/.local/state/k9s/screen-dumps
+  become: true
+
+- name: Template K9s config.yaml for root
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /root/.config/k9s/config.yaml
+    mode: '0644'
+  vars:
+    k9s_user_home: "/root"
+  become: true
+
+- name: Ensure K9s config & screen-dumps directories exist for non-root users
+  ansible.builtin.file:
+    path: "{{ item.0.path }}/{{ item.1 }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ item.0.path | basename }}"
+  loop: "{{ k9s_user_homes.files | product(['.config/k9s', '.local/state/k9s/screen-dumps']) | list }}"
+  loop_control:
+    label: "{{ item.0.path }}/{{ item.1 }}"
+  become: true
+
+- name: Template K9s config.yaml for non-root users
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: "{{ item.path }}/.config/k9s/config.yaml"
+    mode: '0644'
+    owner: "{{ item.path | basename }}"
+  loop: "{{ k9s_user_homes.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+  vars:
+    k9s_user_home: "{{ item.path }}"
+  become: true
+
+

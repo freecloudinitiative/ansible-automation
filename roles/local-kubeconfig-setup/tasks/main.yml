@@ -152,9 +152,31 @@
     - install_local_k9s | bool
     - local_k9s_check_after_brew.rc != 0
 
+- name: Ensure local K9s config & screen-dumps directories exist on control node
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ lookup('env', 'HOME') }}/.config/k9s"
+    - "{{ lookup('env', 'HOME') }}/.local/state/k9s/screen-dumps"
+  delegate_to: localhost
+  become: false
+
+- name: Template local K9s config.yaml on control node
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: "{{ lookup('env', 'HOME') }}/.config/k9s/config.yaml"
+    mode: '0644'
+  vars:
+    k9s_user_home: "{{ lookup('env', 'HOME') }}"
+  delegate_to: localhost
+  become: false
+
 - name: Display connection instructions
   ansible.builtin.debug:
     msg:
       - "Kubeconfig successfully configured at ~/.kube/config"
       - "K9s is installed and ready! Simply execute:"
       - "  k9s"
+

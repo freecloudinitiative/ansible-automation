@@ -11,7 +11,7 @@
   become: true
   gather_facts: false
   vars:
-    k3s_master_public_ip: "34.57.46.169"
+    k3s_master_public_ip: "x.x.x.x"
   roles:
     - k3s-master-setup
     - k3s-fact-gathering
@@ -53,7 +53,6 @@
     - argocd-setup
     - gitea-setup
     - gitea-act-runner-setup
-    # - gitea-repo-sync
     - sealed-secret-setup
     - traefik-setup
     - cert-manager-setup
