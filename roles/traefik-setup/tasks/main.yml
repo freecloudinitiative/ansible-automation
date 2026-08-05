@@ -48,9 +48,7 @@
       - kubectl
       - wait
       - --for=condition=Available
-      - deployment
-      - -l
-      - "app.kubernetes.io/instance={{ traefik_release_name }}"
+      - "deployment/{{ traefik_release_name }}"
       - -n
       - "{{ traefik_namespace }}"
       - --timeout=120s
