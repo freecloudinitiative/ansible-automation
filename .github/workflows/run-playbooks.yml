@@ -112,7 +112,6 @@ jobs:
 
       - name: Configure SSH host mapping
         env:
-          ANSIBLE_ASK_VAULT_PASS: "False"
           MASTER_1_IP: ${{ github.event.inputs.master_1_ip }}
           MASTER_2_IP: ${{ github.event.inputs.master_2_ip }}
           MASTER_3_IP: ${{ github.event.inputs.master_3_ip }}
@@ -120,22 +119,54 @@ jobs:
           WORKER_2_IP: ${{ github.event.inputs.worker_2_ip }}
           WORKER_3_IP: ${{ github.event.inputs.worker_3_ip }}
         run: |
-          EXTRA_VARS=""
-          PAIRS=""
-          [ -n "$MASTER_1_IP" ] && PAIRS="'master-1':'$MASTER_1_IP'"
-          [ -n "$MASTER_2_IP" ] && PAIRS="${PAIRS:+$PAIRS,}'master-2':'$MASTER_2_IP'"
-          [ -n "$MASTER_3_IP" ] && PAIRS="${PAIRS:+$PAIRS,}'master-3':'$MASTER_3_IP'"
-          [ -n "$WORKER_1_IP" ] && PAIRS="${PAIRS:+$PAIRS,}'worker-1':'$WORKER_1_IP'"
-          [ -n "$WORKER_2_IP" ] && PAIRS="${PAIRS:+$PAIRS,}'worker-2':'$WORKER_2_IP'"
-          [ -n "$WORKER_3_IP" ] && PAIRS="${PAIRS:+$PAIRS,}'worker-3':'$WORKER_3_IP'"
-          if [ -n "$PAIRS" ]; then
-            EXTRA_VARS="--extra-vars ssh_hosts={$PAIRS}"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          M1="${MASTER_1_IP:-34.72.134.11}"
+          M2="${MASTER_2_IP}"
+          M3="${MASTER_3_IP}"
+          W1="${WORKER_1_IP:-35.188.150.22}"
+          W2="${WORKER_2_IP:-34.136.163.33}"
+          W3="${WORKER_3_IP:-35.223.77.44}"
+
+          cat << EOF > ~/.ssh/config
+          Host master-1
+              HostName $M1
+              User entelektuelmaganda
+
+          Host worker-1
+              HostName $W1
+              User entelektuelmaganda
+
+          Host worker-2
+              HostName $W2
+              User entelektuelmaganda
+
+          Host worker-3
+              HostName $W3
+              User entelektuelmaganda
+          EOF
+
+          if [ -n "$M2" ]; then
+            cat << EOF >> ~/.ssh/config
+
+          Host master-2
+              HostName $M2
+              User entelektuelmaganda
+          EOF
           fi
-          VAULT_ARG=""
-          if [ -f .vault_pass ]; then
-            VAULT_ARG="--vault-password-file .vault_pass"
+
+          if [ -n "$M3" ]; then
+            cat << EOF >> ~/.ssh/config
+
+          Host master-3
+              HostName $M3
+              User entelektuelmaganda
+          EOF
           fi
-          ansible-playbook ssh-config.yml $EXTRA_VARS $VAULT_ARG
+
+          chmod 600 ~/.ssh/config
+
 
       - name: Populate known hosts dynamically
         run: |
