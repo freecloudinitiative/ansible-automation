@@ -67,6 +67,7 @@ These roles deploy local developer tools and registries for hosting code and con
 | [`gitea-setup`](gitea-setup) | `masters` | Installs Gitea Git service via Helm and configures port-forwarding. |
 | [`gitea-act-runner-setup`](gitea-act-runner-setup) | `masters[0]` | Deploys and registers Gitea Act Runner in Kubernetes to execute Gitea Actions workflows. |
 | [`harbor-setup`](harbor-setup) | `masters` | Installs Harbor container registry via Helm and configures port-forwarding. |
+| [`k9s-setup`](k9s-setup) | `masters` | Downloads and installs K9s terminal UI for Kubernetes cluster management. |
 | [`ssh-config-setup`](ssh-config-setup) | `localhost` | Generates local `~/.ssh/config` and removes stale host key entries from `~/.ssh/known_hosts`. |
 
 

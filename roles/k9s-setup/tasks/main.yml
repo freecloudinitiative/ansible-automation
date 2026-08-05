@@ -1,0 +1,44 @@
+---
+- name: Determine target architecture
+  ansible.builtin.set_fact:
+    k9s_arch: "{{ k9s_arch_map[ansible_facts.architecture] | default('amd64') }}"
+
+- name: Check installed k9s version
+  ansible.builtin.command: "{{ k9s_install_dir }}/k9s version --short"
+  register: k9s_current_version_cmd
+  changed_when: false
+  failed_when: false
+
+- name: Extract current version string
+  ansible.builtin.set_fact:
+    k9s_installed_version: "{{ k9s_current_version_cmd.stdout | regex_search('v[0-9]+\\.[0-9]+\\.[0-9]+') | default('') }}"
+  when: k9s_current_version_cmd.rc == 0
+
+- name: Download and install K9s binary
+  ansible.builtin.unarchive:
+    src: "https://github.com/derailed/k9s/releases/download/{{ k9s_version }}/k9s_Linux_{{ k9s_arch }}.tar.gz"
+    dest: "{{ k9s_install_dir }}"
+    remote_src: true
+    include:
+      - k9s
+    mode: '0755'
+  become: true
+  when: k9s_current_version_cmd.rc != 0 or k9s_installed_version != k9s_version
+
+- name: Verify K9s installation
+  ansible.builtin.command: "{{ k9s_install_dir }}/k9s version"
+  register: k9s_version_output
+  changed_when: false
+
+- name: Ensure K9s config directory exists
+  ansible.builtin.file:
+    path: "{{ k9s_config_dir | expanduser }}"
+    state: directory
+    mode: '0755'
+
+- name: Ensure K9s plugins file is present
+  ansible.builtin.template:
+    src: plugins.yaml.j2
+    dest: "{{ k9s_config_dir | expanduser }}/plugins.yaml"
+    mode: '0644'
+  when: k9s_plugins_enabled | bool

@@ -131,6 +131,8 @@
     msg:
       status: "Port-forwarding started and validated"
       job_id: "{{ port_forward_job.ansible_job_id }}"
+      admin_user: "admin"
+      admin_password: "{{ grafana_admin_password }}"
       access_url: "http://{{ k3s_master_public_ip }}:{{ grafana_port_forward_local_port }}"
       remote_service: "{{ grafana_service_name }}:{{ grafana_port_forward_remote_port }}"
   when: port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
