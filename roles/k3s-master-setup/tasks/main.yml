@@ -49,7 +49,6 @@
       - "--advertise-address={{ ansible_facts.default_ipv4.address }}"
       - "--tls-san={{ ansible_facts.default_ipv4.address }}"
   become: true
-  no_log: true
   when:
     - inventory_hostname != groups['masters'][0]
     - not k3s_binary.stat.exists or k3s_script_download.changed

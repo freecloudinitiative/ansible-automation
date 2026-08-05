@@ -1,9 +1,16 @@
 ---
-- name: Setup primary K3s master node
-  hosts: "{{ groups['masters'][0] }}"
+- name: Pre-setup all nodes
+  hosts: all
   become: true
   roles:
     - k3s-pre-setup
+
+- name: Setup primary K3s master node
+  hosts: "{{ groups['masters'][0] }}"
+  become: true
+  vars:
+    k3s_master_public_ip: "104.197.200.160"
+  roles:
     - k3s-master-setup
     - k3s-fact-gathering
 
@@ -14,7 +21,6 @@
     k3s_master_ip: "{{ hostvars[groups['masters'][0]]['k3s_master_ip'] }}"
     k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
   roles:
-    - k3s-pre-setup
     - k3s-master-setup
 
 - name: Setup K3s worker nodes
@@ -24,7 +30,6 @@
     k3s_master_ip: "{{ hostvars[groups['masters'][0]]['k3s_master_ip'] }}"
     k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
   roles:
-    - k3s-pre-setup
     - k3s-worker-setup
 
 - name: Install K3S Components
@@ -32,6 +37,7 @@
   become: true
   vars:
     k3s_master_ip: "{{ hostvars[groups['masters'][0]]['k3s_master_ip'] }}"
+    k3s_master_public_ip: "{{ hostvars[groups['masters'][0]]['k3s_master_public_ip'] }}"
     k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
     port_forward_enabled: true
     port_forward_address: "0.0.0.0"

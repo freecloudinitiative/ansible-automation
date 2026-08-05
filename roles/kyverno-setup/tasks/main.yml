@@ -86,7 +86,7 @@
       status: "Kyverno installed and ClusterPolicies applied"
       policy_mode: "{{ kyverno_policy_mode }}"
       namespace: "{{ kyverno_namespace }}"
-      access_url: "http://{{ k3s_master_public_ip | default(ansible_host | default(k3s_master_ip | default(ansible_facts['default_ipv4']['address']))) }}:8000"
+      access_url: "http://{{ k3s_master_public_ip }}:8000"
       check_policy_reports_command: "kubectl get policyreport -A --kubeconfig {{ kubeconfig_path }}"
       active_policies: "{{ kyverno_policies_list.stdout_lines }}"
       note: >-
