@@ -78,8 +78,17 @@ jobs:
             ${{ secrets.SSH_PRIVATE_KEY }}
 
 
+      - name: Create Vault password file
+        env:
+          VAULT_PASS: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+        run: |
+          if [ -n "$VAULT_PASS" ]; then
+            echo "$VAULT_PASS" > .vault_pass
+          fi
+
       - name: Configure SSH host mapping
         env:
+          ANSIBLE_ASK_VAULT_PASS: "False"
           MASTER_1_IP: ${{ github.event.inputs.master_1_ip }}
           MASTER_2_IP: ${{ github.event.inputs.master_2_ip }}
           MASTER_3_IP: ${{ github.event.inputs.master_3_ip }}
@@ -98,25 +107,16 @@ jobs:
           if [ -n "$PAIRS" ]; then
             EXTRA_VARS="--extra-vars ssh_hosts={$PAIRS}"
           fi
-          ansible-playbook ssh-config.yml $EXTRA_VARS
-
-
+          VAULT_ARG=""
+          if [ -f .vault_pass ]; then
+            VAULT_ARG="--vault-password-file .vault_pass"
+          fi
+          ansible-playbook ssh-config.yml $EXTRA_VARS $VAULT_ARG
 
       - name: Populate known hosts dynamically
         run: |
           mkdir -p ~/.ssh
           grep -i HostName ~/.ssh/config | awk '{print $2}' | xargs -r ssh-keyscan >> ~/.ssh/known_hosts 2>/dev/null || true
-
-
-      - name: Create Vault password file
-        env:
-          VAULT_PASS: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
-        run: |
-          if [ -n "$VAULT_PASS" ]; then
-            echo "$VAULT_PASS" > .vault_pass
-          fi
-
-
 
       - name: Determine playbook file
         id: determine-playbook
@@ -143,5 +143,10 @@ jobs:
             VAULT_ARG="--vault-password-file .vault_pass"
           fi
           ansible-playbook -i inventory.ini ${{ steps.determine-playbook.outputs.file }} $VAULT_ARG
-          rm -f .vault_pass
+
+      - name: Clean up Vault password file
+        if: always()
+        run: rm -f .vault_pass
+
+
 
