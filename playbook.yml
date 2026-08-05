@@ -53,6 +53,7 @@
     - argocd-setup
     - gitea-setup
     - gitea-act-runner-setup
+    - docker-registry-setup
     - sealed-secret-setup
     - traefik-setup
     - cert-manager-setup
@@ -62,4 +63,3 @@
     - open-telemetry-setup
     - kyverno-setup
     - alloy-setup
-    - harbor-setup

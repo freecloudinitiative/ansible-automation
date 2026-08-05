@@ -1,0 +1,164 @@
+---
+- name: Ensure Docker Registry namespace exists
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ docker_registry_namespace }}"
+    state: present
+    kubeconfig: "{{ kubeconfig_path }}"
+
+- name: Create Docker Registry PersistentVolumeClaim
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig_path }}"
+    definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: docker-registry-pvc
+        namespace: "{{ docker_registry_namespace }}"
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: "{{ docker_registry_storage_size }}"
+
+- name: Deploy Docker Registry Deployment and Service
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig_path }}"
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: docker-registry
+        namespace: "{{ docker_registry_namespace }}"
+        labels:
+          app: docker-registry
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: docker-registry
+        template:
+          metadata:
+            labels:
+              app: docker-registry
+          spec:
+            nodeSelector:
+              node-tier: "{{ docker_registry_node_tier }}"
+            containers:
+              - name: registry
+                image: "{{ docker_registry_image }}"
+                imagePullPolicy: IfNotPresent
+                ports:
+                  - containerPort: "{{ docker_registry_port }}"
+                    name: registry
+                env:
+                  - name: REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY
+                    value: "/var/lib/registry"
+                volumeMounts:
+                  - name: registry-storage
+                    mountPath: "/var/lib/registry"
+            volumes:
+              - name: registry-storage
+                persistentVolumeClaim:
+                  claimName: docker-registry-pvc
+
+- name: Deploy Docker Registry Service
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig_path }}"
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: docker-registry
+        namespace: "{{ docker_registry_namespace }}"
+        labels:
+          app: docker-registry
+      spec:
+        type: ClusterIP
+        selector:
+          app: docker-registry
+        ports:
+          - port: "{{ docker_registry_port }}"
+            targetPort: "{{ docker_registry_port }}"
+            name: registry
+
+- name: Wait for Docker Registry deployment to be ready
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - wait
+      - --for=condition=Available
+      - deployment/docker-registry
+      - -n
+      - "{{ docker_registry_namespace }}"
+      - --timeout=180s
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  changed_when: false
+
+- name: Get Docker Registry pods
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - get
+      - pods
+      - -n
+      - "{{ docker_registry_namespace }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: registry_pods
+  changed_when: false
+
+- name: Display Docker Registry pods info
+  ansible.builtin.debug:
+    msg: "{{ registry_pods.stdout_lines }}"
+
+- name: Setup Docker Registry port-forwarding
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - port-forward
+      - --address
+      - "{{ port_forward_address }}"
+      - "{{ docker_registry_service_name }}"
+      - -n
+      - "{{ docker_registry_namespace }}"
+      - "{{ docker_registry_port_forward_local_port }}:{{ docker_registry_port_forward_remote_port }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  changed_when: false
+  async: 3600
+  poll: 0
+  register: port_forward_job
+  when: port_forward_enabled | bool
+
+- name: Check Docker Registry port-forward job status
+  ansible.builtin.async_status:
+    jid: "{{ port_forward_job.ansible_job_id }}"
+  register: job_result
+  until: job_result.finished or (job_result.started is defined and job_result.started == 1)
+  retries: 5
+  delay: 1
+  when: port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
+  failed_when: job_result.finished and job_result.rc != 0
+
+- name: Verify Docker Registry port-forward local port is accepting connections
+  ansible.builtin.wait_for:
+    host: "{{ '127.0.0.1' if port_forward_address == '0.0.0.0' else port_forward_address }}"
+    port: "{{ docker_registry_port_forward_local_port }}"
+    timeout: 10
+  when: port_forward_enabled | bool
+
+- name: Display Docker Registry port-forward job info
+  ansible.builtin.debug:
+    msg:
+      status: "Port-forwarding started and validated"
+      job_id: "{{ port_forward_job.ansible_job_id }}"
+      access_url: "http://{{ k3s_master_public_ip }}:{{ docker_registry_port_forward_local_port }}"
+      remote_service: "{{ docker_registry_service_name }}:{{ docker_registry_port_forward_remote_port }}"
+  when: port_forward_enabled | bool and port_forward_job.ansible_job_id is defined

@@ -1,0 +1,13 @@
+---
+docker_registry_namespace: "docker-registry"
+docker_registry_image: "registry:2"
+docker_registry_port: 5000
+docker_registry_storage_size: "10Gi"
+docker_registry_node_tier: "mid-memory"
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
+
+port_forward_enabled: true
+port_forward_address: "0.0.0.0"
+docker_registry_port_forward_local_port: 5000
+docker_registry_port_forward_remote_port: 5000
+docker_registry_service_name: "svc/docker-registry"
