@@ -44,4 +44,20 @@
   loop: "{{ normalized_gitea_repos | default([]) }}"
   register: migrate_result
   changed_when: migrate_result.status == 201
-  failed_when: migrate_result.status not in [201, 409]
+
+- name: Verify existing repository configuration when HTTP 409 Conflict occurs
+  ansible.builtin.uri:
+    url: "{{ gitea_url }}/api/v1/repos/{{ item.item.repo_owner }}/{{ item.item.repo_name }}"
+    method: GET
+    url_username: "{{ gitea_admin_user }}"
+    url_password: "{{ gitea_admin_password }}"
+    force_basic_auth: true
+    status_code:
+      - 200
+  loop: "{{ migrate_result.results | default([]) }}"
+  when: item.status == 409
+  register: existing_repo_result
+  failed_when: >-
+    existing_repo_result.json.original_url != item.item.clone_addr or
+    existing_repo_result.json.private != item.item.private or
+    existing_repo_result.json.mirror != item.item.mirror
