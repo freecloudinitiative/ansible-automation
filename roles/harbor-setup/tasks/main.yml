@@ -43,6 +43,31 @@
       harborAdminPassword: "{{ harbor_admin_password }}"
       nodeSelector:
         node-tier: "{{ harbor_node_tier }}"
+      portal:
+        image:
+          tag: "{{ harbor_version }}"
+      core:
+        image:
+          tag: "{{ harbor_version }}"
+      jobservice:
+        image:
+          tag: "{{ harbor_version }}"
+      registry:
+        registry:
+          tag: "{{ harbor_version }}"
+        controller:
+          tag: "{{ harbor_version }}"
+      trivy:
+        image:
+          tag: "{{ harbor_version }}"
+      database:
+        internal:
+          image:
+            tag: "{{ harbor_version }}"
+      redis:
+        internal:
+          image:
+            tag: "{{ harbor_version }}"
 
 - name: Wait for Harbor core deployment to be ready
   ansible.builtin.command:
