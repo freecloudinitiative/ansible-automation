@@ -12,6 +12,8 @@ Host {{ host_name }}
     User {{ ssh_config_default_user }}
     IdentityFile {{ ssh_config_default_identity_file }}
 {% endif %}
+    StrictHostKeyChecking {{ ssh_config_strict_host_key_checking | default('no') }}
+    UserKnownHostsFile {{ ssh_known_hosts_file }}
 
 {% endfor %}
 {% for custom_host in (ssh_config_custom_hosts | default([])) %}

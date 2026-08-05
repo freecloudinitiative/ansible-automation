@@ -28,9 +28,9 @@ Available variables are listed below, along with default values (see `defaults/m
 | `tempo_stack_dir`                | `~/k3s-stack/monitoring`                          | Directory on target host for config files.   |
 | `tempo_release_name`             | `tempo`                                           | Helm release name.                           |
 | `tempo_helm_repo_url`            | `https://grafana-community.github.io/helm-charts` | Helm repository URL.                         |
-| `tempo_kubeconfig`               | `{{ kubeconfig_path \| default(...) }}`           | Path to the kubeconfig file on target host.  |
-| `tempo_port_forward_enabled`     | `true`                                            | Whether to start background port-forwarding. |
-| `tempo_port_forward_address`     | `127.0.0.1`                                       | Listening IP address for port-forwarding.    |
+| `kubeconfig_path`                | `{{ kubeconfig_path \| default(...) }}`           | Path to the kubeconfig file on target host.  |
+| `port_forward_enabled`           | `true`                                            | Whether to start background port-forwarding. |
+| `port_forward_address`           | `0.0.0.0`                                         | Listening IP address for port-forwarding.    |
 | `tempo_port_forward_local_port`  | `3200`                                            | Local port to bind for port-forwarding.      |
 | `tempo_port_forward_remote_port` | `3200`                                            | Remote port on the target service.           |
 | `tempo_service_name`             | `svc/tempo-gateway`                               | Target service for port-forwarding.          |

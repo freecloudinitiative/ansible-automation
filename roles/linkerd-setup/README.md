@@ -28,7 +28,9 @@ with mTLS certificates managed automatically by cert-manager.
 | `linkerd_stack_dir` | `~/k3s-stack/linkerd` | Local dir for rendered manifests |
 | `linkerd_release_name` | `linkerd` | Helm release name for control plane |
 | `linkerd_helm_repo_url` | `https://helm.linkerd.io/stable` | Linkerd stable Helm repo |
-| `linkerd_kubeconfig` | `/etc/rancher/k3s/k3s.yaml` | Path to kubeconfig |
+| `kubeconfig` | `/etc/rancher/k3s/k3s.yaml` | Path to kubeconfig |
+| `port_forward_enabled` | `true` | Enable background port-forwarding |
+| `port_forward_address` | `0.0.0.0` | Listening address for port-forwarding |
 | `linkerd_cert_manager_cluster_issuer` | `selfsigned-cluster-issuer` | ClusterIssuer for the trust anchor |
 | `linkerd_trust_anchor_duration` | `8760h` | Trust anchor cert validity (1 year) |
 | `linkerd_trust_anchor_renew_before` | `720h` | Renew trust anchor 30 days before expiry |

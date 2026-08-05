@@ -19,7 +19,9 @@ Defined in `defaults/main.yml`:
 | `cert_manager_stack_dir` | `~/k3s-stack/cert-manager` | Local directory for rendered manifests |
 | `cert_manager_release_name` | `cert-manager` | Helm release name |
 | `cert_manager_helm_repo_url` | `https://charts.jetstack.io` | Jetstack Helm repo URL |
-| `cert_manager_kubeconfig` | `/etc/rancher/k3s/k3s.yaml` | Path to kubeconfig |
+| `kubeconfig` | `/etc/rancher/k3s/k3s.yaml` | Path to kubeconfig |
+| `port_forward_enabled` | `true` | Enable background port-forwarding |
+| `port_forward_address` | `0.0.0.0` | Listening address for port-forwarding |
 | `cert_manager_issuer_type` | `selfsigned` | ClusterIssuer type: `selfsigned`, `letsencrypt-staging`, `letsencrypt-production` |
 | `cert_manager_letsencrypt_email` | `""` | Required for Let's Encrypt issuers |
 | `cert_manager_prometheus_enabled` | `true` | Enable Prometheus metrics endpoint |

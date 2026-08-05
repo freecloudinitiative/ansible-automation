@@ -20,7 +20,7 @@
     kind: Namespace
     name: "{{ monitoring_namespace }}"
     state: present
-    kubeconfig: "{{ otel_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
 
 - name: Render OpenTelemetry values from template
   ansible.builtin.template:
@@ -36,7 +36,7 @@
     create_namespace: false
     values_files:
       - "{{ otel_stack_dir }}/otel-values.yaml"
-    kubeconfig: "{{ otel_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
     wait: true
     wait_timeout: 10m
     state: present
@@ -54,7 +54,7 @@
       - -o
       - "jsonpath={.items[0].metadata.name}"
   environment:
-    KUBECONFIG: "{{ otel_kubeconfig }}"
+    KUBECONFIG: "{{ kubeconfig_path }}"
   register: otel_svc_discovery
   changed_when: false
   failed_when: otel_svc_discovery.rc != 0 or otel_svc_discovery.stdout == ''
@@ -69,18 +69,18 @@
       - kubectl
       - port-forward
       - --address
-      - "{{ otel_port_forward_address }}"
+      - "{{ port_forward_address }}"
       - "{{ otel_service_name }}"
       - -n
       - "{{ monitoring_namespace }}"
       - "{{ otel_port_forward_local_port }}:{{ otel_port_forward_remote_port }}"
   environment:
-    KUBECONFIG: "{{ otel_kubeconfig }}"
+    KUBECONFIG: "{{ kubeconfig_path }}"
   changed_when: false
   async: 3600
   poll: 0
   register: port_forward_job
-  when: otel_port_forward_enabled | bool
+  when: port_forward_enabled | bool
 
 - name: Check OpenTelemetry port-forward job status
   ansible.builtin.async_status:
@@ -89,21 +89,21 @@
   until: job_result.finished or (job_result.started is defined and job_result.started == 1)
   retries: 5
   delay: 1
-  when: otel_port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
+  when: port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
   failed_when: job_result.finished and job_result.rc != 0
 
 - name: Verify OpenTelemetry port-forward local port is accepting connections
   ansible.builtin.wait_for:
-    host: "{{ '127.0.0.1' if otel_port_forward_address == '0.0.0.0' else otel_port_forward_address }}"
+    host: "{{ '127.0.0.1' if port_forward_address == '0.0.0.0' else port_forward_address }}"
     port: "{{ otel_port_forward_local_port }}"
     timeout: 10
-  when: otel_port_forward_enabled | bool
+  when: port_forward_enabled | bool
 
 - name: Display OpenTelemetry port-forward job info
   ansible.builtin.debug:
     msg:
       status: "Port-forwarding started and validated"
       job_id: "{{ port_forward_job.ansible_job_id }}"
-      access_url: "http://{{ k3s_master_ip }}:{{ otel_port_forward_local_port }}"
+      access_url: "http://{{ k3s_master_public_ip | default(ansible_host | default(k3s_master_ip | default(ansible_facts['default_ipv4']['address']))) }}:{{ otel_port_forward_local_port }}"
       remote_service: "{{ otel_service_name }}:{{ otel_port_forward_remote_port }}"
-  when: otel_port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
+  when: port_forward_enabled | bool and port_forward_job.ansible_job_id is defined

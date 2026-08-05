@@ -11,7 +11,7 @@
     kind: Namespace
     name: "{{ linkerd_namespace }}"
     state: present
-    kubeconfig: "{{ linkerd_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
 
 - name: Add Linkerd Helm repo
   kubernetes.core.helm_repository:
@@ -28,7 +28,7 @@
     chart_ref: linkerd/linkerd-crds
     release_namespace: "{{ linkerd_namespace }}"
     create_namespace: false
-    kubeconfig: "{{ linkerd_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
     wait: true
     wait_timeout: 3m
     state: present
@@ -43,7 +43,7 @@
   kubernetes.core.k8s:
     state: present
     src: "{{ linkerd_stack_dir }}/linkerd-certs.yaml"
-    kubeconfig: "{{ linkerd_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
 
 - name: Wait for Linkerd identity issuer certificate to be ready
   ansible.builtin.command:
@@ -56,7 +56,7 @@
       - --for=condition=Ready
       - --timeout=120s
   environment:
-    KUBECONFIG: "{{ linkerd_kubeconfig }}"
+    KUBECONFIG: "{{ kubeconfig_path }}"
   changed_when: false
 
 - name: Render Linkerd control plane values from template
@@ -73,7 +73,7 @@
     create_namespace: false
     values_files:
       - "{{ linkerd_stack_dir }}/linkerd-values.yaml"
-    kubeconfig: "{{ linkerd_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
     wait: true
     wait_timeout: 5m
     state: present
@@ -89,7 +89,7 @@
       - "{{ linkerd_namespace }}"
       - --timeout=120s
   environment:
-    KUBECONFIG: "{{ linkerd_kubeconfig }}"
+    KUBECONFIG: "{{ kubeconfig_path }}"
   changed_when: false
 
 - name: Ensure Linkerd Viz namespace exists
@@ -98,7 +98,7 @@
     kind: Namespace
     name: "{{ linkerd_viz_namespace }}"
     state: present
-    kubeconfig: "{{ linkerd_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
   when: linkerd_viz_enabled | bool
 
 - name: Install Linkerd Viz via Helm
@@ -107,7 +107,7 @@
     chart_ref: linkerd/linkerd-viz
     release_namespace: "{{ linkerd_viz_namespace }}"
     create_namespace: false
-    kubeconfig: "{{ linkerd_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
     wait: true
     wait_timeout: 5m
     state: present

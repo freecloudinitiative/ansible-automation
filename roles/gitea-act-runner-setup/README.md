@@ -15,7 +15,7 @@ Deploys and registers the Gitea Act Runner in Kubernetes to execute Gitea Action
 |----------|---------|-------------|
 | `gitea_act_runner_namespace` | `gitea` | Namespace to install Gitea Act Runner |
 | `gitea_act_runner_name` | `gitea-act-runner` | Kubernetes Deployment name |
-| `gitea_act_runner_kubeconfig` | `/etc/rancher/k3s/k3s.yaml` | Path to kubeconfig file |
+| `kubeconfig_path` | `/etc/rancher/k3s/k3s.yaml` | Path to kubeconfig file |
 | `gitea_act_runner_gitea_url` | `http://gitea-http.gitea.svc.cluster.local:3000` | Gitea instance HTTP URL |
 | `gitea_act_runner_registration_token` | `""` | Optional explicit registration token |
 | `gitea_act_runner_auto_generate_token` | `true` | Auto-generate token from Gitea pod if not provided |

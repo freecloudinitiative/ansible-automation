@@ -2,7 +2,11 @@
 harbor_namespace: harbor
 harbor_release_name: harbor
 harbor_helm_repo_url: https://helm.goharbor.io
-harbor_kubeconfig: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
+
+port_forward_enabled: true
+port_forward_address: "0.0.0.0"
+
 harbor_node_tier: high-memory
 
 harbor_expose_type: ingress

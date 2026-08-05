@@ -21,7 +21,7 @@
     kind: Namespace
     name: "{{ harbor_namespace }}"
     state: present
-    kubeconfig: "{{ harbor_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
 
 - name: Install Harbor via Helm
   kubernetes.core.helm:
@@ -29,7 +29,7 @@
     chart_ref: harbor/harbor
     release_namespace: "{{ harbor_namespace }}"
     create_namespace: false
-    kubeconfig: "{{ harbor_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig_path }}"
     wait: true
     wait_timeout: 10m
     state: present
@@ -55,7 +55,7 @@
       - "{{ harbor_namespace }}"
       - --timeout=180s
   environment:
-    KUBECONFIG: "{{ harbor_kubeconfig }}"
+    KUBECONFIG: "{{ kubeconfig_path }}"
   changed_when: false
 
 - name: Get Harbor pods
@@ -67,7 +67,7 @@
       - -n
       - "{{ harbor_namespace }}"
   environment:
-    KUBECONFIG: "{{ harbor_kubeconfig }}"
+    KUBECONFIG: "{{ kubeconfig_path }}"
   register: harbor_pods
   changed_when: false
 

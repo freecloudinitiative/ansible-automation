@@ -30,10 +30,10 @@ Available variables are listed below, along with default values (see `defaults/m
 | `metallb_stack_dir`         | `~/k3s-stack/load-balancer`                             | Directory on target host for config files.       |
 | `metallb_release_name`       | `metallb`                                               | Helm release name.                               |
 | `metallb_helm_repo_url`      | `https://metallb.github.io/metallb`                    | Helm repository URL.                             |
-| `metallb_kubeconfig`         | `{{ kubeconfig_path \| default(...) }}`                 | Path to the kubeconfig file on target host.      |
+| `kubeconfig_path`         | `{{ kubeconfig_path \| default(...) }}`                 | Path to the kubeconfig file on target host.      |
 | `metallb_ip_pool_range`      | `192.168.1.100-192.168.1.110`                           | IP address range for `IPAddressPool`.            |
-| `metallb_port_forward_enabled`| `true`                                                 | Whether to start background port-forwarding.    |
-| `metallb_port_forward_address`| `127.0.0.1`                                             | Listening IP address for port-forwarding.       |
+| `port_forward_enabled`| `true`                                                 | Whether to start background port-forwarding.    |
+| `port_forward_address`| `0.0.0.0`                                             | Listening IP address for port-forwarding.       |
 | `metallb_port_forward_local_port` | `80`                                               | Local port to bind for port-forwarding.         |
 | `metallb_port_forward_remote_port`| `80`                                              | Remote port on target resource.                  |
 | `metallb_service_name`        | `daemonset/speaker`                                     | Target resource for port-forwarding.             |
