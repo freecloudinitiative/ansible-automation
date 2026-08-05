@@ -100,9 +100,8 @@
   when: metallb_port_forward_enabled | bool
 
 - name: Stop MetalLB port-forward process when disabled
-  ansible.builtin.pkill:
-    pattern: "kubectl port-forward.*{{ metallb_namespace }}.*{{ metallb_port_forward_local_port }}:"
-  failed_when: false
+  ansible.builtin.shell: |
+    pkill -f "[k]ubectl port-forward.*{{ metallb_namespace }}.*{{ metallb_port_forward_local_port }}:" || true
   changed_when: false
   when: not (metallb_port_forward_enabled | bool)
 
