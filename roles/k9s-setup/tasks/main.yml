@@ -3,17 +3,6 @@
   ansible.builtin.set_fact:
     k9s_arch: "{{ k9s_arch_map[ansible_facts.architecture] | default('amd64') }}"
 
-- name: Check installed k9s version
-  ansible.builtin.command: "{{ k9s_install_dir }}/k9s version --short"
-  register: k9s_current_version_cmd
-  changed_when: false
-  failed_when: false
-
-- name: Extract current version string
-  ansible.builtin.set_fact:
-    k9s_installed_version: "{{ k9s_current_version_cmd.stdout | regex_search('v[0-9]+\\.[0-9]+\\.[0-9]+') | default('') }}"
-  when: k9s_current_version_cmd.rc == 0
-
 - name: Download and install K9s binary
   ansible.builtin.unarchive:
     src: "https://github.com/derailed/k9s/releases/download/{{ k9s_version }}/k9s_Linux_{{ k9s_arch }}.tar.gz"
@@ -22,23 +11,73 @@
     include:
       - k9s
     mode: '0755'
+    creates: "{{ k9s_install_dir }}/k9s"
   become: true
-  when: k9s_current_version_cmd.rc != 0 or k9s_installed_version != k9s_version
 
-- name: Verify K9s installation
-  ansible.builtin.command: "{{ k9s_install_dir }}/k9s version"
-  register: k9s_version_output
-  changed_when: false
-
-- name: Ensure K9s config directory exists
+- name: Ensure K3s kubeconfig permissions allow reading
   ansible.builtin.file:
-    path: "{{ k9s_config_dir | expanduser }}"
+    path: "{{ kubeconfig_path }}"
+    mode: '0644'
+  become: true
+  ignore_errors: true
+
+- name: Ensure global KUBECONFIG profile script is set
+  ansible.builtin.copy:
+    dest: /etc/profile.d/k9s_kubeconfig.sh
+    content: |
+      export KUBECONFIG={{ kubeconfig_path }}
+    mode: '0755'
+  become: true
+
+- name: Ensure /root/.kube directory exists
+  ansible.builtin.file:
+    path: /root/.kube
     state: directory
     mode: '0755'
+  become: true
 
-- name: Ensure K9s plugins file is present
-  ansible.builtin.template:
-    src: plugins.yaml.j2
-    dest: "{{ k9s_config_dir | expanduser }}/plugins.yaml"
-    mode: '0644'
-  when: k9s_plugins_enabled | bool
+- name: Copy kubeconfig to /root/.kube/config
+  ansible.builtin.copy:
+    src: "{{ kubeconfig_path }}"
+    dest: /root/.kube/config
+    remote_src: true
+    mode: '0600'
+  become: true
+  ignore_errors: true
+
+- name: Find home directories for non-root users
+  ansible.builtin.find:
+    paths: /home
+    file_type: directory
+    recurse: false
+  register: k9s_user_homes
+
+- name: Ensure .kube directory in non-root user homes
+  ansible.builtin.file:
+    path: "{{ item.path }}/.kube"
+    state: directory
+    mode: '0755'
+    owner: "{{ item.path | basename }}"
+  loop: "{{ k9s_user_homes.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+  become: true
+
+- name: Copy kubeconfig to non-root user .kube/config
+  ansible.builtin.copy:
+    src: "{{ kubeconfig_path }}"
+    dest: "{{ item.path }}/.kube/config"
+    remote_src: true
+    mode: '0600'
+    owner: "{{ item.path | basename }}"
+  loop: "{{ k9s_user_homes.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+  become: true
+  ignore_errors: true
+
+- name: Ensure K9s plugins file is absent
+  ansible.builtin.file:
+    path: "{{ k9s_config_dir | expanduser }}/plugins.yaml"
+    state: absent
+

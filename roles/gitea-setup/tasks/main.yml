@@ -23,8 +23,7 @@
     release_namespace: "{{ gitea_namespace }}"
     create_namespace: false
     kubeconfig: "{{ kubeconfig_path }}"
-    wait: true
-    wait_timeout: 5m
+    wait: false
     state: present
     values:
       nodeSelector:
@@ -48,9 +47,13 @@
       - deployment/gitea
       - -n
       - "{{ gitea_namespace }}"
-      - --timeout=120s
+      - --timeout=300s
   environment:
     KUBECONFIG: "{{ kubeconfig_path }}"
+  register: gitea_wait_result
+  until: gitea_wait_result.rc == 0
+  retries: 6
+  delay: 10
   changed_when: false
 
 - name: Get Gitea pods

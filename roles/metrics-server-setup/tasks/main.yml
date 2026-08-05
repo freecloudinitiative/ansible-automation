@@ -1,0 +1,22 @@
+---
+- name: Add metrics-server Helm repo
+  kubernetes.core.helm_repository:
+    name: metrics-server
+    repo_url: "{{ metrics_server_helm_repo_url }}"
+
+- name: Update Helm repos
+  ansible.builtin.command: helm repo update
+  changed_when: false
+
+- name: Install metrics-server via Helm
+  kubernetes.core.helm:
+    name: "{{ metrics_server_release_name }}"
+    chart_ref: metrics-server/metrics-server
+    release_namespace: "{{ metrics_server_namespace }}"
+    create_namespace: false
+    kubeconfig: "{{ kubeconfig_path }}"
+    wait: false
+    state: present
+    values:
+      args:
+        - --kubelet-insecure-tls

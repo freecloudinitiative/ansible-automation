@@ -2,14 +2,16 @@
 - name: Pre-setup all nodes
   hosts: all
   become: true
+  gather_facts: true
   roles:
     - k3s-pre-setup
 
 - name: Setup primary K3s master node
   hosts: "{{ groups['masters'][0] }}"
   become: true
+  gather_facts: false
   vars:
-    k3s_master_public_ip:  "x.x.x.x"
+    k3s_master_public_ip: "34.57.46.169"
   roles:
     - k3s-master-setup
     - k3s-fact-gathering
@@ -17,6 +19,7 @@
 - name: Setup secondary K3s master nodes
   hosts: "{{ groups['masters'][1:] }}"
   become: true
+  gather_facts: false
   vars:
     k3s_master_ip: "{{ hostvars[groups['masters'][0]]['k3s_master_ip'] }}"
     k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
@@ -26,6 +29,7 @@
 - name: Setup K3s worker nodes
   hosts: workers
   become: true
+  gather_facts: false
   vars:
     k3s_master_ip: "{{ hostvars[groups['masters'][0]]['k3s_master_ip'] }}"
     k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
@@ -35,6 +39,7 @@
 - name: Install K3S Components
   hosts: "{{ groups['masters'][0] }}"
   become: true
+  gather_facts: false
   vars:
     k3s_master_ip: "{{ hostvars[groups['masters'][0]]['k3s_master_ip'] }}"
     k3s_master_public_ip: "{{ hostvars[groups['masters'][0]]['k3s_master_public_ip'] }}"
@@ -48,6 +53,7 @@
     - argocd-setup
     - gitea-setup
     - gitea-act-runner-setup
+    # - gitea-repo-sync
     - sealed-secret-setup
     - traefik-setup
     - cert-manager-setup
@@ -55,6 +61,6 @@
     - loki-setup
     - tempo-setup
     - open-telemetry-setup
-    - harbor-setup
     - kyverno-setup
     - alloy-setup
+    - harbor-setup

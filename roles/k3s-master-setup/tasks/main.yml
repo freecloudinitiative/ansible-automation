@@ -19,8 +19,6 @@
       - server
       - --cluster-init
       - --disable
-      - metrics-server
-      - --disable
       - traefik
       - "--node-name={{ inventory_hostname }}"
       - "--node-ip={{ ansible_facts.default_ipv4.address }}"
@@ -40,8 +38,6 @@
       - server
       - "--server=https://{{ k3s_master_ip }}:6443"
       - "--token={{ k3s_node_token }}"
-      - --disable
-      - metrics-server
       - --disable
       - traefik
       - "--node-name={{ inventory_hostname }}"
