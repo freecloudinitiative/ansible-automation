@@ -74,3 +74,48 @@
 - name: Display Harbor pods info
   ansible.builtin.debug:
     msg: "{{ harbor_pods.stdout_lines }}"
+
+- name: Setup Harbor port-forwarding
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - port-forward
+      - --address
+      - "{{ port_forward_address }}"
+      - "{{ harbor_service_name }}"
+      - -n
+      - "{{ harbor_namespace }}"
+      - "{{ harbor_port_forward_local_port }}:{{ harbor_port_forward_remote_port }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  changed_when: false
+  async: 3600
+  poll: 0
+  register: port_forward_job
+  when: port_forward_enabled | bool
+
+- name: Check Harbor port-forward job status
+  ansible.builtin.async_status:
+    jid: "{{ port_forward_job.ansible_job_id }}"
+  register: job_result
+  until: job_result.finished or (job_result.started is defined and job_result.started == 1)
+  retries: 5
+  delay: 1
+  when: port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
+  failed_when: job_result.finished and job_result.rc != 0
+
+- name: Verify Harbor port-forward local port is accepting connections
+  ansible.builtin.wait_for:
+    host: "{{ '127.0.0.1' if port_forward_address == '0.0.0.0' else port_forward_address }}"
+    port: "{{ harbor_port_forward_local_port }}"
+    timeout: 10
+  when: port_forward_enabled | bool
+
+- name: Display Harbor port-forward job info
+  ansible.builtin.debug:
+    msg:
+      status: "Port-forwarding started and validated"
+      job_id: "{{ port_forward_job.ansible_job_id }}"
+      access_url: "http://{{ k3s_master_public_ip }}:{{ harbor_port_forward_local_port }}"
+      remote_service: "{{ harbor_service_name }}:{{ harbor_port_forward_remote_port }}"
+  when: port_forward_enabled | bool and port_forward_job.ansible_job_id is defined

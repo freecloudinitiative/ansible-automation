@@ -4,6 +4,10 @@ image:
 nodeSelector:
   node-tier: {{ traefik_node_tier }}
 
+ports:
+  traefik:
+    expose: true
+
 ingressClass:
   enabled: {{ traefik_ingress_class_enabled | lower }}
   isDefaultClass: {{ traefik_ingress_class_is_default | lower }}

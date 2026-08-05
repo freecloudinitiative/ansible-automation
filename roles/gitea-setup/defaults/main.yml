@@ -6,6 +6,10 @@ kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
 gitea_node_tier: mid-memory
 gitea_actions_enabled: true
 
+gitea_admin_user: "giteaadmin"
+gitea_admin_password: "{{ password | default('GiteaAdminPass123!') }}"
+gitea_admin_email: "admin@example.com"
+
 port_forward_enabled: true
 port_forward_address: "0.0.0.0"
 gitea_port_forward_local_port: 3001
