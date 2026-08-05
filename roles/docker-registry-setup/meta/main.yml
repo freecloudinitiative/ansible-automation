@@ -1,8 +1,8 @@
 ---
 galaxy_info:
-  role_name: harbor_setup
+  role_name: docker_registry_setup
   author: freecloudinitiative
-  description: Installs Harbor container registry via Helm into a K3s cluster.
+  description: Installs lightweight Docker Registry (registry:2) into a K3s cluster.
   license: MIT
   min_ansible_version: "2.16"
   platforms:
@@ -12,8 +12,7 @@ galaxy_info:
   galaxy_tags:
     - kubernetes
     - registry
-    - harbor
-    - helm
+    - docker
     - k3s
 
 collections:
