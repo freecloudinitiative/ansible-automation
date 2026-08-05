@@ -129,5 +129,5 @@
       status: "Port-forwarding started and validated"
       job_id: "{{ port_forward_job.ansible_job_id }}"
       access_url: "http://{{ k3s_master_public_ip }}:{{ traefik_port_forward_local_port }}/dashboard/"
-      remote_service: "svc/{{ traefik_release_name }}:{{ traefik_port_forward_remote_port }}"
+      remote_service: "deployment/{{ traefik_release_name }}:{{ traefik_port_forward_remote_port }}"
   when: port_forward_enabled | bool and port_forward_job.ansible_job_id is defined

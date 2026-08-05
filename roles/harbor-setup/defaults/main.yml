@@ -13,4 +13,4 @@ harbor_service_name: "svc/harbor-portal"
 harbor_node_tier: high-memory
 
 harbor_expose_type: ingress
-harbor_external_url: "http://{{ k3s_master_public_ip }}:8081"
+harbor_external_url: "http://{{ k3s_master_public_ip }}:{{ harbor_port_forward_local_port }}"

@@ -6,7 +6,8 @@ nodeSelector:
 
 ports:
   traefik:
-    expose: true
+    expose:
+      default: true
 
 ingressClass:
   enabled: {{ traefik_ingress_class_enabled | lower }}
