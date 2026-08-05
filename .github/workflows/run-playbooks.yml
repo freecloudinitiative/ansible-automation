@@ -11,6 +11,16 @@ on:
           - pi-boot
           - playbook
           - thermal check
+      cloud_provider:
+        description: 'Select Cloud Provider'
+        required: true
+        default: 'gcp'
+        type: choice
+        options:
+          - gcp
+          - aws
+          - azure
+          - auto
 
 jobs:
   run-playbook:
@@ -38,7 +48,32 @@ jobs:
       - name: Set up SSH agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          ssh-private-key: |
+            ${{ secrets.GCP_SSH_PRIVATE_KEY }}
+            ${{ secrets.AWS_SSH_PRIVATE_KEY }}
+            ${{ secrets.AZURE_SSH_PRIVATE_KEY }}
+            ${{ secrets.SSH_PRIVATE_KEY }}
+
+
+      - name: Configure SSH host mapping
+        run: |
+          ansible-playbook ssh-config.yml
+
+      - name: Populate known hosts dynamically
+        run: |
+          mkdir -p ~/.ssh
+          grep -i HostName ~/.ssh/config | awk '{print $2}' | xargs -r ssh-keyscan >> ~/.ssh/known_hosts 2>/dev/null || true
+
+
+      - name: Create Vault password file
+        env:
+          VAULT_PASS: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+        run: |
+          if [ -n "$VAULT_PASS" ]; then
+            echo "$VAULT_PASS" > .vault_pass
+          fi
+
+
 
       - name: Determine playbook file
         id: determine-playbook
@@ -56,7 +91,14 @@ jobs:
           fi
 
       - name: Run Ansible playbook
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+          ANSIBLE_ASK_VAULT_PASS: "False"
         run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan master worker-1 worker-2 worker-3 >> ~/.ssh/known_hosts 2>/dev/null
-          ansible-playbook -i inventory.ini ${{ steps.determine-playbook.outputs.file }}
+          VAULT_ARG=""
+          if [ -f .vault_pass ]; then
+            VAULT_ARG="--vault-password-file .vault_pass"
+          fi
+          ansible-playbook -i inventory.ini ${{ steps.determine-playbook.outputs.file }} $VAULT_ARG
+          rm -f .vault_pass
+
