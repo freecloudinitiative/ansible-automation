@@ -1,0 +1,47 @@
+---
+- name: Normalize repository definitions
+  ansible.builtin.set_fact:
+    normalized_gitea_repos: "{{ normalized_gitea_repos | default([]) + [ normalized_repo ] }}"
+  vars:
+    raw_url: "{{ item if item is string else (item.url | default(item.repo_url | default(item.clone_url))) }}"
+
+    https_url: "{{ raw_url | regex_replace('^git@([^:]+):(.+)$', 'https://\\1/\\2') | regex_replace('\\.git$', '') }}.git"
+
+    extracted_name: "{{ (https_url | regex_replace('\\.git$', '')).split('/') | last }}"
+
+    repo_name: "{{ (item if item is mapping else {}).name | default((item if item is mapping else {}).repo_name | default(extracted_name)) }}"
+    repo_owner: "{{ (item if item is mapping else {}).owner | default((item if item is mapping else {}).organization | default(gitea_admin_user)) }}"
+    repo_private: "{{ (item if item is mapping else {}).private | default(false) }}"
+    repo_mirror: "{{ (item if item is mapping else {}).mirror | default(true) }}"
+
+    normalized_repo:
+      clone_addr: "{{ https_url }}"
+      repo_name: "{{ repo_name }}"
+      repo_owner: "{{ repo_owner }}"
+      private: "{{ repo_private }}"
+      mirror: "{{ repo_mirror }}"
+  loop: "{{ gitea_repos }}"
+  when: gitea_repos is defined and gitea_repos | length > 0
+
+- name: Import or mirror repositories into Gitea
+  ansible.builtin.uri:
+    url: "{{ gitea_url }}/api/v1/repos/migrate"
+    method: POST
+    url_username: "{{ gitea_admin_user }}"
+    url_password: "{{ gitea_admin_password }}"
+    force_basic_auth: true
+    body_format: json
+    body:
+      clone_addr: "{{ item.clone_addr }}"
+      repo_name: "{{ item.repo_name }}"
+      repo_owner: "{{ item.repo_owner }}"
+      private: "{{ item.private }}"
+      mirror: "{{ item.mirror }}"
+      service: "git"
+    status_code:
+      - 201
+      - 409
+  loop: "{{ normalized_gitea_repos | default([]) }}"
+  register: migrate_result
+  changed_when: migrate_result.status == 201
+  failed_when: migrate_result.status not in [201, 409]

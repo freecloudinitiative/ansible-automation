@@ -65,6 +65,7 @@ These roles deploy local developer tools and registries for hosting code and con
 | Role | Target Hosts | Description |
 |---|---|---|
 | [`gitea-setup`](gitea-setup) | `masters` | Installs Gitea Git service via Helm and configures port-forwarding. |
+| [`gitea-repo-sync`](gitea-repo-sync) | `masters` | Automatically imports and mirrors Git repositories into Gitea via REST API. |
 | [`gitea-act-runner-setup`](gitea-act-runner-setup) | `masters[0]` | Deploys and registers Gitea Act Runner in Kubernetes to execute Gitea Actions workflows. |
 | [`harbor-setup`](harbor-setup) | `masters` | Installs Harbor container registry via Helm and configures port-forwarding. |
 | [`k9s-setup`](k9s-setup) | `masters` | Downloads and installs K9s terminal UI for Kubernetes cluster management. |
