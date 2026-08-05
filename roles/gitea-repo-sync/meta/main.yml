@@ -1,0 +1,10 @@
+---
+galaxy_info:
+  author: Free Cloud Initiative
+  description: Ansible role to import/mirror repositories into Gitea via Gitea REST API.
+  license: MIT
+  min_ansible_version: "2.9"
+  platforms:
+    - name: GenericLinux
+      versions:
+        - all

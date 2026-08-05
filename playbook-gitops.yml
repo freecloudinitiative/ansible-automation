@@ -47,5 +47,6 @@
     - k9s-setup
     - argocd-setup
     - gitea-setup
+    - gitea-repo-sync
     - gitea-act-runner-setup
     - argocd-bootstrap
