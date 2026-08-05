@@ -7,12 +7,12 @@
   vars:
     ssh_config_clean_known_hosts: true
     ssh_hosts:
-      master-1: "34.57.46.169"
+      master-1: "35.188.35.4"
       # master-2: "x.x.x.x"
       # master-3: "x.x.x.x"
-      worker-1: "34.63.87.214"
-      worker-2: "34.91.130.214"
-      worker-3: "34.135.146.90"
+      worker-1: 35.188.35.4
+      worker-2: "34.90.172.106"
+      worker-3: "34.136.74.227"
 
   roles:
     - ssh-config-setup

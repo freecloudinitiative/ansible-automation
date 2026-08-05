@@ -107,9 +107,9 @@
     - install_local_k9s | bool
     - local_k9s_check_after_brew.rc != 0
 
-- name: Ensure ~/.local/bin directory exists
+- name: Ensure local install directory exists
   ansible.builtin.file:
-    path: "{{ lookup('env', 'HOME') }}/.local/bin"
+    path: "{{ k9s_install_dir }}"
     state: directory
     mode: '0755'
   delegate_to: localhost
@@ -120,8 +120,8 @@
 
 - name: Extract K9s binary on macOS (fallback)
   ansible.builtin.command:
-    cmd: "tar -xzf /tmp/k9s_Darwin_{{ local_k9s_arch }}.tar.gz -C {{ lookup('env', 'HOME') }}/.local/bin k9s"
-    creates: "{{ lookup('env', 'HOME') }}/.local/bin/k9s"
+    cmd: "tar -xzf /tmp/k9s_Darwin_{{ local_k9s_arch }}.tar.gz -C {{ k9s_install_dir }} k9s"
+    creates: "{{ k9s_install_dir }}/k9s"
   delegate_to: localhost
   become: false
   when:
@@ -130,7 +130,7 @@
 
 - name: Symlink K9s into /usr/local/bin for standard PATH access
   ansible.builtin.file:
-    src: "{{ lookup('env', 'HOME') }}/.local/bin/k9s"
+    src: "{{ k9s_install_dir }}/k9s"
     dest: "/usr/local/bin/k9s"
     state: link
     force: true
