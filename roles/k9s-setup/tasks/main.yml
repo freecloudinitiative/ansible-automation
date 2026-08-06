@@ -76,52 +76,50 @@
   become: true
   ignore_errors: true
 
-- name: Ensure K9s plugins file is absent
-  ansible.builtin.file:
-    path: "{{ k9s_config_dir | expanduser }}/plugins.yaml"
-    state: absent
-
-- name: Ensure K9s config & screen-dumps directories exist for root
+- name: Ensure K9s config, clusters & screen-dumps directories exist for root
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     mode: '0755'
   loop:
     - /root/.config/k9s
+    - /root/.config/k9s/clusters
     - /root/.local/state/k9s/screen-dumps
   become: true
 
-- name: Template K9s config.yaml for root
+- name: Template K9s configuration files for root
   ansible.builtin.template:
-    src: config.yaml.j2
-    dest: /root/.config/k9s/config.yaml
+    src: "{{ item }}.j2"
+    dest: "/root/.config/k9s/{{ item }}"
     mode: '0644'
+  loop:
+    - config.yaml
+    - plugins.yaml
+    - aliases.yaml
   vars:
     k9s_user_home: "/root"
   become: true
 
-- name: Ensure K9s config & screen-dumps directories exist for non-root users
+- name: Ensure K9s config, clusters & screen-dumps directories exist for non-root users
   ansible.builtin.file:
     path: "{{ item.0.path }}/{{ item.1 }}"
     state: directory
     mode: '0755'
     owner: "{{ item.0.path | basename }}"
-  loop: "{{ k9s_user_homes.files | product(['.config/k9s', '.local/state/k9s/screen-dumps']) | list }}"
+  loop: "{{ k9s_user_homes.files | product(['.config/k9s', '.config/k9s/clusters', '.local/state/k9s/screen-dumps']) | list }}"
   loop_control:
     label: "{{ item.0.path }}/{{ item.1 }}"
   become: true
 
-- name: Template K9s config.yaml for non-root users
+- name: Template K9s configuration files for non-root users
   ansible.builtin.template:
-    src: config.yaml.j2
-    dest: "{{ item.path }}/.config/k9s/config.yaml"
+    src: "{{ item.1 }}.j2"
+    dest: "{{ item.0.path }}/.config/k9s/{{ item.1 }}"
     mode: '0644'
-    owner: "{{ item.path | basename }}"
-  loop: "{{ k9s_user_homes.files }}"
+    owner: "{{ item.0.path | basename }}"
+  loop: "{{ k9s_user_homes.files | product(['config.yaml', 'plugins.yaml', 'aliases.yaml']) | list }}"
   loop_control:
-    label: "{{ item.path }}"
+    label: "{{ item.0.path }}/.config/k9s/{{ item.1 }}"
   vars:
-    k9s_user_home: "{{ item.path }}"
+    k9s_user_home: "{{ item.0.path }}"
   become: true
-
-

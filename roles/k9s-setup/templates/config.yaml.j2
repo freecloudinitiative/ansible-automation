@@ -1,44 +1,52 @@
 k9s:
-  liveViewAutoRefresh: {{ k9s_config.liveViewAutoRefresh | lower }}
+  liveViewAutoRefresh: true
   screenDumpDir: {{ k9s_user_home }}/.local/state/k9s/screen-dumps
-  refreshRate: {{ k9s_config.refreshRate }}
-  maxConnRetry: {{ k9s_config.maxConnRetry }}
-  readOnly: {{ k9s_config.readOnly | lower }}
-  noExitOnCtrlC: {{ k9s_config.noExitOnCtrlC | lower }}
+  refreshRate: 1
+  maxConnRetry: 5
+  readOnly: false
+  noExitOnCtrlC: false
   ui:
-    enableMouse: {{ k9s_config.ui.enableMouse | lower }}
-    headless: {{ k9s_config.ui.headless | lower }}
-    logoless: {{ k9s_config.ui.logoless | lower }}
-    crumbsless: {{ k9s_config.ui.crumbsless | lower }}
-    reactive: {{ k9s_config.ui.reactive | lower }}
-    noIcons: {{ k9s_config.ui.noIcons | lower }}
-    defaultsToFullScreen: {{ k9s_config.ui.defaultsToFullScreen | lower }}
-  skipLatestRevCheck: {{ k9s_config.skipLatestRevCheck | lower }}
-  disablePodCounting: {{ k9s_config.disablePodCounting | lower }}
+    enableMouse: false
+    headless: false
+    logoless: false
+    crumbsless: false
+    reactive: false
+    noIcons: false
+    defaultsToFullScreen: false
+  skipLatestRevCheck: false
+  disablePodCounting: false
   shellPod:
-    image: {{ k9s_config.shellPod.image }}
-    namespace: {{ k9s_config.shellPod.namespace }}
+    image: busybox:1.35.0
+    namespace: default
     limits:
-      cpu: {{ k9s_config.shellPod.limits.cpu }}
-      memory: {{ k9s_config.shellPod.limits.memory }}
+      cpu: 100m
+      memory: 100Mi
   imageScans:
-    enable: {{ k9s_config.imageScans.enable | lower }}
+    enable: false
     exclusions:
       namespaces: []
       labels: {}
   logger:
-    tail: {{ k9s_config.logger.tail }}
-    buffer: {{ k9s_config.logger.buffer }}
-    sinceSeconds: {{ k9s_config.logger.sinceSeconds }}
-    textWrap: {{ k9s_config.logger.textWrap | lower }}
-    showTime: {{ k9s_config.logger.showTime | lower }}
+    tail: 100
+    buffer: 5000
+    sinceSeconds: -1
+    textWrap: false
+    showTime: false
   thresholds:
     cpu:
-      critical: {{ k9s_config.thresholds.cpu.critical }}
-      warn: {{ k9s_config.thresholds.cpu.warn }}
+      critical: 90
+      warn: 70
     memory:
-      critical: {{ k9s_config.thresholds.memory.critical }}
-      warn: {{ k9s_config.thresholds.memory.warn }}
-{% if k9s_namespaces is defined and k9s_namespaces | length > 0 %}
-  clusters: {}
-{% endif %}
+      critical: 90
+      warn: 70
+  namespace:
+    active: all
+    lockFavorites: false
+    favorites:
+      - all
+      - default
+      - gitea
+      - argocd
+      - monitoring
+      - kube-system
+      - traefik

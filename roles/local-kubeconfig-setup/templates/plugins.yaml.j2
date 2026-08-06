@@ -1,0 +1,153 @@
+plugins:
+  raw-logs:
+    shortCut: Ctrl-L
+    confirm: false
+    description: "Logs with timestamps"
+    scopes:
+      - pods
+    command: kubectl
+    background: false
+    args:
+      - logs
+      - -f
+      - $NAME
+      - -n
+      - $NAMESPACE
+      - --timestamps
+
+  error-logs:
+    shortCut: Ctrl-E
+    confirm: false
+    description: "Filter ERROR/WARN logs"
+    scopes:
+      - pods
+    command: sh
+    background: false
+    args:
+      - -c
+      - "kubectl logs -f $NAME -n $NAMESPACE --tail=1000 | grep --line-buffered -iE 'error|exception|fail|fatal|panic|warn|50[0-9]'"
+
+  previous-logs:
+    shortCut: Ctrl-P
+    confirm: false
+    description: "Previous crashed container logs"
+    scopes:
+      - pods
+    command: kubectl
+    background: false
+    args:
+      - logs
+      - -p
+      - $NAME
+      - -n
+      - $NAMESPACE
+      - --tail=500
+
+  restart-resource:
+    shortCut: Shift-R
+    confirm: true
+    description: "Rollout restart"
+    scopes:
+      - deployments
+      - daemonsets
+      - statefulsets
+    command: kubectl
+    background: false
+    args:
+      - rollout
+      - restart
+      - $RESOURCE_NAME/$NAME
+      - -n
+      - $NAMESPACE
+
+  describe-resource:
+    shortCut: Shift-D
+    confirm: false
+    description: "Describe resource"
+    scopes:
+      - all
+    command: kubectl
+    background: false
+    args:
+      - describe
+      - $RESOURCE_NAME
+      - $NAME
+      - -n
+      - $NAMESPACE
+
+  resource-events:
+    shortCut: Shift-E
+    confirm: false
+    description: "Resource events"
+    scopes:
+      - pods
+      - deployments
+      - daemonsets
+      - statefulsets
+    command: kubectl
+    background: false
+    args:
+      - get
+      - events
+      - -n
+      - $NAMESPACE
+      - --field-selector
+      - involvedObject.name=$NAME
+
+  force-delete-pod:
+    shortCut: Ctrl-K
+    confirm: true
+    description: "Force delete pod"
+    scopes:
+      - pods
+    command: kubectl
+    background: false
+    args:
+      - delete
+      - pod
+      - $NAME
+      - -n
+      - $NAMESPACE
+      - --grace-period=0
+      - --force
+
+  node-cordon:
+    shortCut: Shift-C
+    confirm: true
+    description: "Cordon node"
+    scopes:
+      - nodes
+    command: kubectl
+    background: false
+    args:
+      - cordon
+      - $NAME
+
+  node-uncordon:
+    shortCut: Shift-U
+    confirm: true
+    description: "Uncordon node"
+    scopes:
+      - nodes
+    command: kubectl
+    background: false
+    args:
+      - uncordon
+      - $NAME
+
+  argo-sync:
+    shortCut: Shift-A
+    confirm: true
+    description: "ArgoCD app sync"
+    scopes:
+      - applications
+    command: kubectl
+    background: false
+    args:
+      - annotate
+      - application
+      - $NAME
+      - -n
+      - argocd
+      - argocd.argoproj.io/refresh=normal
+      - --overwrite
