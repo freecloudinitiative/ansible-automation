@@ -1,2 +1,4 @@
 ---
 kubeconfig_path: /etc/rancher/k3s/k3s.yaml
+k3s_embedded_registry: true
+

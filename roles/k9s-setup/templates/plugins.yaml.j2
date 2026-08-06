@@ -144,10 +144,12 @@ plugins:
     command: kubectl
     background: false
     args:
-      - annotate
+      - patch
       - application
       - $NAME
       - -n
-      - argocd
-      - argocd.argoproj.io/refresh=normal
-      - --overwrite
+      - $NAMESPACE
+      - --type
+      - merge
+      - -p
+      - '{"operation":{"sync":{"syncStrategy":{"hook":{}}}}}'
