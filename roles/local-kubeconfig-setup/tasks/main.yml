@@ -42,15 +42,6 @@
   delegate_to: localhost
   become: false
 
-- name: Set downloaded kubeconfig as default ~/.kube/config
-  ansible.builtin.copy:
-    src: "{{ local_kubeconfig_path }}"
-    dest: "{{ lookup('env', 'HOME') }}/.kube/config"
-    mode: '0600'
-  delegate_to: localhost
-  become: false
-  when: set_as_default_kubeconfig | default(true) | bool
-
 - name: Check if k9s is already installed on local machine
   ansible.builtin.command: which k9s
   register: local_k9s_check
@@ -152,24 +143,27 @@
     - install_local_k9s | bool
     - local_k9s_check_after_brew.rc != 0
 
-- name: Ensure local K9s config & screen-dumps directories exist on control node
+- name: Ensure local K9s config, clusters & screen-dumps directories exist on control node
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     mode: '0755'
   loop:
     - "{{ lookup('env', 'HOME') }}/.config/k9s"
+    - "{{ lookup('env', 'HOME') }}/.config/k9s/clusters"
     - "{{ lookup('env', 'HOME') }}/.local/state/k9s/screen-dumps"
   delegate_to: localhost
   become: false
 
-- name: Template local K9s config.yaml on control node
+- name: Template local K9s configuration files on control node
   ansible.builtin.template:
-    src: config.yaml.j2
-    dest: "{{ lookup('env', 'HOME') }}/.config/k9s/config.yaml"
+    src: "{{ item }}.j2"
+    dest: "{{ lookup('env', 'HOME') }}/.config/k9s/{{ item }}"
     mode: '0644'
-  vars:
-    k9s_user_home: "{{ lookup('env', 'HOME') }}"
+  loop:
+    - config.yaml
+    - plugins.yaml
+    - aliases.yaml
   delegate_to: localhost
   become: false
 

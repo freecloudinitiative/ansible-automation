@@ -22,6 +22,14 @@ grafana:
     enabled: true
     storageClassName: local-path
     size: 5Gi
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      url: http://loki-gateway.monitoring.svc.cluster.local:3100
+      access: proxy
+      isDefault: false
+      jsonData:
+        maxLines: 1000
   grafana.ini:
     server:
       root_url: "%(protocol)s://%(domain)s:%(http_port)s/"

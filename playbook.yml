@@ -58,8 +58,8 @@
     - traefik-setup
     - cert-manager-setup
     - prometheus-stack-setup
+    - alloy-setup
     - loki-setup
     - tempo-setup
     - open-telemetry-setup
     - kyverno-setup
-    - alloy-setup

@@ -58,6 +58,14 @@
                 env:
                   - name: REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY
                     value: "/var/lib/registry"
+                  - name: REGISTRY_STORAGE_DELETE_ENABLED
+                    value: "true"
+                  - name: REGISTRY_HTTP_HEADERS_Access-Control-Allow-Origin
+                    value: "['*']"
+                  - name: REGISTRY_HTTP_HEADERS_Access-Control-Allow-Methods
+                    value: "['HEAD', 'GET', 'OPTIONS', 'DELETE']"
+                  - name: REGISTRY_HTTP_HEADERS_Access-Control-Allow-Headers
+                    value: "['Authorization', 'Accept', 'Cache-Control']"
                 volumeMounts:
                   - name: registry-storage
                     mountPath: "/var/lib/registry"
@@ -152,13 +160,135 @@
     host: "{{ '127.0.0.1' if port_forward_address == '0.0.0.0' else port_forward_address }}"
     port: "{{ docker_registry_port_forward_local_port }}"
     timeout: 10
-  when: port_forward_enabled | bool
-
 - name: Display Docker Registry port-forward job info
   ansible.builtin.debug:
     msg:
-      status: "Port-forwarding started and validated"
+      status: "Registry API Port-forwarding started and validated"
       job_id: "{{ port_forward_job.ansible_job_id }}"
       access_url: "http://{{ k3s_master_public_ip }}:{{ docker_registry_port_forward_local_port }}"
       remote_service: "{{ docker_registry_service_name }}:{{ docker_registry_port_forward_remote_port }}"
   when: port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
+
+- name: Deploy Docker Registry UI Deployment
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig_path }}"
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: docker-registry-ui
+        namespace: "{{ docker_registry_namespace }}"
+        labels:
+          app: docker-registry-ui
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: docker-registry-ui
+        template:
+          metadata:
+            labels:
+              app: docker-registry-ui
+          spec:
+            nodeSelector:
+              node-tier: "{{ docker_registry_node_tier }}"
+            containers:
+              - name: registry-ui
+                image: "{{ docker_registry_ui_image }}"
+                imagePullPolicy: IfNotPresent
+                ports:
+                  - containerPort: "{{ docker_registry_ui_port }}"
+                    name: http
+                env:
+                  - name: REGISTRY_TITLE
+                    value: "FreeCloud Docker Registry"
+                  - name: REGISTRY_URL
+                    value: "http://docker-registry.{{ docker_registry_namespace }}.svc.cluster.local:5000"
+                  - name: SINGLE_REGISTRY
+                    value: "true"
+                  - name: DELETE_IMAGES
+                    value: "true"
+  when: docker_registry_ui_enabled | bool
+
+- name: Deploy Docker Registry UI Service
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig_path }}"
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: docker-registry-ui
+        namespace: "{{ docker_registry_namespace }}"
+        labels:
+          app: docker-registry-ui
+      spec:
+        type: ClusterIP
+        selector:
+          app: docker-registry-ui
+        ports:
+          - port: "{{ docker_registry_ui_port }}"
+            targetPort: "{{ docker_registry_ui_port }}"
+            name: http
+  when: docker_registry_ui_enabled | bool
+
+- name: Wait for Docker Registry UI deployment to be ready
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - wait
+      - --for=condition=Available
+      - deployment/docker-registry-ui
+      - -n
+      - "{{ docker_registry_namespace }}"
+      - --timeout=180s
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  changed_when: false
+  when: docker_registry_ui_enabled | bool
+
+- name: Setup Docker Registry UI port-forwarding
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - port-forward
+      - --address
+      - "{{ port_forward_address }}"
+      - "{{ docker_registry_ui_service_name }}"
+      - -n
+      - "{{ docker_registry_namespace }}"
+      - "{{ docker_registry_ui_port_forward_local_port }}:{{ docker_registry_ui_port_forward_remote_port }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  changed_when: false
+  async: 3600
+  poll: 0
+  register: ui_port_forward_job
+  when: port_forward_enabled | bool and docker_registry_ui_enabled | bool
+
+- name: Check Docker Registry UI port-forward job status
+  ansible.builtin.async_status:
+    jid: "{{ ui_port_forward_job.ansible_job_id }}"
+  register: ui_job_result
+  until: ui_job_result.finished or (ui_job_result.started is defined and ui_job_result.started == 1)
+  retries: 5
+  delay: 1
+  when: port_forward_enabled | bool and docker_registry_ui_enabled | bool and ui_port_forward_job.ansible_job_id is defined
+  failed_when: ui_job_result.finished and ui_job_result.rc != 0
+
+- name: Verify Docker Registry UI port-forward local port is accepting connections
+  ansible.builtin.wait_for:
+    host: "{{ '127.0.0.1' if port_forward_address == '0.0.0.0' else port_forward_address }}"
+    port: "{{ docker_registry_ui_port_forward_local_port }}"
+    timeout: 10
+  when: port_forward_enabled | bool and docker_registry_ui_enabled | bool
+
+- name: Display Docker Registry UI port-forward job info
+  ansible.builtin.debug:
+    msg:
+      status: "UI Port-forwarding started and validated"
+      job_id: "{{ ui_port_forward_job.ansible_job_id }}"
+      access_url: "http://{{ k3s_master_public_ip }}:{{ docker_registry_ui_port_forward_local_port }}"
+      remote_service: "{{ docker_registry_ui_service_name }}:{{ docker_registry_ui_port_forward_remote_port }}"
+  when: port_forward_enabled | bool and docker_registry_ui_enabled | bool and ui_port_forward_job.ansible_job_id is defined

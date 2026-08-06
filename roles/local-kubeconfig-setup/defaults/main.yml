@@ -2,8 +2,7 @@
 k9s_version: "v0.32.7"
 k9s_install_dir: "{{ lookup('env', 'HOME') }}/.local/bin"
 kubeconfig_remote_path: "/etc/rancher/k3s/k3s.yaml"
-local_kubeconfig_path: "{{ lookup('env', 'HOME') }}/.kube/config-freecloud"
-set_as_default_kubeconfig: true
+local_kubeconfig_path: "{{ lookup('env', 'HOME') }}/.kube/config"
 set_insecure_tls: true
 install_local_k9s: true
 k9s_arch_map:
@@ -12,49 +11,5 @@ k9s_arch_map:
   aarch64: "arm64"
   armv7l: "arm"
 
-k9s_namespaces:
-  - gitea
-  - argocd
-  - kube-system
-  - monitoring
-  - traefik
-
-k9s_config:
-  liveViewAutoRefresh: false
-  refreshRate: 2
-  maxConnRetry: 5
-  readOnly: false
-  noExitOnCtrlC: false
-  ui:
-    enableMouse: false
-    headless: false
-    logoless: false
-    crumbsless: false
-    reactive: false
-    noIcons: false
-    defaultsToFullScreen: false
-  skipLatestRevCheck: false
-  disablePodCounting: false
-  shellPod:
-    image: "busybox:1.35.0"
-    namespace: "default"
-    limits:
-      cpu: "100m"
-      memory: "100Mi"
-  imageScans:
-    enable: false
-  logger:
-    tail: 100
-    buffer: 5000
-    sinceSeconds: -1
-    textWrap: false
-    showTime: false
-  thresholds:
-    cpu:
-      critical: 90
-      warn: 70
-    memory:
-      critical: 90
-      warn: 70
 
 
