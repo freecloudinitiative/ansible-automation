@@ -1,8 +1,18 @@
 image:
   tag: "{{ traefik_image_tag }}"
 
+{% if traefik_node_tier is defined and traefik_node_tier %}
 nodeSelector:
-  node-tier: {{ traefik_node_tier }}
+  node-tier: "{{ traefik_node_tier }}"
+{% endif %}
+
+tolerations:
+  - key: "node-role.kubernetes.io/master"
+    operator: "Exists"
+    effect: "NoSchedule"
+  - key: "node-role.kubernetes.io/control-plane"
+    operator: "Exists"
+    effect: "NoSchedule"
 
 ports:
   traefik:
@@ -16,3 +26,4 @@ ingressClass:
 ingressRoute:
   dashboard:
     enabled: {{ traefik_dashboard_enabled | lower }}
+

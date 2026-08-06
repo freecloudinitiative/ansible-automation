@@ -1,0 +1,133 @@
+---
+- name: Create OpenBao stack directory
+  ansible.builtin.file:
+    path: "{{ openbao_stack_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Add OpenBao Helm repo
+  kubernetes.core.helm_repository:
+    name: openbao
+    repo_url: "{{ openbao_helm_repo_url }}"
+
+- name: Update Helm repos
+  ansible.builtin.command: helm repo update
+  changed_when: false
+
+- name: Ensure OpenBao namespace exists
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ openbao_namespace }}"
+    state: present
+    kubeconfig: "{{ kubeconfig_path }}"
+
+- name: Render OpenBao values from template
+  ansible.builtin.template:
+    src: openbao-values.yaml.j2
+    dest: "{{ openbao_stack_dir }}/openbao-values.yaml"
+    mode: "0644"
+
+- name: Install OpenBao via Helm
+  kubernetes.core.helm:
+    name: "{{ openbao_release_name }}"
+    chart_ref: openbao/openbao
+    chart_version: "{{ openbao_chart_version }}"
+    release_namespace: "{{ openbao_namespace }}"
+    create_namespace: false
+    values_files:
+      - "{{ openbao_stack_dir }}/openbao-values.yaml"
+    kubeconfig: "{{ kubeconfig_path }}"
+    wait: true
+    wait_timeout: 5m
+    state: present
+
+- name: Wait for OpenBao statefulset pod to be ready
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - wait
+      - --for=condition=Ready
+      - "pod/{{ openbao_release_name }}-0"
+      - -n
+      - "{{ openbao_namespace }}"
+      - --timeout=120s
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  changed_when: false
+
+- name: Get OpenBao pods
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - get
+      - pods
+      - -n
+      - "{{ openbao_namespace }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: openbao_pods
+  changed_when: false
+
+- name: Display OpenBao pods info
+  ansible.builtin.debug:
+    msg: "{{ openbao_pods.stdout_lines }}"
+
+- name: Stop existing OpenBao port-forward process
+  ansible.builtin.shell: |
+    pkill -f "[k]ubectl port-forward.*{{ openbao_port_forward_local_port }}:{{ openbao_port_forward_remote_port }}" || true
+  changed_when: false
+  when: port_forward_enabled | bool
+
+- name: Wait for OpenBao port-forward port to be released
+  ansible.builtin.wait_for:
+    host: "{{ '127.0.0.1' if port_forward_address == '0.0.0.0' else port_forward_address }}"
+    port: "{{ openbao_port_forward_local_port }}"
+    state: stopped
+    timeout: 10
+  when: port_forward_enabled | bool
+
+- name: Setup OpenBao port-forwarding
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - port-forward
+      - --address
+      - "{{ port_forward_address }}"
+      - "svc/{{ openbao_release_name }}"
+      - -n
+      - "{{ openbao_namespace }}"
+      - "{{ openbao_port_forward_local_port }}:{{ openbao_port_forward_remote_port }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  changed_when: false
+  async: 3600
+  poll: 0
+  register: port_forward_job
+  when: port_forward_enabled | bool
+
+- name: Check OpenBao port-forward job status
+  ansible.builtin.async_status:
+    jid: "{{ port_forward_job.ansible_job_id }}"
+  register: job_result
+  until: job_result.finished or (job_result.started is defined and job_result.started == 1)
+  retries: 5
+  delay: 1
+  when: port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
+  failed_when: job_result.finished and job_result.rc != 0
+
+- name: Verify OpenBao port-forward local port is accepting connections
+  ansible.builtin.wait_for:
+    host: "{{ '127.0.0.1' if port_forward_address == '0.0.0.0' else port_forward_address }}"
+    port: "{{ openbao_port_forward_local_port }}"
+    timeout: 10
+  when: port_forward_enabled | bool
+
+- name: Display OpenBao port-forward job info
+  ansible.builtin.debug:
+    msg:
+      status: "Port-forwarding started and validated"
+      job_id: "{{ port_forward_job.ansible_job_id }}"
+      access_url: "http://{{ k3s_master_public_ip }}:{{ openbao_port_forward_local_port }}"
+      remote_service: "svc/{{ openbao_release_name }}:{{ openbao_port_forward_remote_port }}"
+  when: port_forward_enabled | bool and port_forward_job.ansible_job_id is defined

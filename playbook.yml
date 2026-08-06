@@ -11,7 +11,7 @@
   become: true
   gather_facts: false
   vars:
-    k3s_master_public_ip: "x.x.x.x"
+    k3s_master_public_ip:  "x.x.x.x"
   roles:
     - k3s-master-setup
     - k3s-fact-gathering
@@ -51,15 +51,5 @@
     - k3s-node-labeling
     - k9s-setup
     - argocd-setup
-    - gitea-setup
-    - gitea-act-runner-setup
-    - docker-registry-setup
-    - sealed-secret-setup
-    - traefik-setup
-    - cert-manager-setup
-    - prometheus-stack-setup
-    - alloy-setup
-    - loki-setup
-    - tempo-setup
-    - open-telemetry-setup
-    - kyverno-setup
+    - openbao-setup
+    - argocd-bootstrap
