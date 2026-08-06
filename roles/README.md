@@ -38,6 +38,7 @@ Services deployed on top of K3s to provide networking, certs, and deployment aut
 | [`argocd-setup`](argocd-setup)               | `masters[0]` | Installs ArgoCD for GitOps-driven deployment and synchronization of Kubernetes manifests and applications.        |
 | [`argocd-bootstrap`](argocd-bootstrap)       | `masters[0]` | Bootstraps the K3s cluster by applying the ArgoCD root application (App of Apps) manifest.                         |
 | [`sealed-secret-setup`](sealed-secret-setup) | `masters[0]` | Installs Bitnami Sealed Secrets controller via Helm to allow encrypting secrets that are safe to commit to git.   |
+| [`openbao-setup`](openbao-setup)             | `masters[0]` | Installs OpenBao via Helm to provide open-source identity-based secret management, storage, and PKI.               |
 | [`traefik-setup`](traefik-setup)             | `masters[0]` | Installs Traefik Ingress Controller via Helm to manage cluster ingress routing and entrypoints.                   |
 
 ---

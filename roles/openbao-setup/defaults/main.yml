@@ -1,0 +1,14 @@
+---
+openbao_namespace: openbao
+openbao_release_name: openbao
+openbao_stack_dir: "{{ '~/k3s-stack/openbao' | expanduser }}"
+openbao_helm_repo_url: https://openbao.github.io/openbao-helm
+openbao_chart_version: "0.4.2"
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
+openbao_node_tier: mid-memory
+openbao_ui_enabled: true
+
+port_forward_enabled: true
+port_forward_address: "0.0.0.0"
+openbao_port_forward_local_port: 8200
+openbao_port_forward_remote_port: 8200

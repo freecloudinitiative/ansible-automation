@@ -20,6 +20,8 @@
       - --cluster-init
       - --disable
       - traefik
+      - --disable
+      - servicelb
       - --embedded-registry
       - "--node-name={{ inventory_hostname }}"
       - "--node-ip={{ ansible_facts.default_ipv4.address }}"
@@ -41,6 +43,8 @@
       - "--token={{ k3s_node_token }}"
       - --disable
       - traefik
+      - --disable
+      - servicelb
       - --embedded-registry
       - "--node-name={{ inventory_hostname }}"
       - "--node-ip={{ ansible_facts.default_ipv4.address }}"
