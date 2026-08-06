@@ -10,6 +10,17 @@ port_forward_address: "0.0.0.0"
 
 kyverno_policy_mode: audit
 
+kyverno_ui_enabled: true
+kyverno_ui_enable: "{{ kyverno_ui_enabled }}"
+ui_enable: "{{ kyverno_ui_enabled }}"
+
+kyverno_policy_reporter_enabled: "{{ kyverno_ui_enabled }}"
+kyverno_policy_reporter_helm_repo_url: "https://kyverno.github.io/policy-reporter"
+kyverno_policy_reporter_release_name: "policy-reporter"
+kyverno_ui_port_forward_local_port: 8082
+kyverno_ui_port_forward_remote_port: 8080
+kyverno_ui_service_name: "svc/policy-reporter-ui"
+
 kyverno_policy_require_labels: true
 kyverno_policy_disallow_latest_tag: true
 kyverno_policy_require_resource_limits: true

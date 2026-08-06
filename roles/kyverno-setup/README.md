@@ -23,6 +23,7 @@ Defined in `defaults/main.yml`:
 | `port_forward_enabled` | `true` | Enable background port-forwarding |
 | `port_forward_address` | `0.0.0.0` | Listening address for port-forwarding |
 | `kyverno_policy_mode` | `audit` | Policy enforcement mode: `audit` (log only) or `enforce` (block) |
+| `kyverno_ui_enabled` / `ui_enable` | `true` | Enable lightweight Policy Reporter UI dashboard for Kyverno |
 | `kyverno_policy_require_labels` | `true` | Enable: require `app` and `env` labels on Pods |
 | `kyverno_policy_disallow_latest_tag` | `true` | Enable: disallow `:latest` image tags |
 | `kyverno_policy_require_resource_limits` | `true` | Enable: require CPU/memory requests and limits |
