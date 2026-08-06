@@ -5,7 +5,7 @@ server:
   enabled: true
   dev:
     enabled: true
-    devRootToken: "root"
+    devRootToken: "{{ openbao_dev_root_token }}"
 
 {% if openbao_node_tier is defined and openbao_node_tier %}
   nodeSelector:

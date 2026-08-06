@@ -32,7 +32,7 @@
   kubernetes.core.helm:
     name: "{{ openbao_release_name }}"
     chart_ref: openbao/openbao
-    chart_version: "{{ openbao_chart_version }}"
+    chart_version: "{{ openbao_chart_version | default(omit, true) if (openbao_chart_version | default('') | length > 0) else omit }}"
     release_namespace: "{{ openbao_namespace }}"
     create_namespace: false
     values_files:
@@ -130,4 +130,5 @@
       job_id: "{{ port_forward_job.ansible_job_id }}"
       access_url: "http://{{ k3s_master_public_ip }}:{{ openbao_port_forward_local_port }}"
       remote_service: "svc/{{ openbao_release_name }}:{{ openbao_port_forward_remote_port }}"
+      root_token: "{{ openbao_dev_root_token }}"
   when: port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
