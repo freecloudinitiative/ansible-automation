@@ -94,7 +94,6 @@
     mode: '0644'
   loop:
     - config.yaml
-    - plugins.yaml
     - aliases.yaml
   vars:
     k9s_user_home: "/root"
@@ -117,7 +116,7 @@
     dest: "{{ item.0.path }}/.config/k9s/{{ item.1 }}"
     mode: '0644'
     owner: "{{ item.0.path | basename }}"
-  loop: "{{ k9s_user_homes.files | product(['config.yaml', 'plugins.yaml', 'aliases.yaml']) | list }}"
+  loop: "{{ k9s_user_homes.files | product(['config.yaml', 'aliases.yaml']) | list }}"
   loop_control:
     label: "{{ item.0.path }}/.config/k9s/{{ item.1 }}"
   vars:

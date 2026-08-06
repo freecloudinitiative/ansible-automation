@@ -162,7 +162,6 @@
     mode: '0644'
   loop:
     - config.yaml
-    - plugins.yaml
     - aliases.yaml
   delegate_to: localhost
   become: false
