@@ -4,7 +4,7 @@
   become: true
   gather_facts: true
   vars:
-    k3s_master_public_ip: "34.135.18.72"
+    k3s_master_public_ip: "x.x.x.x"
   roles:
     - k3s-pre-setup
     - k3s-master-setup
