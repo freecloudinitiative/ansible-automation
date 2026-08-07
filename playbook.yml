@@ -33,7 +33,7 @@
     - k9s-setup
 
   post_tasks:
-    - name: Print NodePort Service URLs in JSON format
+    - name: Print NodePort Service URLs and Passwords in JSON format
       ansible.builtin.debug:
         msg:
           argocd: "https://{{ k3s_master1_public_ip }}:30443"
@@ -43,3 +43,6 @@
           docker_registry: "http://{{ k3s_master1_public_ip }}:30500"
           traefik_dashboard: "http://{{ k3s_master1_public_ip }}:30900/dashboard/"
           alloy: "http://{{ k3s_master1_public_ip }}:31234"
+          argocd_password: "{{ argocd_admin_password | default('') }}"
+          grafana_password: "{{ grafana_admin_password | default('') }}"
+          openbao_password: "{{ openbao_token | default(openbao_dev_root_token | default('root')) }}"

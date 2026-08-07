@@ -81,9 +81,18 @@
   until:
     - argocd_secret.resources is defined
     - argocd_secret.resources | length > 0
+  ignore_errors: true
 
-- name: Decode ArgoCD admin password
+- name: Get ArgoCD admin password via kubectl CLI command fallback
+  ansible.builtin.shell: >
+    kubectl -n {{ argocd_namespace }} get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+  register: argocd_secret_cli
+  when: argocd_secret.resources is not defined or argocd_secret.resources | length == 0
+  changed_when: false
+  ignore_errors: true
+
+- name: Set ArgoCD admin password fact at end of role
   ansible.builtin.set_fact:
-    argocd_admin_password: "{{ argocd_secret.resources[0].data.password | b64decode }}"
-  when: argocd_secret.resources | length > 0
+    argocd_admin_password: "{{ (argocd_secret.resources[0].data.password | b64decode) if (argocd_secret.resources is defined and argocd_secret.resources | length > 0) else (argocd_secret_cli.stdout | default('')) }}"
+
 
