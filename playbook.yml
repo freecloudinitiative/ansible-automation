@@ -53,10 +53,3 @@
           docker_registry: "http://{{ k3s_master1_public_ip }}:30500"
           traefik_dashboard: "http://{{ k3s_master1_public_ip }}:30900/dashboard/"
           alloy: "http://{{ k3s_master1_public_ip }}:31234"
-
-- name: Fetch Kubeconfig and Setup Local K9s
-  hosts: "{{ groups['masters'][0] }}"
-  gather_facts: false
-  become: false
-  roles:
-    - local-k9s-setup
