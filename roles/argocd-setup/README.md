@@ -33,7 +33,14 @@ Available variables are listed below, along with default values (see `defaults/m
     - role: argocd-setup
 ```
 
-## License
+## Useful Commands
 
+To retrieve the initial ArgoCD admin password:
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
+```
+
+## License
 
 MIT

@@ -1,22 +1,12 @@
 ---
-- name: Setup primary K3s master node
-  hosts: "{{ groups['masters'][0] }}"
+- name: Setup K3s master nodes
+  hosts: masters
   become: true
   gather_facts: true
   roles:
     - k3s-pre-setup
     - k3s-master-setup
     - k3s-fact-gathering
-
-- name: Setup secondary K3s master nodes
-  hosts: "{{ groups['masters'][1:] }}"
-  become: true
-  gather_facts: true
-  vars:
-    k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
-  roles:
-    - k3s-pre-setup
-    - k3s-master-setup
 
 - name: Setup K3s worker nodes
   hosts: workers

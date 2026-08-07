@@ -5,8 +5,9 @@
   register: k3s_node_token
   become: true
   no_log: true
+  when:
+    - inventory_hostname == groups['masters'][0]
 
 - name: Store kubeconfig path
   ansible.builtin.set_fact:
     kubeconfig_path: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
-

@@ -3,6 +3,9 @@ global:
 
 server:
   enabled: true
+  service:
+    type: NodePort
+    nodePort: {{ openbao_node_port }}
   dev:
     enabled: true
     devRootToken: "{{ openbao_dev_root_token }}"
