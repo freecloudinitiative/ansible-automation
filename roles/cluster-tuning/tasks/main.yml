@@ -1,0 +1,10 @@
+---
+- name: Sync ArgoCD argocd-config application
+  ansible.builtin.command:
+    cmd: "argocd app sync {{ argocd_config_app_name }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+  register: sync_argocd_config
+  changed_when: sync_argocd_config.rc == 0
+  failed_when: false
+  when: cluster_tuning_enabled | bool

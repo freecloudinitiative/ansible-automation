@@ -16,14 +16,6 @@ on:
         description: 'IP for master-1 (optional override)'
         required: false
         type: string
-      master_2_ip:
-        description: 'IP for master-2 (optional HA master)'
-        required: false
-        type: string
-      master_3_ip:
-        description: 'IP for master-3 (optional HA master)'
-        required: false
-        type: string
       worker_1_ip:
         description: 'IP for worker-1 (optional override)'
         required: false
@@ -107,8 +99,6 @@ jobs:
       - name: Configure SSH host mapping
         env:
           MASTER_1_IP: ${{ github.event.inputs.master_1_ip }}
-          MASTER_2_IP: ${{ github.event.inputs.master_2_ip }}
-          MASTER_3_IP: ${{ github.event.inputs.master_3_ip }}
           WORKER_1_IP: ${{ github.event.inputs.worker_1_ip }}
           WORKER_2_IP: ${{ github.event.inputs.worker_2_ip }}
           WORKER_3_IP: ${{ github.event.inputs.worker_3_ip }}
@@ -116,12 +106,10 @@ jobs:
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
-          M1="${MASTER_1_IP:-34.72.134.11}"
-          M2="${MASTER_2_IP}"
-          M3="${MASTER_3_IP}"
-          W1="${WORKER_1_IP:-35.188.150.22}"
-          W2="${WORKER_2_IP:-34.136.163.33}"
-          W3="${WORKER_3_IP:-35.223.77.44}"
+          M1="${MASTER_1_IP}"
+          W1="${WORKER_1_IP}"
+          W2="${WORKER_2_IP}"
+          W3="${WORKER_3_IP}"
 
           cat << EOF > ~/.ssh/config
           Host master-1
@@ -141,24 +129,6 @@ jobs:
               User entelektuelmaganda
           EOF
 
-          if [ -n "$M2" ]; then
-            cat << EOF >> ~/.ssh/config
-
-          Host master-2
-              HostName $M2
-              User entelektuelmaganda
-          EOF
-          fi
-
-          if [ -n "$M3" ]; then
-            cat << EOF >> ~/.ssh/config
-
-          Host master-3
-              HostName $M3
-              User entelektuelmaganda
-          EOF
-          fi
-
           chmod 600 ~/.ssh/config
 
 
@@ -171,12 +141,30 @@ jobs:
         env:
           ANSIBLE_HOST_KEY_CHECKING: "False"
           ANSIBLE_ASK_VAULT_PASS: "False"
+          MASTER_1_IP: ${{ github.event.inputs.master_1_ip }}
+          WORKER_1_IP: ${{ github.event.inputs.worker_1_ip }}
+          WORKER_2_IP: ${{ github.event.inputs.worker_2_ip }}
+          WORKER_3_IP: ${{ github.event.inputs.worker_3_ip }}
         run: |
+          M1="${MASTER_1_IP}"
+          W1="${WORKER_1_IP}"
+          W2="${WORKER_2_IP}"
+          W3="${WORKER_3_IP}"
+
           VAULT_ARG=""
           if [ -f .vault_pass ]; then
             VAULT_ARG="--vault-password-file .vault_pass"
           fi
-          ansible-playbook -i inventory.ini playbook.yml $VAULT_ARG
+
+          EXTRA_VARS=""
+          [ -n "$M1" ] && EXTRA_VARS="$EXTRA_VARS -e k3s_master1_public_ip=$M1"
+          [ -n "$W1" ] && EXTRA_VARS="$EXTRA_VARS -e k3s_worker1_public_ip=$W1"
+          [ -n "$W2" ] && EXTRA_VARS="$EXTRA_VARS -e k3s_worker2_public_ip=$W2"
+          [ -n "$W3" ] && EXTRA_VARS="$EXTRA_VARS -e k3s_worker3_public_ip=$W3"
+
+          ansible-playbook -i inventory.ini playbook.yml $VAULT_ARG $EXTRA_VARS
+
+
 
       - name: Clean up Vault password file
         if: always()

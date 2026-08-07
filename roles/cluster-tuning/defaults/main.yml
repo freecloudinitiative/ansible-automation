@@ -1,0 +1,5 @@
+---
+cluster_tuning_enabled: true
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
+argocd_namespace: argocd
+argocd_config_app_name: argocd-config
