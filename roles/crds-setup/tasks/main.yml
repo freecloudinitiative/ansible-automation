@@ -1,0 +1,22 @@
+---
+- name: Apply Kubernetes manifests using kubernetes.core.k8s
+  kubernetes.core.k8s:
+    src: "{{ item.url }}"
+    state: present
+    server_side_apply:
+      field_manager: ansible
+    kubeconfig: "{{ crds_setup_kubeconfig }}"
+  loop: "{{ crds_setup_manifests }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: item.server_side | default(false)
+
+- name: Apply Kubernetes manifests using kubernetes.core.k8s (client side)
+  kubernetes.core.k8s:
+    src: "{{ item.url }}"
+    state: present
+    kubeconfig: "{{ crds_setup_kubeconfig }}"
+  loop: "{{ crds_setup_manifests }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: not (item.server_side | default(false))

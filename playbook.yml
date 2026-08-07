@@ -4,11 +4,11 @@
   become: true
   gather_facts: true
   vars:
-    k3s_master_public_ip: "x.x.x.x"
+    k3s_master_public_ip: "34.135.18.72"
   roles:
+    - k3s-pre-setup
     - k3s-master-setup
     - k3s-fact-gathering
-    - k3s-pre-setup
 
 - name: Setup secondary K3s master nodes
   hosts: "{{ groups['masters'][1:] }}"
@@ -24,7 +24,7 @@
 - name: Setup K3s worker nodes
   hosts: workers
   become: true
-  gather_facts: false
+  gather_facts: true
   vars:
     k3s_master_ip: "{{ hostvars[groups['masters'][0]]['k3s_master_ip'] }}"
     k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
@@ -48,4 +48,5 @@
     - k9s-setup
     - argocd-setup
     - openbao-setup
+    - crds-setup
     - argocd-bootstrap
