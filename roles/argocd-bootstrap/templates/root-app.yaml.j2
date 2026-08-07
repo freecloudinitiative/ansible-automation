@@ -3,6 +3,8 @@ kind: Application
 metadata:
   name: root-app
   namespace: "{{ argocd_namespace }}"
+  annotations:
+    argocd.argoproj.io/sync-wave-health: all
   finalizers:
     - resources-finalizer.argocd.argoproj.io/foreground
 spec:
@@ -12,7 +14,8 @@ spec:
     targetRevision: "{{ argocd_gitops_repo_revision }}"
     path: "{{ argocd_gitops_repo_path }}"
     directory:
-      recurse: true
+      recurse: false
+      include: '{*/app*.yaml,namespaces/*.yaml}'
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: "{{ argocd_namespace }}"
@@ -22,3 +25,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true
