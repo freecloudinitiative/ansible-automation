@@ -56,23 +56,6 @@
     KUBECONFIG: "{{ kubeconfig_path }}"
   changed_when: false
 
-- name: Get OpenBao pods
-  ansible.builtin.command:
-    argv:
-      - kubectl
-      - get
-      - pods
-      - -n
-      - "{{ openbao_namespace }}"
-  environment:
-    KUBECONFIG: "{{ kubeconfig_path }}"
-  register: openbao_pods
-  changed_when: false
-
-- name: Display OpenBao pods info
-  ansible.builtin.debug:
-    msg: "{{ openbao_pods.stdout_lines }}"
-
 - name: Determine OpenBao CLI target architecture
   ansible.builtin.set_fact:
     openbao_arch: "{{ openbao_arch_map[ansible_facts.architecture] | default('amd64') }}"
