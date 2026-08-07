@@ -165,7 +165,7 @@
     msg:
       status: "Registry API Port-forwarding started and validated"
       job_id: "{{ port_forward_job.ansible_job_id }}"
-      access_url: "http://{{ k3s_master_public_ip }}:{{ docker_registry_port_forward_local_port }}"
+      access_url: "http://{{ k3s_master1_public_ip }}:{{ docker_registry_port_forward_local_port }}"
       remote_service: "{{ docker_registry_service_name }}:{{ docker_registry_port_forward_remote_port }}"
   when: port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
 
@@ -289,6 +289,6 @@
     msg:
       status: "UI Port-forwarding started and validated"
       job_id: "{{ ui_port_forward_job.ansible_job_id }}"
-      access_url: "http://{{ k3s_master_public_ip }}:{{ docker_registry_ui_port_forward_local_port }}"
+      access_url: "http://{{ k3s_master1_public_ip }}:{{ docker_registry_ui_port_forward_local_port }}"
       remote_service: "{{ docker_registry_ui_service_name }}:{{ docker_registry_ui_port_forward_remote_port }}"
   when: port_forward_enabled | bool and docker_registry_ui_enabled | bool and ui_port_forward_job.ansible_job_id is defined

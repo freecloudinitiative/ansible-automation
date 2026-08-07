@@ -39,7 +39,7 @@
     argv:
       - /tmp/k3s-install.sh
       - server
-      - "--server=https://{{ k3s_master_public_ip }}:6443"
+      - "--server=https://{{ k3s_master1_public_ip }}:6443"
       - "--token={{ k3s_node_token }}"
       - --disable
       - traefik

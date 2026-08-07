@@ -7,7 +7,7 @@
   vars:
     ssh_config_clean_known_hosts: true
     ssh_hosts:
-      master-1: "{{ k3s_master_public_ip }}"
+      master-1: "{{ k3s_master1_public_ip }}"
       # master-2: "x.x.x.x"
       # master-3: "x.x.x.x"
       worker-1: "{{ k3s_worker1_public_ip }}"

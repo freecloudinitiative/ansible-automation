@@ -1,0 +1,10 @@
+openbao_url: "http://127.0.0.1:30200"
+openbao_token: "{{ openbao_dev_root_token }}"
+grafana_admin_user: "admin"
+grafana_admin_password: "{{ grafana_admin_password }}"
+
+openbao_secrets:
+  - path: "grafana"
+    data:
+      admin-user: "{{ grafana_admin_user }}"
+      admin-password: "{{ grafana_admin_password }}"
