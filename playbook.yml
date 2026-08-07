@@ -4,9 +4,9 @@
   become: true
   gather_facts: true
   roles:
+    - k3s-pre-setup
     - k3s-master-setup
     - k3s-fact-gathering
-    - k3s-pre-setup
 
 - name: Setup secondary K3s master nodes
   hosts: "{{ groups['masters'][1:] }}"
