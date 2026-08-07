@@ -37,6 +37,20 @@ Available variables are listed below, along with default values (see `defaults/m
     - role: argocd-setup
 ```
 
+## Manual Port-Forward
+
+If the ArgoCD port-forward process dies and you need to re-establish it manually, SSH into the master node and run:
+
+```bash
+# Kill any stale process
+pkill -f "[k]ubectl port-forward.*8080:443" || true
+
+# Start fresh port-forward in background
+nohup kubectl port-forward --address 0.0.0.0 svc/argocd-server -n argocd 8080:443 > /tmp/argocd-pf.log 2>&1 &
+```
+
+Then access ArgoCD at `https://<master_public_ip>:8080`.
+
 ## License
 
 MIT
