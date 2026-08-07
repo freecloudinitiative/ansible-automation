@@ -1,5 +1,5 @@
 ---
-- name: Setup primary K3s master node
+- name: Setup K3s master nodes
   hosts: masters
   become: true
   gather_facts: true
