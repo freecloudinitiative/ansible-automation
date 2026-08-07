@@ -1,0 +1,11 @@
+---
+galaxy_info:
+  author: freecloudinitiative
+  description: Cluster tuning tasks for K3s infrastructure
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+dependencies: []
