@@ -1,0 +1,37 @@
+---
+- name: Ensure external-secrets namespace exists
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: external-secrets
+    state: present
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+
+- name: Create OpenBao root token secret for External Secrets Operator
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: openbao-root-token
+        namespace: external-secrets
+      type: Opaque
+      stringData:
+        token: "{{ openbao_token }}"
+
+- name: Seed secrets in OpenBao
+  ansible.builtin.uri:
+    url: "{{ openbao_url }}/v1/secret/data/{{ item.path }}"
+    method: POST
+    headers:
+      X-Vault-Token: "{{ openbao_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      data: "{{ item.data }}"
+    status_code: [200, 204]
+  loop: "{{ openbao_secrets }}"
+  loop_control:
+    label: "{{ item.path }}"

@@ -73,62 +73,27 @@
   ansible.builtin.debug:
     msg: "{{ openbao_pods.stdout_lines }}"
 
-- name: Stop existing OpenBao port-forward process
-  ansible.builtin.shell: |
-    pkill -f "[k]ubectl port-forward.*{{ openbao_port_forward_local_port }}:{{ openbao_port_forward_remote_port }}" || true
-  changed_when: false
-  when: port_forward_enabled | bool
+- name: Determine OpenBao CLI target architecture
+  ansible.builtin.set_fact:
+    openbao_arch: "{{ openbao_arch_map[ansible_facts.architecture] | default('amd64') }}"
+  when: openbao_cli_install | bool
 
-- name: Wait for OpenBao port-forward port to be released
-  ansible.builtin.wait_for:
-    host: "{{ '127.0.0.1' if port_forward_address == '0.0.0.0' else port_forward_address }}"
-    port: "{{ openbao_port_forward_local_port }}"
-    state: stopped
-    timeout: 10
-  when: port_forward_enabled | bool
+- name: Download and install OpenBao CLI binary
+  ansible.builtin.unarchive:
+    src: "https://github.com/openbao/openbao/releases/download/v{{ openbao_cli_version }}/bao_{{ openbao_cli_version }}_linux_{{ openbao_arch }}.tar.gz"
+    dest: "{{ openbao_cli_install_dir }}"
+    remote_src: true
+    include:
+      - bao
+    mode: "0755"
+    creates: "{{ openbao_cli_install_dir }}/bao"
+  when: openbao_cli_install | bool
 
-- name: Setup OpenBao port-forwarding
-  ansible.builtin.command:
-    argv:
-      - kubectl
-      - port-forward
-      - --address
-      - "{{ port_forward_address }}"
-      - "svc/{{ openbao_release_name }}"
-      - -n
-      - "{{ openbao_namespace }}"
-      - "{{ openbao_port_forward_local_port }}:{{ openbao_port_forward_remote_port }}"
-  environment:
-    KUBECONFIG: "{{ kubeconfig_path }}"
-  changed_when: false
-  async: 3600
-  poll: 0
-  register: port_forward_job
-  when: port_forward_enabled | bool
-
-- name: Check OpenBao port-forward job status
-  ansible.builtin.async_status:
-    jid: "{{ port_forward_job.ansible_job_id }}"
-  register: job_result
-  until: job_result.finished or (job_result.started is defined and job_result.started == 1)
-  retries: 5
-  delay: 1
-  when: port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
-  failed_when: job_result.finished and job_result.rc != 0
-
-- name: Verify OpenBao port-forward local port is accepting connections
-  ansible.builtin.wait_for:
-    host: "{{ '127.0.0.1' if port_forward_address == '0.0.0.0' else port_forward_address }}"
-    port: "{{ openbao_port_forward_local_port }}"
-    timeout: 10
-  when: port_forward_enabled | bool
-
-- name: Display OpenBao port-forward job info
-  ansible.builtin.debug:
-    msg:
-      status: "Port-forwarding started and validated"
-      job_id: "{{ port_forward_job.ansible_job_id }}"
-      access_url: "http://{{ k3s_master_public_ip }}:{{ openbao_port_forward_local_port }}"
-      remote_service: "svc/{{ openbao_release_name }}:{{ openbao_port_forward_remote_port }}"
-      root_token: "{{ openbao_dev_root_token }}"
-  when: port_forward_enabled | bool and port_forward_job.ansible_job_id is defined
+- name: Ensure OpenBao environment profile script is set
+  ansible.builtin.copy:
+    dest: /etc/profile.d/openbao.sh
+    content: |
+      export VAULT_ADDR="http://127.0.0.1:{{ openbao_node_port }}"
+      export BAO_ADDR="http://127.0.0.1:{{ openbao_node_port }}"
+    mode: "0755"
+  when: openbao_cli_install | bool

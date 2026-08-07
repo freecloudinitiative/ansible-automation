@@ -96,7 +96,7 @@
       status: "cert-manager installed and ClusterIssuer ready"
       issuer_type: "{{ cert_manager_issuer_type }}"
       namespace: "{{ cert_manager_namespace }}"
-      access_url: "http://{{ k3s_master_public_ip }}:9402/metrics"
+      access_url: "http://{{ k3s_master1_public_ip }}:9402/metrics"
       note: >-
         Use 'ca-cluster-issuer' (selfsigned) or 'letsencrypt-production'
         in your Certificate and Ingress resources

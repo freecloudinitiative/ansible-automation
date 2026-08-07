@@ -20,10 +20,10 @@ Installs OpenBao via Helm into a K3s cluster.
 | `kubeconfig_path` | `/etc/rancher/k3s/k3s.yaml` | Path to kubeconfig file |
 | `openbao_node_tier` | `mid-memory` | Target node tier for scheduling the OpenBao pod |
 | `openbao_ui_enabled` | `true` | Enable OpenBao web UI |
-| `port_forward_enabled` | `true` | Enable background port-forwarding |
-| `port_forward_address` | `0.0.0.0` | Listening address for port-forwarding |
-| `openbao_port_forward_local_port` | `8200` | Local port for port-forwarding |
-| `openbao_port_forward_remote_port` | `8200` | Remote port for port-forwarding |
+| `openbao_node_port` | `30200` | NodePort to access OpenBao service |
+| `openbao_cli_install` | `true` | Download and install OpenBao CLI binary |
+| `openbao_cli_version` | `2.1.0` | OpenBao CLI release version |
+| `openbao_cli_install_dir` | `/usr/local/bin` | Directory to install OpenBao CLI binary |
 
 ## Dependencies
 

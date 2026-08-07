@@ -16,7 +16,7 @@
 
 - name: Determine master public target IP address
   ansible.builtin.set_fact:
-    target_master_public_ip: "{{ k3s_master_public_ip | default(ansible_host | default((ansible_facts.default_ipv4.address if ansible_facts.default_ipv4 is defined else ''))) }}"
+    target_master_public_ip: "{{ k3s_master1_public_ip | default(ansible_host | default((ansible_facts.default_ipv4.address if ansible_facts.default_ipv4 is defined else ''))) }}"
 
 - name: Replace loopback IP with public master IP in local kubeconfig
   ansible.builtin.replace:

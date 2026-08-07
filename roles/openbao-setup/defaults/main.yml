@@ -8,7 +8,13 @@ kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
 openbao_node_tier: mid-memory
 openbao_ui_enabled: true
 
-port_forward_enabled: true
-port_forward_address: "0.0.0.0"
-openbao_port_forward_local_port: 8200
-openbao_port_forward_remote_port: 8200
+openbao_node_port: 30200
+
+openbao_cli_install: true
+openbao_cli_version: "2.1.0"
+openbao_cli_install_dir: "/usr/local/bin"
+openbao_arch_map:
+  x86_64: amd64
+  aarch64: arm64
+  armv7l: arm
+
