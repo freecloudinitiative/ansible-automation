@@ -23,3 +23,5 @@ port_forward_enabled: true
 port_forward_address: "0.0.0.0"
 argocd_port_forward_local_port: 8080
 argocd_port_forward_remote_port: 443
+
+argocd_cli_version: "v2.10.4"

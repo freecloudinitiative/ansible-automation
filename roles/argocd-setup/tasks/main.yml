@@ -1,4 +1,10 @@
 ---
+- name: Download and install ArgoCD CLI binary
+  ansible.builtin.get_url:
+    url: "https://github.com/argoproj/argo-cd/releases/download/{{ argocd_cli_version }}/argocd-linux-{{ 'arm64' if ansible_facts.architecture in ['aarch64', 'arm64'] else 'amd64' }}"
+    dest: /usr/local/bin/argocd
+    mode: '0755'
+
 - name: Ensure argocd namespace exists
   kubernetes.core.k8s:
     api_version: v1

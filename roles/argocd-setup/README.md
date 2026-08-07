@@ -23,6 +23,7 @@ Available variables are listed below, along with default values (see `defaults/m
 | `port_forward_address`     | `0.0.0.0`                                                                          | Listening IP address for port-forwarding.         |
 | `argocd_port_forward_local_port`  | `8080`                                                                             | Local port for port-forwarding.                   |
 | `argocd_port_forward_remote_port` | `443`                                                                              | Remote service port (argocd-server).              |
+| `argocd_cli_version`              | `v2.10.4`                                                                          | ArgoCD CLI binary version to install.             |
 
 ## Dependencies
 

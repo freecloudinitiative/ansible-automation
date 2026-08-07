@@ -3,8 +3,6 @@
   hosts: "{{ groups['masters'][0] }}"
   become: true
   gather_facts: true
-  vars:
-    k3s_master_public_ip: "x.x.x.x"
   roles:
     - k3s-master-setup
     - k3s-fact-gathering
@@ -15,7 +13,6 @@
   become: true
   gather_facts: true
   vars:
-    k3s_master_ip: "{{ hostvars[groups['masters'][0]]['k3s_master_ip'] }}"
     k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
   roles:
     - k3s-pre-setup
@@ -26,7 +23,6 @@
   become: true
   gather_facts: true
   vars:
-    k3s_master_ip: "{{ hostvars[groups['masters'][0]]['k3s_master_ip'] }}"
     k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
   roles:
     - k3s-pre-setup
@@ -37,12 +33,7 @@
   become: true
   gather_facts: false
   vars:
-    k3s_master_ip: "{{ hostvars[groups['masters'][0]]['k3s_master_ip'] }}"
-    k3s_master_public_ip: "{{ hostvars[groups['masters'][0]]['k3s_master_public_ip'] }}"
     k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
-    port_forward_enabled: true
-    port_forward_address: "0.0.0.0"
-    kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
   roles:
     - k3s-node-labeling
     - k9s-setup
@@ -54,7 +45,5 @@
   hosts: "{{ groups['masters'][0] }}"
   gather_facts: false
   become: false
-  vars:
-    k3s_master_public_ip: "x.x.x.x"
   roles:
     - local-k9s-setup
