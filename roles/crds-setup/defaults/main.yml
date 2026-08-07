@@ -1,0 +1,15 @@
+---
+crds_setup_kubeconfig: /etc/rancher/k3s/k3s.yaml
+
+crds_setup_manifests:
+  - name: cert-manager CRDs
+    url: https://github.com/cert-manager/cert-manager/releases/download/v1.13.3/cert-manager.crds.yaml
+    server_side: false
+
+  - name: Kyverno CRDs and Installation
+    url: https://github.com/kyverno/kyverno/releases/download/v1.10.0/install.yaml
+    server_side: true
+
+  - name: MetalLB Native Manifests
+    url: https://raw.githubusercontent.com/metallb/metallb/v0.13.12/config/manifests/metallb-native.yaml
+    server_side: false

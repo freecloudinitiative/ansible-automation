@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  author: Free Cloud Initiative
+  description: Role to pre-install CRDs and base manifests (cert-manager, kyverno, metallb) for K3s cluster.
+  license: MIT
+  min_ansible_version: "2.10"
+
+dependencies: []
