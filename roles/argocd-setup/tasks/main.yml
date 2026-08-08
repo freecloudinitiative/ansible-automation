@@ -68,6 +68,69 @@
   delay: 10
   loop: "{{ argocd_deployments }}"
 
+- name: Configure ArgoCD Vault Plugin in argocd-cm ConfigMap
+  kubernetes.core.k8s:
+    state: patched
+    kind: ConfigMap
+    name: argocd-cm
+    namespace: "{{ argocd_namespace }}"
+    definition:
+      data:
+        configManagementPlugins: |
+          - name: argocd-vault-plugin-helm
+            generate:
+              command: ["sh", "-c"]
+              args: ["helm template . -f values.yaml | argocd-vault-plugin generate -"]
+          - name: argocd-vault-plugin
+            generate:
+              command: ["argocd-vault-plugin", "generate", "."]
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context if (context | default('') | length > 0) else omit }}"
+
+- name: Patch argocd-repo-server for ArgoCD Vault Plugin
+  kubernetes.core.k8s:
+    state: patched
+    kind: Deployment
+    name: argocd-repo-server
+    namespace: "{{ argocd_namespace }}"
+    definition:
+      spec:
+        template:
+          spec:
+            volumes:
+              - name: custom-tools
+                emptyDir: {}
+            initContainers:
+              - name: download-avp
+                image: alpine:3.19
+                command: [sh, -c]
+                args:
+                  - |
+                    wget -O /custom-tools/argocd-vault-plugin https://github.com/argoproj-labs/argocd-vault-plugin/releases/download/v1.18.1/argocd-vault-plugin_1.18.1_linux_amd64 && \
+                    chmod +x /custom-tools/argocd-vault-plugin
+                volumeMounts:
+                  - mountPath: /custom-tools
+                    name: custom-tools
+            containers:
+              - name: argocd-repo-server
+                env:
+                  - name: VAULT_ADDR
+                    value: "http://openbao.openbao.svc.cluster.local:8200"
+                  - name: AVP_TYPE
+                    value: "vault"
+                  - name: VAULT_TOKEN
+                    valueFrom:
+                      secretKeyRef:
+                        name: openbao-root-token
+                        key: token
+                        optional: true
+                volumeMounts:
+                  - mountPath: /usr/local/bin/argocd-vault-plugin
+                    name: custom-tools
+                    subPath: argocd-vault-plugin
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context if (context | default('') | length > 0) else omit }}"
+
 - name: Get ArgoCD initial admin secret
   kubernetes.core.k8s_info:
     kind: Secret
