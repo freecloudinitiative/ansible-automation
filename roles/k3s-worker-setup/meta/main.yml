@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  role_name: k3s_worker_setup
+  author: freecloudinitiative
+  description: Joins and configures K3s agent worker nodes to an existing cluster, with dynamic node naming and IP binding from inventory variables
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+  galaxy_tags:
+    - kubernetes
+    - k3s
+    - worker
+    - agent
+    - cluster
+

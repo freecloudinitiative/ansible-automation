@@ -1,0 +1,18 @@
+---
+- name: Configure Local SSH & Clean Known Hosts
+  hosts: localhost
+  connection: local
+  become: false
+
+  vars:
+    ssh_config_clean_known_hosts: true
+    ssh_hosts:
+      master-1: "{{ k3s_master1_public_ip }}"
+      #master-2: "{{ k3s_master2_public_ip }}"
+      #master-3: "{{ k3s_master3_public_ip }}"
+      worker-1: "{{ k3s_worker1_public_ip }}"
+      worker-2: "{{ k3s_worker2_public_ip }}"
+      worker-3: "{{ k3s_worker3_public_ip }}"
+
+  roles:
+    - ssh-config-setup

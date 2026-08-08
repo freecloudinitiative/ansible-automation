@@ -1,0 +1,19 @@
+---
+node_labels:
+  high_memory:
+    node-tier: high-memory
+  mid_memory:
+    node-tier: mid-memory
+  low_memory:
+    node-tier: low-memory
+
+node_taints:
+  low_memory:
+    - key: memory
+      value: limited
+      effect: NoSchedule
+  master:
+    - key: node-role.kubernetes.io/master
+      effect: NoSchedule
+
+kubeconfig_path: /etc/rancher/k3s/k3s.yaml

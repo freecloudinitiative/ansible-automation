@@ -1,0 +1,205 @@
+name: Run Ansible Playbooks
+
+on:
+  workflow_dispatch:
+    inputs:
+      cloud_provider:
+        description: 'Select Cloud Provider'
+        required: true
+        default: 'gcp'
+        type: choice
+        options:
+          - gcp
+          - aws
+          - azure
+      master_1_ip:
+        description: 'IP for master-1'
+        required: true
+        type: string
+      master_2_ip:
+        description: 'IP for master-2 (optional)'
+        required: false
+        type: string
+      master_3_ip:
+        description: 'IP for master-3 (optional)'
+        required: false
+        type: string
+      worker_1_ip:
+        description: 'IP for worker-1'
+        required: true
+        type: string
+      worker_2_ip:
+        description: 'IP for worker-2'
+        required: true
+        type: string
+      worker_3_ip:
+        description: 'IP for worker-3'
+        required: true
+        type: string
+
+jobs:
+  run-playbook:
+    name: Run Ansible Playbook
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+
+      - name: Select SSH key for target cloud provider
+        id: select-ssh-key
+        env:
+          CLOUD_PROVIDER: ${{ github.event.inputs.cloud_provider }}
+          GCP_KEY: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
+          AWS_KEY: ${{ secrets.AWS_SSH_PRIVATE_KEY }}
+          AZURE_KEY: ${{ secrets.AZURE_SSH_PRIVATE_KEY }}
+        run: |
+          SELECTED_KEY=""
+          if [ "$CLOUD_PROVIDER" = "gcp" ]; then
+            SELECTED_KEY="$GCP_KEY"
+          elif [ "$CLOUD_PROVIDER" = "aws" ]; then
+            SELECTED_KEY="$AWS_KEY"
+          elif [ "$CLOUD_PROVIDER" = "azure" ]; then
+            SELECTED_KEY="$AZURE_KEY"
+          fi
+
+          if [ -z "$SELECTED_KEY" ]; then
+            echo "Error: Secret for cloud provider '$CLOUD_PROVIDER' is empty or not set."
+            exit 1
+          fi
+
+          echo "key<<EOF" >> $GITHUB_OUTPUT
+          echo "$SELECTED_KEY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ steps.select-ssh-key.outputs.key }}
+
+
+
+      - name: Create Vault password file
+        env:
+          VAULT_PASS: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+        run: |
+          if [ -n "$VAULT_PASS" ]; then
+            echo "$VAULT_PASS" > .vault_pass
+          fi
+
+      - name: Configure SSH host mapping
+        env:
+          MASTER_1_IP: ${{ github.event.inputs.master_1_ip }}
+          MASTER_2_IP: ${{ github.event.inputs.master_2_ip }}
+          MASTER_3_IP: ${{ github.event.inputs.master_3_ip }}
+          WORKER_1_IP: ${{ github.event.inputs.worker_1_ip }}
+          WORKER_2_IP: ${{ github.event.inputs.worker_2_ip }}
+          WORKER_3_IP: ${{ github.event.inputs.worker_3_ip }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          M1="${MASTER_1_IP}"
+          M2="${MASTER_2_IP}"
+          M3="${MASTER_3_IP}"
+          W1="${WORKER_1_IP}"
+          W2="${WORKER_2_IP}"
+          W3="${WORKER_3_IP}"
+
+          cat << EOF > ~/.ssh/config
+          Host master-1
+              HostName $M1
+              User entelektuelmaganda
+
+          Host worker-1
+              HostName $W1
+              User entelektuelmaganda
+
+          Host worker-2
+              HostName $W2
+              User entelektuelmaganda
+
+          Host worker-3
+              HostName $W3
+              User entelektuelmaganda
+          EOF
+
+          if [ -n "$M2" ]; then
+            cat << EOF >> ~/.ssh/config
+          Host master-2
+              HostName $M2
+              User entelektuelmaganda
+          EOF
+          fi
+
+          if [ -n "$M3" ]; then
+            cat << EOF >> ~/.ssh/config
+          Host master-3
+              HostName $M3
+              User entelektuelmaganda
+          EOF
+          fi
+
+          chmod 600 ~/.ssh/config
+
+
+      - name: Populate known hosts dynamically
+        run: |
+          mkdir -p ~/.ssh
+          grep -i HostName ~/.ssh/config | awk '{print $2}' | xargs -r ssh-keyscan >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Run Ansible playbook
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+          ANSIBLE_ASK_VAULT_PASS: "False"
+          MASTER_1_IP: ${{ github.event.inputs.master_1_ip }}
+          MASTER_2_IP: ${{ github.event.inputs.master_2_ip }}
+          MASTER_3_IP: ${{ github.event.inputs.master_3_ip }}
+          WORKER_1_IP: ${{ github.event.inputs.worker_1_ip }}
+          WORKER_2_IP: ${{ github.event.inputs.worker_2_ip }}
+          WORKER_3_IP: ${{ github.event.inputs.worker_3_ip }}
+        run: |
+          M1="${MASTER_1_IP}"
+          M2="${MASTER_2_IP}"
+          M3="${MASTER_3_IP}"
+          W1="${WORKER_1_IP}"
+          W2="${WORKER_2_IP}"
+          W3="${WORKER_3_IP}"
+
+          VAULT_ARG=""
+          if [ -f .vault_pass ]; then
+            VAULT_ARG="--vault-password-file .vault_pass"
+          fi
+
+          EXTRA_VARS=""
+          [ -n "$M1" ] && EXTRA_VARS="$EXTRA_VARS -e k3s_master1_public_ip=$M1"
+          [ -n "$M2" ] && EXTRA_VARS="$EXTRA_VARS -e k3s_master2_public_ip=$M2"
+          [ -n "$M3" ] && EXTRA_VARS="$EXTRA_VARS -e k3s_master3_public_ip=$M3"
+          [ -n "$W1" ] && EXTRA_VARS="$EXTRA_VARS -e k3s_worker1_public_ip=$W1"
+          [ -n "$W2" ] && EXTRA_VARS="$EXTRA_VARS -e k3s_worker2_public_ip=$W2"
+          [ -n "$W3" ] && EXTRA_VARS="$EXTRA_VARS -e k3s_worker3_public_ip=$W3"
+
+          ansible-playbook -i inventory.ini playbook.yml $VAULT_ARG $EXTRA_VARS
+
+
+
+      - name: Clean up Vault password file
+        if: always()
+        run: rm -f .vault_pass

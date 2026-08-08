@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  role_name: k3s_node_labeling
+  author: freecloudinitiative
+  description: Manages and reconciles K3s cluster node labels and taints based on inventory groups (high_memory, mid_memory, low_memory, master)
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+  galaxy_tags:
+    - kubernetes
+    - k3s
+    - nodes
+    - labels
+    - taints
+
+collections:
+  - kubernetes.core

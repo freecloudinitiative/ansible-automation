@@ -1,0 +1,49 @@
+---
+- name: Setup K3s master nodes
+  hosts: masters
+  become: true
+  gather_facts: true
+  roles:
+    - k3s-pre-setup
+    - k3s-master-setup
+    - k3s-fact-gathering
+    - image-preload
+
+- name: Setup K3s worker nodes
+  hosts: workers
+  become: true
+  gather_facts: true
+  vars:
+    k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
+  roles:
+    - k3s-pre-setup
+    - k3s-worker-setup
+
+- name: Install K3S Components
+  hosts: "{{ groups['masters'][0] }}"
+  become: true
+  gather_facts: false
+  vars:
+    k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
+  roles:
+    - k3s-node-labeling
+    - argocd-setup
+    - openbao-setup
+    - openbao-secrets-init
+    - argocd-bootstrap
+    - k9s-setup
+
+  post_tasks:
+    - name: Print NodePort Service URLs and Passwords in JSON format
+      ansible.builtin.debug:
+        msg:
+          argocd: "https://{{ k3s_master1_public_ip }}:30443"
+          grafana: "http://{{ k3s_master1_public_ip }}:30001"
+          prometheus: "http://{{ k3s_master1_public_ip }}:30090"
+          openbao: "http://{{ k3s_master1_public_ip }}:30200"
+          docker_registry: "http://{{ k3s_master1_public_ip }}:30500"
+          traefik_dashboard: "http://{{ k3s_master1_public_ip }}:30900/dashboard/"
+          alloy: "http://{{ k3s_master1_public_ip }}:31234"
+          argocd_password: "{{ argocd_admin_password | default('') }}"
+          grafana_password: "{{ grafana_admin_password | default('') }}"
+          openbao_password: "{{ openbao_token | default(openbao_dev_root_token | default('root')) }}"

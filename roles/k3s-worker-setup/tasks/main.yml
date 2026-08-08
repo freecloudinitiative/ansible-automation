@@ -1,0 +1,27 @@
+---
+- name: Download k3s install script
+  ansible.builtin.get_url:
+    url: https://get.k3s.io
+    dest: /tmp/k3s-install.sh
+    mode: '0755'
+  become: true
+  register: k3s_script_download
+
+- name: Check if k3s is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Install k3s agent on worker node
+  ansible.builtin.command:
+    argv:
+      - /tmp/k3s-install.sh
+      - agent
+      - "--server=https://{{ k3s_master1_public_ip }}:6443"
+      - "--token={{ k3s_node_token }}"
+      - "--node-name={{ worker_label | default(inventory_hostname) }}"
+      - "--node-ip={{ ansible_facts.default_ipv4.address }}"
+  become: true
+  when: not k3s_binary.stat.exists or k3s_script_download.changed
+  register: k3s_worker_install
+  changed_when: "'k3s' in k3s_worker_install.stdout or k3s_worker_install.rc == 0"

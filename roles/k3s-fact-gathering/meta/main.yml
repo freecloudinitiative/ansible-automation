@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  role_name: k3s_fact_gathering
+  author: freecloudinitiative
+  description: Gathers the K3s node token and master IP address from the primary master node for worker node initialization
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+  galaxy_tags:
+    - kubernetes
+    - k3s
+    - cluster
+    - ha
