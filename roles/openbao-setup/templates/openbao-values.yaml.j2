@@ -1,0 +1,38 @@
+global:
+  enabled: true
+
+server:
+  enabled: true
+  service:
+    type: NodePort
+    nodePort: {{ openbao_node_port }}
+  dev:
+    enabled: true
+    devRootToken: "{{ openbao_dev_root_token }}"
+
+{% if openbao_node_tier is defined and openbao_node_tier %}
+  nodeSelector:
+    node-tier: "{{ openbao_node_tier }}"
+{% endif %}
+
+  tolerations:
+    - key: "node-role.kubernetes.io/master"
+      operator: "Exists"
+      effect: "NoSchedule"
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+ui:
+  enabled: {{ openbao_ui_enabled | bool | lower }}
+  serviceType: ClusterIP
+  serviceNodePort: null
+  externalPort: 8200
