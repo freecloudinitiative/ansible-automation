@@ -13,20 +13,28 @@ on:
           - aws
           - azure
       master_1_ip:
-        description: 'IP for master-1 (optional override)'
+        description: 'IP for master-1'
+        required: true
+        type: string
+      master_2_ip:
+        description: 'IP for master-2 (optional)'
+        required: false
+        type: string
+      master_3_ip:
+        description: 'IP for master-3 (optional)'
         required: false
         type: string
       worker_1_ip:
-        description: 'IP for worker-1 (optional override)'
-        required: false
+        description: 'IP for worker-1'
+        required: true
         type: string
       worker_2_ip:
-        description: 'IP for worker-2 (optional override)'
-        required: false
+        description: 'IP for worker-2'
+        required: true
         type: string
       worker_3_ip:
-        description: 'IP for worker-3 (optional override)'
-        required: false
+        description: 'IP for worker-3'
+        required: true
         type: string
 
 jobs:
@@ -99,6 +107,8 @@ jobs:
       - name: Configure SSH host mapping
         env:
           MASTER_1_IP: ${{ github.event.inputs.master_1_ip }}
+          MASTER_2_IP: ${{ github.event.inputs.master_2_ip }}
+          MASTER_3_IP: ${{ github.event.inputs.master_3_ip }}
           WORKER_1_IP: ${{ github.event.inputs.worker_1_ip }}
           WORKER_2_IP: ${{ github.event.inputs.worker_2_ip }}
           WORKER_3_IP: ${{ github.event.inputs.worker_3_ip }}
@@ -107,6 +117,8 @@ jobs:
           chmod 700 ~/.ssh
 
           M1="${MASTER_1_IP}"
+          M2="${MASTER_2_IP}"
+          M3="${MASTER_3_IP}"
           W1="${WORKER_1_IP}"
           W2="${WORKER_2_IP}"
           W3="${WORKER_3_IP}"
@@ -129,6 +141,22 @@ jobs:
               User entelektuelmaganda
           EOF
 
+          if [ -n "$M2" ]; then
+            cat << EOF >> ~/.ssh/config
+          Host master-2
+              HostName $M2
+              User entelektuelmaganda
+          EOF
+          fi
+
+          if [ -n "$M3" ]; then
+            cat << EOF >> ~/.ssh/config
+          Host master-3
+              HostName $M3
+              User entelektuelmaganda
+          EOF
+          fi
+
           chmod 600 ~/.ssh/config
 
 
@@ -142,11 +170,15 @@ jobs:
           ANSIBLE_HOST_KEY_CHECKING: "False"
           ANSIBLE_ASK_VAULT_PASS: "False"
           MASTER_1_IP: ${{ github.event.inputs.master_1_ip }}
+          MASTER_2_IP: ${{ github.event.inputs.master_2_ip }}
+          MASTER_3_IP: ${{ github.event.inputs.master_3_ip }}
           WORKER_1_IP: ${{ github.event.inputs.worker_1_ip }}
           WORKER_2_IP: ${{ github.event.inputs.worker_2_ip }}
           WORKER_3_IP: ${{ github.event.inputs.worker_3_ip }}
         run: |
           M1="${MASTER_1_IP}"
+          M2="${MASTER_2_IP}"
+          M3="${MASTER_3_IP}"
           W1="${WORKER_1_IP}"
           W2="${WORKER_2_IP}"
           W3="${WORKER_3_IP}"
@@ -158,6 +190,8 @@ jobs:
 
           EXTRA_VARS=""
           [ -n "$M1" ] && EXTRA_VARS="$EXTRA_VARS -e k3s_master1_public_ip=$M1"
+          [ -n "$M2" ] && EXTRA_VARS="$EXTRA_VARS -e k3s_master2_public_ip=$M2"
+          [ -n "$M3" ] && EXTRA_VARS="$EXTRA_VARS -e k3s_master3_public_ip=$M3"
           [ -n "$W1" ] && EXTRA_VARS="$EXTRA_VARS -e k3s_worker1_public_ip=$W1"
           [ -n "$W2" ] && EXTRA_VARS="$EXTRA_VARS -e k3s_worker2_public_ip=$W2"
           [ -n "$W3" ] && EXTRA_VARS="$EXTRA_VARS -e k3s_worker3_public_ip=$W3"
