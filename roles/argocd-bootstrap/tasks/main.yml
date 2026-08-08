@@ -21,10 +21,24 @@
   delay: 5
   when: argocd_bootstrap_enabled | bool
 
-- name: Apply ArgoCD bootstrap root application from template
+- name: Ensure ArgoCD bootstrap stack directory exists
+  ansible.builtin.file:
+    path: "{{ argocd_bootstrap_stack_dir }}"
+    state: directory
+    mode: '0755'
+  when: argocd_bootstrap_enabled | bool
+
+- name: Render ArgoCD bootstrap root application manifest to disk
+  ansible.builtin.template:
+    src: root-app.yaml.j2
+    dest: "{{ argocd_bootstrap_stack_dir }}/root-app.yaml"
+    mode: '0644'
+  when: argocd_bootstrap_enabled | bool
+
+- name: Apply ArgoCD bootstrap root application from manifest file
   kubernetes.core.k8s:
     state: present
-    definition: "{{ lookup('ansible.builtin.template', 'root-app.yaml.j2') | from_yaml }}"
+    src: "{{ argocd_bootstrap_stack_dir }}/root-app.yaml"
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
     context: "{{ context if (context | default('') | length > 0) else omit }}"
   when: argocd_bootstrap_enabled | bool
