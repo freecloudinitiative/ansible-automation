@@ -15,13 +15,13 @@ spec:
       path: "infrastructure"
       directory:
         recurse: true
-        include: '{*/app.yaml,namespaces/*.yaml,argocd/*.yaml}'
+        include: '{*/app*.yaml,namespaces/*.yaml}'
     - repoURL: "{{ argocd_gitops_repo_url }}"
       targetRevision: "{{ argocd_gitops_repo_revision }}"
       path: "applications"
       directory:
         recurse: true
-        include: '*/app.yaml'
+        include: '{*/app*.yaml}'
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: "{{ argocd_namespace }}"
