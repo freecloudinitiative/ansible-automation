@@ -31,8 +31,6 @@
     - openbao-secrets-init
     - argocd-bootstrap
     - k9s-setup
-    - cluster-tuning
-
 
   post_tasks:
     - name: Print NodePort Service URLs and Passwords in JSON format
