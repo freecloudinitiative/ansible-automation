@@ -1,0 +1,124 @@
+---
+- name: Determine target architecture
+  ansible.builtin.set_fact:
+    k9s_arch: "{{ k9s_arch_map[ansible_facts.architecture] | default('amd64') }}"
+
+- name: Download and install K9s binary
+  ansible.builtin.unarchive:
+    src: "https://github.com/derailed/k9s/releases/download/{{ k9s_version }}/k9s_Linux_{{ k9s_arch }}.tar.gz"
+    dest: "{{ k9s_install_dir }}"
+    remote_src: true
+    include:
+      - k9s
+    mode: '0755'
+    creates: "{{ k9s_install_dir }}/k9s"
+  become: true
+
+- name: Ensure K3s kubeconfig permissions allow reading
+  ansible.builtin.file:
+    path: "{{ kubeconfig_path }}"
+    mode: '0644'
+  become: true
+  ignore_errors: true
+
+- name: Ensure global KUBECONFIG profile script is set
+  ansible.builtin.copy:
+    dest: /etc/profile.d/k9s_kubeconfig.sh
+    content: |
+      export KUBECONFIG={{ kubeconfig_path }}
+    mode: '0755'
+  become: true
+
+- name: Ensure /root/.kube directory exists
+  ansible.builtin.file:
+    path: /root/.kube
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Copy kubeconfig to /root/.kube/config
+  ansible.builtin.copy:
+    src: "{{ kubeconfig_path }}"
+    dest: /root/.kube/config
+    remote_src: true
+    mode: '0600'
+  become: true
+  ignore_errors: true
+
+- name: Find home directories for non-root users
+  ansible.builtin.find:
+    paths: /home
+    file_type: directory
+    recurse: false
+  register: k9s_user_homes
+
+- name: Ensure .kube directory in non-root user homes
+  ansible.builtin.file:
+    path: "{{ item.path }}/.kube"
+    state: directory
+    mode: '0755'
+    owner: "{{ item.path | basename }}"
+  loop: "{{ k9s_user_homes.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+  become: true
+
+- name: Copy kubeconfig to non-root user .kube/config
+  ansible.builtin.copy:
+    src: "{{ kubeconfig_path }}"
+    dest: "{{ item.path }}/.kube/config"
+    remote_src: true
+    mode: '0600'
+    owner: "{{ item.path | basename }}"
+  loop: "{{ k9s_user_homes.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+  become: true
+  ignore_errors: true
+
+- name: Ensure K9s config, clusters & screen-dumps directories exist for root
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /root/.config/k9s
+    - /root/.config/k9s/clusters
+    - /root/.local/state/k9s/screen-dumps
+  become: true
+
+- name: Template K9s configuration files for root
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/root/.config/k9s/{{ item }}"
+    mode: '0644'
+  loop:
+    - config.yaml
+    - aliases.yaml
+  vars:
+    k9s_user_home: "/root"
+  become: true
+
+- name: Ensure K9s config, clusters & screen-dumps directories exist for non-root users
+  ansible.builtin.file:
+    path: "{{ item.0.path }}/{{ item.1 }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ item.0.path | basename }}"
+  loop: "{{ k9s_user_homes.files | product(['.config/k9s', '.config/k9s/clusters', '.local/state/k9s/screen-dumps']) | list }}"
+  loop_control:
+    label: "{{ item.0.path }}/{{ item.1 }}"
+  become: true
+
+- name: Template K9s configuration files for non-root users
+  ansible.builtin.template:
+    src: "{{ item.1 }}.j2"
+    dest: "{{ item.0.path }}/.config/k9s/{{ item.1 }}"
+    mode: '0644'
+    owner: "{{ item.0.path | basename }}"
+  loop: "{{ k9s_user_homes.files | product(['config.yaml', 'aliases.yaml']) | list }}"
+  loop_control:
+    label: "{{ item.0.path }}/.config/k9s/{{ item.1 }}"
+  vars:
+    k9s_user_home: "{{ item.0.path }}"
+  become: true

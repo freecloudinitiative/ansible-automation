@@ -1,0 +1,15 @@
+---
+k9s_version: "v0.32.7"
+k9s_install_dir: "{{ lookup('env', 'HOME') }}/.local/bin"
+kubeconfig_remote_path: "/etc/rancher/k3s/k3s.yaml"
+local_kubeconfig_path: "{{ lookup('env', 'HOME') }}/.kube/config"
+set_insecure_tls: true
+install_local_k9s: true
+k9s_arch_map:
+  x86_64: "amd64"
+  arm64: "arm64"
+  aarch64: "arm64"
+  armv7l: "arm"
+
+
+
