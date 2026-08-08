@@ -1,0 +1,61 @@
+---
+- name: Ensure SSH directory exists
+  ansible.builtin.file:
+    path: "{{ ssh_config_dir }}"
+    state: directory
+    mode: "0700"
+
+- name: Ensure known_hosts file exists
+  ansible.builtin.file:
+    path: "{{ ssh_known_hosts_file }}"
+    state: touch
+    mode: "0600"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Remove stale host keys from known_hosts via ssh-keygen (by IP)
+  ansible.builtin.command:
+    argv:
+      - ssh-keygen
+      - -f
+      - "{{ ssh_known_hosts_file }}"
+      - -R
+      - "{{ item.value if (item.value is string) else (item.value.hostname | default(item.value.ip)) }}"
+  loop: "{{ (ssh_hosts | default({})) | dict2items }}"
+  when:
+    - ssh_config_clean_known_hosts | bool
+    - (item.value if (item.value is string) else (item.value.hostname | default(item.value.ip))) is defined
+  register: ssh_keygen_ip_result
+  changed_when:
+    - "'updated' in (ssh_keygen_ip_result.stderr | default('')) or 'found' in (ssh_keygen_ip_result.stdout | default(''))"
+
+- name: Remove stale host keys from known_hosts via ssh-keygen (by hostname)
+  ansible.builtin.command:
+    argv:
+      - ssh-keygen
+      - -f
+      - "{{ ssh_known_hosts_file }}"
+      - -R
+      - "{{ item.key }}"
+  loop: "{{ (ssh_hosts | default({})) | dict2items }}"
+  when: ssh_config_clean_known_hosts | bool
+  register: ssh_keygen_host_result
+  changed_when:
+    - "'updated' in (ssh_keygen_host_result.stderr | default('')) or 'found' in (ssh_keygen_host_result.stdout | default(''))"
+
+- name: Generate local SSH configuration file
+  ansible.builtin.template:
+    src: config.j2
+    dest: "{{ ssh_config_file }}"
+    mode: "0600"
+
+- name: Automatically scan and add host public keys to known_hosts (by IP and Hostname)
+  ansible.builtin.shell: |
+    TARGET="{{ item.value if (item.value is string) else (item.value.hostname | default(item.value.ip)) }}"
+    ALIAS="{{ item.key }}"
+    if [ -n "$TARGET" ]; then
+      ssh-keyscan -H -t ed25519,ecdsa,rsa "$TARGET" "$ALIAS" >> "{{ ssh_known_hosts_file }}" 2>/dev/null || true
+    fi
+  loop: "{{ (ssh_hosts | default({})) | dict2items }}"
+  when: ssh_config_scan_known_hosts | default(true) | bool
+  changed_when: false

@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  role_name: ssh_config_setup
+  author: freecloudinitiative
+  description: Manages local SSH config (~/.ssh/config) and removes stale host keys using ssh-keygen.
+  license: MIT
+  min_ansible_version: "2.16"
+  platforms:
+    - name: MacOSX
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - jammy
+  galaxy_tags:
+    - ssh
+    - macos
+    - config
+    - developer
+
+collections: []
