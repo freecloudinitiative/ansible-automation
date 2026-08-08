@@ -106,7 +106,7 @@
                 command: [sh, -c]
                 args:
                   - |
-                    wget -O /custom-tools/argocd-vault-plugin https://github.com/argoproj-labs/argocd-vault-plugin/releases/download/v1.18.1/argocd-vault-plugin_1.18.1_linux_amd64 && \
+                    wget -O /custom-tools/argocd-vault-plugin https://github.com/argoproj-labs/argocd-vault-plugin/releases/download/v{{ argocd_vault_plugin_version }}/argocd-vault-plugin_{{ argocd_vault_plugin_version }}_linux_{{ argocd_vault_plugin_arch }} && \
                     chmod +x /custom-tools/argocd-vault-plugin
                 volumeMounts:
                   - mountPath: /custom-tools

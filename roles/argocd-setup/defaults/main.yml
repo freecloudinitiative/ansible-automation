@@ -20,4 +20,6 @@ argocd_deployments:
 kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
 
 argocd_cli_version: "v2.10.4"
+argocd_vault_plugin_version: "1.18.1"
+argocd_vault_plugin_arch: "arm64"
 argocd_admin_password: ""
