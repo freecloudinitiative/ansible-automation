@@ -15,8 +15,7 @@ spec:
       path: "infrastructure"
       directory:
         recurse: true
-        include: '{*/app.yaml,namespaces/*.yaml}'
-        exclude: 'argocd/*'
+        include: '{*/app.yaml,namespaces/*.yaml,argocd/*.yaml}'
     - repoURL: "{{ argocd_gitops_repo_url }}"
       targetRevision: "{{ argocd_gitops_repo_revision }}"
       path: "applications"
