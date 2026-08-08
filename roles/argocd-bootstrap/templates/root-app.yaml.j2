@@ -15,7 +15,7 @@ spec:
     path: "{{ argocd_gitops_repo_path }}"
     directory:
       recurse: true
-      include: '{*/app*.yaml,namespaces/*.yaml}'
+      include: '{infrastructure/*/app*.yaml,infrastructure/namespaces/*.yaml,applications/app-of-apps.yaml,applications/*/app*.yaml}'
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: "{{ argocd_namespace }}"
