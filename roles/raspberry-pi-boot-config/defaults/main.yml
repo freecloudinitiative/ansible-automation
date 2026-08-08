@@ -1,0 +1,13 @@
+---
+# Fan Control (values in milliCelsius)
+fan: 1
+rpi_fan_temp0: 40000
+rpi_fan_temp0_hyst: 2500
+rpi_fan_temp1: 45000
+rpi_fan_temp1_hyst: 5000
+
+second_fan: 45000
+
+# System Performance
+rpi_arm_64bit: 1
+rpi_arm_boost: 1

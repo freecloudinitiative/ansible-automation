@@ -7,7 +7,6 @@
     - k3s-pre-setup
     - k3s-master-setup
     - k3s-fact-gathering
-    - image-preload
 
 - name: Setup K3s worker nodes
   hosts: workers

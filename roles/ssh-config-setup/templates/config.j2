@@ -1,0 +1,45 @@
+# Managed by Ansible - ssh-config-setup role
+# Do not edit manually
+
+{% for host_name, host_data in (ssh_hosts | default({})).items() %}
+Host {{ host_name }}
+{% if host_data is mapping %}
+    HostName {{ host_data.hostname | default(host_data.ip) }}
+    User {{ host_data.user | default(ssh_config_default_user) }}
+    IdentityFile {{ host_data.identity_file | default(ssh_config_default_identity_file) }}
+{% else %}
+    HostName {{ host_data }}
+    User {{ ssh_config_default_user }}
+    IdentityFile {{ ssh_config_default_identity_file }}
+{% endif %}
+    StrictHostKeyChecking {{ ssh_config_strict_host_key_checking | default('no') }}
+    UserKnownHostsFile {{ ssh_known_hosts_file }}
+
+{% endfor %}
+{% for custom_host in (ssh_config_custom_hosts | default([])) %}
+Host {{ custom_host.name }}
+{% if custom_host.hostname is defined %}
+  HostName {{ custom_host.hostname }}
+{% endif %}
+{% if custom_host.user is defined %}
+  User {{ custom_host.user }}
+{% endif %}
+{% if custom_host.identity_file is defined %}
+  IdentityFile {{ custom_host.identity_file }}
+{% endif %}
+{% if custom_host.identities_only is defined %}
+  IdentitiesOnly {{ custom_host.identities_only }}
+{% endif %}
+{% if custom_host.add_keys_to_agent is defined %}
+  AddKeysToAgent {{ custom_host.add_keys_to_agent }}
+{% endif %}
+{% if custom_host.use_keychain is defined %}
+  UseKeychain {{ custom_host.use_keychain }}
+{% endif %}
+{% if custom_host.extra_options is defined %}
+{% for opt_key, opt_val in custom_host.extra_options.items() %}
+  {{ opt_key }} {{ opt_val }}
+{% endfor %}
+{% endif %}
+
+{% endfor %}
