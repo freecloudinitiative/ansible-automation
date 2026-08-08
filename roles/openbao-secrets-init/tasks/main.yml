@@ -1,0 +1,51 @@
+---
+- name: Ensure external-secrets namespace exists
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: external-secrets
+    state: present
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+
+- name: Create OpenBao root token secret for External Secrets Operator
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: openbao-root-token
+        namespace: external-secrets
+      type: Opaque
+      stringData:
+        token: "{{ openbao_token }}"
+
+- name: Wait for OpenBao API endpoint to be responsive
+  ansible.builtin.uri:
+    url: "{{ openbao_url }}/v1/sys/health"
+    method: GET
+    status_code: [200, 429, 500, 501, 503]
+  register: openbao_health
+  until: openbao_health.status is defined and openbao_health.status != -1
+  retries: 12
+  delay: 5
+
+- name: Seed secrets in OpenBao
+  ansible.builtin.uri:
+    url: "{{ openbao_url }}/v1/secret/data/{{ item.path }}"
+    method: POST
+    headers:
+      X-Vault-Token: "{{ openbao_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      data: "{{ item.data }}"
+    status_code: [200, 204]
+  register: openbao_seed_result
+  until: openbao_seed_result.status is defined and openbao_seed_result.status in [200, 204]
+  retries: 10
+  delay: 5
+  loop: "{{ openbao_secrets }}"
+  loop_control:
+    label: "{{ item.path }}"
