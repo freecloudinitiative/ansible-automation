@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-app
+  namespace: "{{ argocd_namespace }}"
+  annotations:
+    argocd.argoproj.io/sync-wave-health: all
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/foreground
+spec:
+  project: default
+  sources:
+    - repoURL: "{{ argocd_gitops_repo_url }}"
+      targetRevision: "{{ argocd_gitops_repo_revision }}"
+      path: "infrastructure"
+      directory:
+        recurse: true
+        include: '{*/app*.yaml,namespaces/*.yaml}'
+    - repoURL: "{{ argocd_gitops_repo_url }}"
+      targetRevision: "{{ argocd_gitops_repo_revision }}"
+      path: "applications"
+      directory:
+        recurse: true
+        include: '{*/app*.yaml}'
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: "{{ argocd_namespace }}"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: true
+    syncOptions:
+      - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true
