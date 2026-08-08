@@ -7,5 +7,3 @@ k3s_master1_public_ip: ""
 k3s_worker1_public_ip: ""
 k3s_worker2_public_ip: ""
 k3s_worker3_public_ip: ""
-
-
