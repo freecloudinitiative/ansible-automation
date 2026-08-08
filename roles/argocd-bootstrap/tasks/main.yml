@@ -1,0 +1,44 @@
+---
+- name: Wait for ArgoCD Application CRD to be established
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    name: applications.argoproj.io
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context if (context | default('') | length > 0) else omit }}"
+  register: app_crd_info
+  until:
+    - app_crd_info.resources is defined
+    - app_crd_info.resources | length > 0
+    - app_crd_info.resources[0].status.conditions is defined
+    - >-
+      app_crd_info.resources[0].status.conditions
+      | selectattr('type', 'equalto', 'Established')
+      | selectattr('status', 'equalto', 'True')
+      | list
+      | length > 0
+  retries: 24
+  delay: 5
+  when: argocd_bootstrap_enabled | bool
+
+- name: Ensure ArgoCD bootstrap stack directory exists
+  ansible.builtin.file:
+    path: "{{ argocd_bootstrap_stack_dir }}"
+    state: directory
+    mode: '0755'
+  when: argocd_bootstrap_enabled | bool
+
+- name: Render ArgoCD bootstrap root application manifest to disk
+  ansible.builtin.template:
+    src: root-app.yaml.j2
+    dest: "{{ argocd_bootstrap_stack_dir }}/root-app.yaml"
+    mode: '0644'
+  when: argocd_bootstrap_enabled | bool
+
+- name: Apply ArgoCD bootstrap root application from manifest file
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ argocd_bootstrap_stack_dir }}/root-app.yaml"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context if (context | default('') | length > 0) else omit }}"
+  when: argocd_bootstrap_enabled | bool

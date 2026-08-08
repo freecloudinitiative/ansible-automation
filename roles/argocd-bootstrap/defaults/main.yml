@@ -1,0 +1,9 @@
+---
+argocd_bootstrap_enabled: true
+argocd_namespace: argocd
+kubeconfig_path: /etc/rancher/k3s/k3s.yaml
+context: ""
+argocd_bootstrap_stack_dir: "{{ '~/k3s-stack/argocd' | expanduser }}"
+
+argocd_gitops_repo_url: "https://github.com/freecloudinitiative/k3s-manifests.git"
+argocd_gitops_repo_revision: "HEAD"

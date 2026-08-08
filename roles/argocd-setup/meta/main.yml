@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  role_name: argocd_setup
+  author: freecloudinitiative
+  description: Installs ArgoCD via official manifests, patches deployments with a custom nodeSelector, and retrieves initial admin credentials
+  license: MIT
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+  galaxy_tags:
+    - kubernetes
+    - argocd
+    - gitops
+    - k3s
+
+collections:
+  - kubernetes.core
