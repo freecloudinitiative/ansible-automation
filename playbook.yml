@@ -31,6 +31,7 @@
     - openbao-secrets-init
     - argocd-bootstrap
     - k9s-setup
+    - grafana-dashboards
 
   post_tasks:
     - name: Print NodePort Service URLs and Passwords in JSON format
