@@ -1,8 +1,4 @@
 ---
-# ============================================================================
-# Disable Swap
-# ============================================================================
-
 - name: Disable swap
   ansible.builtin.command:
     argv:
@@ -24,10 +20,6 @@
     enabled: false
     state: stopped
   when: "'dphys-swapfile.service' in ansible_facts.services or 'dphys-swapfile' in ansible_facts.services"
-
-# ============================================================================
-# Install Requirements
-# ============================================================================
 
 - name: Update apt cache
   ansible.builtin.apt:
