@@ -1,4 +1,0 @@
----
-grafana_url: "http://{{ k3s_master1_public_ip }}/grafana"
-grafana_admin_user: "admin"
-grafana_admin_password: "{{ grafana_admin_password }}"

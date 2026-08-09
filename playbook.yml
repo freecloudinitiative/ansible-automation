@@ -31,7 +31,6 @@
     - openbao-secrets-init
     - argocd-bootstrap
     - k9s-setup
-    - grafana-dashboards
 
   post_tasks:
     - name: Print NodePort Service URLs and Passwords in JSON format
@@ -44,6 +43,6 @@
           alloy: "http://{{ k3s_master1_public_ip }}/alloy"
           traefik_dashboard: "http://{{ k3s_master1_public_ip }}/traefik-dashboard/"
           frontend: "http://{{ k3s_master1_public_ip }}/frontend"
-          argocd_password: "{{ argocd_admin_password | default('') }}"
-          grafana_password: "{{ grafana_admin_password | default('') }}"
-          openbao_password: "{{ openbao_token | default(openbao_dev_root_token | default('root')) }}"
+          # argocd_password: "{{ argocd_admin_password | default('') }}"
+          # grafana_password: "{{ grafana_admin_password | default('') }}"
+          # openbao_password: "{{ openbao_token | default(openbao_dev_root_token | default('root')) }}"
