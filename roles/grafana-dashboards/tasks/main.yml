@@ -1,0 +1,30 @@
+---
+- name: Wait for Grafana to be reachable
+  ansible.builtin.uri:
+    url: "{{ grafana_url }}/api/health"
+    method: GET
+    status_code: 200
+  register: grafana_health
+  until: grafana_health.status == 200
+  retries: 10
+  delay: 15
+
+- name: Find dashboard JSON files
+  ansible.builtin.find:
+    paths: "{{ role_path }}/files"
+    patterns: "*.json"
+  register: dashboard_files
+  delegate_to: localhost
+
+- name: Import Grafana dashboards
+  community.grafana.grafana_dashboard:
+    grafana_url: "{{ grafana_url }}"
+    grafana_user: "{{ grafana_admin_user }}"
+    grafana_password: "{{ grafana_admin_password }}"
+    state: present
+    overwrite: true
+    path: "{{ item.path }}"
+  loop: "{{ dashboard_files.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  delegate_to: localhost
