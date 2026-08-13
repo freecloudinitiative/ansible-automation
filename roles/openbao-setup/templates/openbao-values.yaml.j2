@@ -10,7 +10,12 @@ server:
     enabled: true
     devRootToken: "{{ openbao_dev_root_token }}"
 
-{% if openbao_node_tier is defined and openbao_node_tier %}
+{% if openbao_node_selector is defined and openbao_node_selector %}
+  nodeSelector:
+{% for key, value in openbao_node_selector.items() %}
+    {{ key }}: "{{ value }}"
+{% endfor %}
+{% elif openbao_node_tier is defined and openbao_node_tier %}
   nodeSelector:
     node-tier: "{{ openbao_node_tier }}"
 {% endif %}

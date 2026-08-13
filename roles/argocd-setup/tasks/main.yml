@@ -67,6 +67,9 @@
     context: "{{ context if (context | default('') | length > 0) else omit }}"
   notify: Restart argocd-server
 
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+
 - name: Wait for ArgoCD deployments to be ready
   kubernetes.core.k8s_info:
     kind: "{{ item.kind }}"
