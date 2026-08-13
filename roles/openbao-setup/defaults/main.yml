@@ -1,20 +1,20 @@
 ---
 openbao_namespace: openbao
 openbao_release_name: openbao
-openbao_stack_dir: "{{ '~/k3s-stack/openbao' | expanduser }}"
-openbao_helm_repo_url: https://openbao.github.io/openbao-helm
-openbao_chart_version: ""
+openbao_stack_dir: "{{ ansible_facts.env.HOME }}/k3s-stack/openbao"
+openbao_helm_repo_url: "https://openbao.github.io/openbao-helm"
+openbao_chart_version: "0.28.6"
 kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
+
 openbao_node_tier: mid-memory
 openbao_ui_enabled: true
-
 openbao_node_port: 30200
+openbao_dev_root_token: "root"
 
 openbao_cli_install: true
-openbao_cli_version: "2.1.0"
+openbao_cli_version: "2.6.1"
 openbao_cli_install_dir: "/usr/local/bin"
 openbao_arch_map:
   x86_64: amd64
   aarch64: arm64
   armv7l: arm
-

@@ -1,0 +1,5 @@
+---
+- name: Restart argocd-server
+  ansible.builtin.command:
+    cmd: kubectl rollout restart deployment argocd-server -n {{ argocd_namespace }}
+  changed_when: true

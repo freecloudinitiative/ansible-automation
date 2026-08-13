@@ -1,7 +1,7 @@
 ---
 - name: Download and install ArgoCD CLI binary
   ansible.builtin.get_url:
-    url: "https://github.com/argoproj/argo-cd/releases/download/{{ argocd_cli_version }}/argocd-linux-{{ 'arm64' if ansible_facts.architecture in ['aarch64', 'arm64'] else 'amd64' }}"
+    url: "https://github.com/argoproj/argo-cd/releases/download/{{ argocd_version }}/argocd-linux-{{ 'arm64' if ansible_facts.architecture in ['aarch64', 'arm64'] else 'amd64' }}"
     dest: /usr/local/bin/argocd
     mode: '0755'
 
@@ -33,7 +33,6 @@
     src: "{{ ansible_facts.env.HOME }}/k3s-stack/argocd/install.yaml"
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
     context: "{{ context if (context | default('') | length > 0) else omit }}"
-  register: argocd_install
 
 - name: Patch ArgoCD deployments with nodeSelector
   kubernetes.core.k8s:
@@ -49,9 +48,8 @@
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
     context: "{{ context if (context | default('') | length > 0) else omit }}"
   loop: "{{ argocd_deployments }}"
-  register: patch_result
 
-- name: Patch argocd-cmd-params-cm ConfigMap for path-based routing & insecure mode
+- name: Configure argocd-cmd-params-cm ConfigMap for path routing
   kubernetes.core.k8s:
     state: present
     namespace: "{{ argocd_namespace }}"
@@ -65,11 +63,9 @@
         server.insecure: "true"
         server.basehref: "/argocd"
         server.rootpath: "/argocd"
-
-- name: Restart argocd-server deployment to apply configuration
-  ansible.builtin.command:
-    cmd: kubectl rollout restart deployment argocd-server -n {{ argocd_namespace }}
-  changed_when: true
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    context: "{{ context if (context | default('') | length > 0) else omit }}"
+  notify: Restart argocd-server
 
 - name: Wait for ArgoCD deployments to be ready
   kubernetes.core.k8s_info:
@@ -103,14 +99,9 @@
     - argocd_secret.resources | length > 0
   ignore_errors: true
 
-- name: Get ArgoCD admin password via kubectl CLI command fallback
-  ansible.builtin.shell: >
-    kubectl -n {{ argocd_namespace }} get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
-  register: argocd_secret_cli
-  when: argocd_secret.resources is not defined or argocd_secret.resources | length == 0
-  changed_when: false
-  ignore_errors: true
-
-- name: Set ArgoCD admin password fact at end of role
+- name: Set ArgoCD admin password fact
   ansible.builtin.set_fact:
-    argocd_admin_password: "{{ (argocd_secret.resources[0].data.password | b64decode) if (argocd_secret.resources is defined and argocd_secret.resources | length > 0) else (argocd_secret_cli.stdout | default('')) }}"
+    argocd_admin_password: "{{ argocd_secret.resources[0].data.password | b64decode }}"
+  when:
+    - argocd_secret.resources is defined
+    - argocd_secret.resources | length > 0
