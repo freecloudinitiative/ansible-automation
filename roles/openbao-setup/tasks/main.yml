@@ -1,18 +1,14 @@
 ---
-- name: Create OpenBao stack directory
+- name: Ensure OpenBao stack directory exists
   ansible.builtin.file:
     path: "{{ openbao_stack_dir }}"
     state: directory
     mode: "0755"
 
-- name: Add OpenBao Helm repo
+- name: Add OpenBao Helm repository
   kubernetes.core.helm_repository:
     name: openbao
     repo_url: "{{ openbao_helm_repo_url }}"
-
-- name: Update Helm repos
-  ansible.builtin.command: helm repo update
-  changed_when: false
 
 - name: Ensure OpenBao namespace exists
   kubernetes.core.k8s:
@@ -22,19 +18,20 @@
     state: present
     kubeconfig: "{{ kubeconfig_path }}"
 
-- name: Render OpenBao values from template
+- name: Render OpenBao values template
   ansible.builtin.template:
     src: openbao-values.yaml.j2
     dest: "{{ openbao_stack_dir }}/openbao-values.yaml"
     mode: "0644"
 
-- name: Install OpenBao via Helm
+- name: Deploy OpenBao via Helm
   kubernetes.core.helm:
     name: "{{ openbao_release_name }}"
     chart_ref: openbao/openbao
-    chart_version: "{{ openbao_chart_version | default(omit, true) if (openbao_chart_version | default('') | length > 0) else omit }}"
+    chart_version: "{{ openbao_chart_version }}"
     release_namespace: "{{ openbao_namespace }}"
     create_namespace: false
+    update_repo_cache: true
     values_files:
       - "{{ openbao_stack_dir }}/openbao-values.yaml"
     kubeconfig: "{{ kubeconfig_path }}"
@@ -42,28 +39,9 @@
     wait_timeout: 5m
     state: present
 
-- name: Wait for OpenBao statefulset pod to be ready
-  ansible.builtin.command:
-    argv:
-      - kubectl
-      - wait
-      - --for=condition=Ready
-      - "pod/{{ openbao_release_name }}-0"
-      - -n
-      - "{{ openbao_namespace }}"
-      - --timeout=120s
-  environment:
-    KUBECONFIG: "{{ kubeconfig_path }}"
-  changed_when: false
-
-- name: Determine OpenBao CLI target architecture
-  ansible.builtin.set_fact:
-    openbao_arch: "{{ openbao_arch_map[ansible_facts.architecture] | default('amd64') }}"
-  when: openbao_cli_install | bool
-
 - name: Download and install OpenBao CLI binary
   ansible.builtin.unarchive:
-    src: "https://github.com/openbao/openbao/releases/download/v{{ openbao_cli_version }}/bao_{{ openbao_cli_version }}_linux_{{ openbao_arch }}.tar.gz"
+    src: "https://github.com/openbao/openbao/releases/download/v{{ openbao_cli_version }}/bao_{{ openbao_cli_version }}_linux_{{ openbao_arch_map[ansible_facts.architecture] | default('amd64') }}.tar.gz"
     dest: "{{ openbao_cli_install_dir }}"
     remote_src: true
     include:
@@ -72,7 +50,7 @@
     creates: "{{ openbao_cli_install_dir }}/bao"
   when: openbao_cli_install | bool
 
-- name: Ensure OpenBao environment profile script is set
+- name: Ensure OpenBao environment profile script exists
   ansible.builtin.copy:
     dest: /etc/profile.d/openbao.sh
     content: |
