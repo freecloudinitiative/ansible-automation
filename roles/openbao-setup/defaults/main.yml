@@ -7,8 +7,8 @@ openbao_chart_version: "0.28.6"
 kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
 
 openbao_ui_enabled: true
-openbao_data_storage_size: 1Gi
-openbao_audit_storage_size: 1Gi
+openbao_data_storage_size: 5Gi
+openbao_audit_storage_size: 5Gi
 openbao_storage_class: ""
 openbao_certificate_issuer: ca-cluster-issuer
 
