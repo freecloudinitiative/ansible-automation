@@ -18,6 +18,84 @@
     state: present
     kubeconfig: "{{ kubeconfig_path }}"
 
+- name: Label OpenBao namespace for restricted pod security
+  kubernetes.core.k8s:
+    state: patched
+    kubeconfig: "{{ kubeconfig_path }}"
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ openbao_namespace }}"
+        labels:
+          pod-security.kubernetes.io/enforce: restricted
+          pod-security.kubernetes.io/audit: restricted
+          pod-security.kubernetes.io/warn: restricted
+
+- name: Wait for the private CA cluster issuer
+  kubernetes.core.k8s_info:
+    api_version: cert-manager.io/v1
+    kind: ClusterIssuer
+    name: "{{ openbao_certificate_issuer }}"
+    kubeconfig: "{{ kubeconfig_path }}"
+  register: openbao_issuer
+  until:
+    - openbao_issuer.resources | length == 1
+    - >-
+      openbao_issuer.resources[0].get('status', {}).get('conditions', [])
+      | selectattr('type', 'equalto', 'Ready')
+      | selectattr('status', 'equalto', 'True')
+      | list | length == 1
+  retries: 60
+  delay: 5
+
+- name: Create OpenBao internal TLS certificate
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig_path }}"
+    definition:
+      apiVersion: cert-manager.io/v1
+      kind: Certificate
+      metadata:
+        name: openbao-server
+        namespace: "{{ openbao_namespace }}"
+      spec:
+        secretName: openbao-server-tls
+        privateKey:
+          algorithm: ECDSA
+          size: 256
+          rotationPolicy: Always
+        duration: 2160h
+        renewBefore: 360h
+        usages:
+          - server auth
+          - client auth
+        dnsNames:
+          - openbao
+          - "openbao.{{ openbao_namespace }}"
+          - "openbao.{{ openbao_namespace }}.svc"
+          - "openbao.{{ openbao_namespace }}.svc.cluster.local"
+          - "openbao-active.{{ openbao_namespace }}.svc.cluster.local"
+          - "*.openbao-internal.{{ openbao_namespace }}.svc.cluster.local"
+        ipAddresses:
+          # Permits certificate-verified administration through kubectl port-forward.
+          - 127.0.0.1
+        issuerRef:
+          name: "{{ openbao_certificate_issuer }}"
+          kind: ClusterIssuer
+
+- name: Wait for OpenBao internal TLS certificate
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: openbao-server-tls
+    namespace: "{{ openbao_namespace }}"
+    kubeconfig: "{{ kubeconfig_path }}"
+  register: openbao_tls_secret
+  until: openbao_tls_secret.resources | length == 1
+  retries: 60
+  delay: 5
+
 - name: Render OpenBao values template
   ansible.builtin.template:
     src: openbao-values.yaml.j2
@@ -35,13 +113,16 @@
     values_files:
       - "{{ openbao_stack_dir }}/openbao-values.yaml"
     kubeconfig: "{{ kubeconfig_path }}"
-    wait: true
+    # Uninitialized or sealed production servers are intentionally not Ready.
+    wait: false
     wait_timeout: 5m
     state: present
 
 - name: Download and install OpenBao CLI binary
   ansible.builtin.unarchive:
-    src: "https://github.com/openbao/openbao/releases/download/v{{ openbao_cli_version }}/bao_{{ openbao_cli_version }}_linux_{{ openbao_arch_map[ansible_facts.architecture] | default('amd64') }}.tar.gz"
+    src: >-
+      https://github.com/openbao/openbao/releases/download/v{{ openbao_cli_version }}/bao_{{ openbao_cli_version }}_linux_{{
+      openbao_arch_map[ansible_facts.architecture] | default('amd64') }}.tar.gz
     dest: "{{ openbao_cli_install_dir }}"
     remote_src: true
     include:
@@ -54,7 +135,17 @@
   ansible.builtin.copy:
     dest: /etc/profile.d/openbao.sh
     content: |
-      export VAULT_ADDR="http://127.0.0.1:{{ openbao_node_port }}"
-      export BAO_ADDR="http://127.0.0.1:{{ openbao_node_port }}"
+      # First run: kubectl -n {{ openbao_namespace }} port-forward svc/openbao 8200:8200
+      export VAULT_ADDR="https://127.0.0.1:8200"
+      export BAO_ADDR="https://127.0.0.1:8200"
+      export VAULT_CACERT="{{ openbao_stack_dir }}/openbao-ca.crt"
+      export BAO_CACERT="{{ openbao_stack_dir }}/openbao-ca.crt"
     mode: "0755"
+  when: openbao_cli_install | bool
+
+- name: Copy OpenBao CA certificate for local administration
+  ansible.builtin.copy:
+    content: "{{ openbao_tls_secret.resources[0].data['ca.crt'] | b64decode }}"
+    dest: "{{ openbao_stack_dir }}/openbao-ca.crt"
+    mode: "0644"
   when: openbao_cli_install | bool
