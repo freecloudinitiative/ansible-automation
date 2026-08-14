@@ -92,7 +92,7 @@
 - name: Ensure permissions on k3s kubeconfig file
   ansible.builtin.file:
     path: "{{ kubeconfig_path }}"
-    mode: '0644'
+    mode: '0600'
   become: true
 
 - name: Create .kube directory for user
