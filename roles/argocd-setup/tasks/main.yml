@@ -1,7 +1,9 @@
 ---
 - name: Download and install ArgoCD CLI binary
   ansible.builtin.get_url:
-    url: "https://github.com/argoproj/argo-cd/releases/download/{{ argocd_version }}/argocd-linux-{{ 'arm64' if ansible_facts.architecture in ['aarch64', 'arm64'] else 'amd64' }}"
+    url: >-
+      https://github.com/argoproj/argo-cd/releases/download/{{ argocd_version }}/argocd-linux-{{
+      'arm64' if ansible_facts.architecture in ['aarch64', 'arm64'] else 'amd64' }}
     dest: /usr/local/bin/argocd
     mode: '0755'
 
@@ -60,9 +62,7 @@
         name: argocd-cmd-params-cm
         namespace: "{{ argocd_namespace }}"
       data:
-        server.insecure: "true"
-        server.basehref: "/argocd"
-        server.rootpath: "/argocd"
+        server.insecure: "false"
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
     context: "{{ context if (context | default('') | length > 0) else omit }}"
   notify: Restart argocd-server
