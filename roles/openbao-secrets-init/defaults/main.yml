@@ -1,17 +1,36 @@
-openbao_url: "http://127.0.0.1:30200"
-openbao_token: "{{ openbao_dev_root_token }}"
-grafana_admin_user: "admin"
-grafana_admin_password: "{{ grafana_admin_password }}"
-traefik_admin_user: "admin"
-traefik_admin_password: "{{ traefik_admin_password }}"
+---
+# Supply only for the bootstrap run, preferably with:
+# OPENBAO_BOOTSTRAP_TOKEN=... ansible-playbook playbook.yml
+openbao_bootstrap_token: "{{ lookup('ansible.builtin.env', 'OPENBAO_BOOTSTRAP_TOKEN') | default('', true) }}"
+openbao_namespace: openbao
+openbao_health_service_name: openbao
+openbao_service_name: openbao-active
+openbao_kubernetes_auth_role: external-secrets
+openbao_external_secrets_service_account: external-secrets-openbao
+openbao_external_secrets_namespace: external-secrets
+openbao_external_secrets_audience: vault
+grafana_admin_user: admin
+authentik_bootstrap_email: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_BOOTSTRAP_EMAIL') | default('admin@freecloudinitiative.com', true) }}"
+authentik_bootstrap_password: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_BOOTSTRAP_PASSWORD') | default('', true) }}"
+authentik_postgresql_password: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_POSTGRESQL_PASSWORD') | default('', true) }}"
+authentik_secret_key: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_SECRET_KEY') | default('', true) }}"
+platform_postgresql_password: "{{ lookup('ansible.builtin.env', 'PLATFORM_POSTGRESQL_PASSWORD') | default('', true) }}"
+valkey_password: "{{ lookup('ansible.builtin.env', 'VALKEY_PASSWORD') | default('', true) }}"
 
 openbao_secrets:
-  - path: "grafana"
+  - path: grafana
     data:
       admin-user: "{{ grafana_admin_user }}"
       admin-password: "{{ grafana_admin_password }}"
-  - path: "traefik/api-auth"
+  - path: authentik
     data:
-      username: "{{ traefik_admin_user }}"
-      password: "{{ traefik_admin_password }}"
-
+      bootstrap-email: "{{ authentik_bootstrap_email }}"
+      bootstrap-password: "{{ authentik_bootstrap_password }}"
+      postgresql-password: "{{ authentik_postgresql_password }}"
+      secret-key: "{{ authentik_secret_key }}"
+  - path: platform-postgresql
+    data:
+      password: "{{ platform_postgresql_password }}"
+  - path: valkey
+    data:
+      password: "{{ valkey_password }}"

@@ -1,15 +1,31 @@
 # Ansible Role: openbao-secrets-init
 
-Seeds initial secrets into OpenBao secret storage via REST API.
+Performs an idempotent, post-initialization OpenBao bootstrap. It enables KV v2,
+persistent audit logging, Kubernetes authentication, a narrow read-only policy,
+and the initial Grafana, Authentik, PostgreSQL, and Valkey secrets.
 
-## Requirements
+The role never writes an OpenBao token into Kubernetes. External Secrets uses a
+short-lived Kubernetes ServiceAccount token to authenticate to OpenBao.
 
-- Running OpenBao instance accessible at `openbao_url`.
+After OpenBao has been initialized and unsealed, rerun the playbook with a
+short-lived administrative bootstrap token supplied only through the process
+environment:
 
-## Role Variables
+```sh
+AUTHENTIK_SECRET_KEY='at-least-50-random-characters' \
+AUTHENTIK_POSTGRESQL_PASSWORD='at-least-24-random-characters' \
+PLATFORM_POSTGRESQL_PASSWORD='at-least-24-random-characters' \
+AUTHENTIK_BOOTSTRAP_PASSWORD='at-least-16-random-characters' \
+VALKEY_PASSWORD='at-least-24-random-characters' \
+OPENBAO_BOOTSTRAP_TOKEN='hvs.example' \
+ansible-playbook playbook.yml
+```
 
-| Variable          | Default                        | Description                                                   |
-| ----------------- | ------------------------------ | ------------------------------------------------------------- |
-| `openbao_url`     | `http://127.0.0.1:30200`       | OpenBao API base URL                                          |
-| `openbao_token`   | `{{ openbao_dev_root_token }}` | OpenBao root authentication token                             |
-| `openbao_secrets` | List of secrets                | List of items containing `path` and `data` dictionary to seed |
+Revoke that token when the bootstrap succeeds. `no_log` protects every task
+that handles it, but shell history and process environments must still be
+treated as sensitive.
+
+Generate every value independently with a cryptographically secure password
+manager. `AUTHENTIK_BOOTSTRAP_EMAIL` is optional and defaults to
+`admin@freecloudinitiative.com`. After the first Authentik login, change the
+bootstrap password and enable MFA for the administrator.
