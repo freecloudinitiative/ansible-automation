@@ -1,41 +1,29 @@
 # Ansible Role: openbao-setup
 
-Installs OpenBao via Helm into a K3s cluster.
+Deploys OpenBao as a private, TLS-enabled three-member Raft cluster. Data and
+audit logs use retained persistent volumes. Dev mode, NodePort access, the agent
+injector, and the CSI provider are disabled.
 
 ## Requirements
 
-- K3s / Kubernetes cluster.
-- `kubernetes.core` Ansible collection.
-- `helm` and `kubectl` binaries on target master host.
+- A working k3s cluster and `kubernetes.core` collection.
+- cert-manager and a Ready `ca-cluster-issuer` ClusterIssuer.
+- At least three schedulable nodes for normal HA placement.
 
-## Role Variables
+## Important initialization step
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `openbao_namespace` | `openbao` | Namespace to install OpenBao |
-| `openbao_release_name` | `openbao` | Helm release name |
-| `openbao_stack_dir` | `{{ ansible_facts.env.HOME }}/k3s-stack/openbao` | Directory to store rendered values file |
-| `openbao_helm_repo_url` | `https://openbao.github.io/openbao-helm` | OpenBao Helm Repository URL |
-| `openbao_chart_version` | `0.28.6` | OpenBao Helm Chart Version |
-| `kubeconfig_path` | `/etc/rancher/k3s/k3s.yaml` | Path to kubeconfig file |
-| `openbao_node_selector` | `{ kubernetes.io/hostname: "{{ groups['masters'][0] }}" }` | Node selector dictionary for scheduling the OpenBao pod |
-| `openbao_ui_enabled` | `true` | Enable OpenBao web UI |
-| `openbao_node_port` | `30200` | NodePort to access OpenBao service |
-| `openbao_dev_root_token` | *(required)* | Root token for dev mode (must be supplied via inventory/vault) |
-| `openbao_cli_install` | `true` | Download and install OpenBao CLI binary |
-| `openbao_cli_version` | `2.6.1` | OpenBao CLI release version |
-| `openbao_cli_install_dir` | `/usr/local/bin` | Directory to install OpenBao CLI binary |
+The role deliberately does not initialize or unseal OpenBao. After the first
+deployment, use a local port-forward and perform the OpenBao initialization
+ceremony. Store recovery material outside the cluster and unseal the members.
 
-## Dependencies
-
-None.
-
-## Example Playbook
-
-```yaml
-- name: Install OpenBao
-  hosts: masters[0]
-  become: true
-  roles:
-    - openbao-setup
+```sh
+kubectl -n openbao port-forward svc/openbao 8200:8200
+source /etc/profile.d/openbao.sh
+bao operator init
 ```
+
+For a real production deployment, configure a supported auto-unseal mechanism
+before launch. Never commit recovery keys or a root token.
+
+Relevant variables are in `defaults/main.yml`, including storage sizes, chart
+version, certificate issuer, and CLI version.

@@ -6,10 +6,11 @@ openbao_helm_repo_url: "https://openbao.github.io/openbao-helm"
 openbao_chart_version: "0.28.6"
 kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
 
-openbao_node_selector:
-  kubernetes.io/hostname: "{{ groups['masters'][0] }}"
 openbao_ui_enabled: true
-openbao_node_port: 30200
+openbao_data_storage_size: 5Gi
+openbao_audit_storage_size: 5Gi
+openbao_storage_class: ""
+openbao_certificate_issuer: ca-cluster-issuer
 
 openbao_cli_install: true
 openbao_cli_version: "2.6.1"
