@@ -11,7 +11,7 @@ Ansible role for initializing the primary master node (`--cluster-init`) and joi
 - Disables default `metrics-server` and `traefik` to allow custom component deployments.
 - Configures dynamic IP binding (`--node-ip`, `--advertise-address`, and `--tls-san`) using host Facts (`ansible_facts.default_ipv4.address`).
 - Sets dynamic `--node-name` using `inventory_hostname`.
-- Configures secure kubeconfig permissions (`0644`) for `{{ kubeconfig_path }}` and non-root user ownership on `~/.kube/config`.
+- Configures owner-only kubeconfig permissions (`0600`) for both `{{ kubeconfig_path }}` and `~/.kube/config`.
 - Installs Helm on master nodes.
 
 ## Requirements
