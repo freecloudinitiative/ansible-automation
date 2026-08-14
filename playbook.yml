@@ -27,9 +27,10 @@
   roles:
     - k3s-node-labeling
     - argocd-setup
+    # GitOps installs cert-manager and the private CA issuer required by OpenBao.
+    - argocd-bootstrap
     - openbao-setup
     - openbao-secrets-init
-    - argocd-bootstrap
     - k9s-setup
 
   post_tasks:
@@ -40,6 +41,7 @@
           grafana: "http://{{ k3s_master1_public_ip }}/grafana/"
           prometheus: "http://{{ k3s_master1_public_ip }}/prometheus/"
           openbao: "http://{{ k3s_master1_public_ip }}/ui/"
+          authentik: "http://{{ k3s_master1_public_ip }}:30900/"
           alloy: "http://{{ k3s_master1_public_ip }}/alloy"
           traefik_dashboard: "http://{{ k3s_master1_public_ip }}/traefik-dashboard/"
           frontend: "http://{{ k3s_master1_public_ip }}/frontend"
