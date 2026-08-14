@@ -3,49 +3,258 @@
   kubernetes.core.k8s:
     api_version: v1
     kind: Namespace
-    name: external-secrets
+    name: "{{ openbao_external_secrets_namespace }}"
     state: present
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
 
-- name: Create OpenBao root token secret for External Secrets Operator
-  kubernetes.core.k8s:
-    state: present
+- name: Discover the OpenBao health service
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    name: "{{ openbao_health_service_name }}"
+    namespace: "{{ openbao_namespace }}"
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
-    definition:
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: openbao-root-token
-        namespace: external-secrets
-      type: Opaque
-      stringData:
-        token: "{{ openbao_token }}"
+  register: openbao_health_service
+  until: openbao_health_service.resources | length == 1
+  retries: 30
+  delay: 5
 
-- name: Wait for OpenBao API endpoint to be responsive
+- name: Set the private OpenBao health address
+  ansible.builtin.set_fact:
+    openbao_url: "https://{{ openbao_health_service.resources[0].spec.clusterIP }}:8200"
+
+- name: Wait for initialized and unsealed OpenBao
   ansible.builtin.uri:
     url: "{{ openbao_url }}/v1/sys/health"
     method: GET
-    status_code: [200, 429, 500, 501, 503]
+    validate_certs: false
+    status_code: [200, 429, 501, 503]
+    return_content: true
   register: openbao_health
-  until: openbao_health.status is defined and openbao_health.status != -1
-  retries: 12
+  until: openbao_health.status is defined and openbao_health.status in [200, 429, 501, 503]
+  retries: 30
   delay: 5
 
-- name: Seed secrets in OpenBao
+- name: Explain the required OpenBao initialization ceremony
+  ansible.builtin.debug:
+    msg: >-
+      OpenBao is intentionally deployed without a development root token. Initialize
+      and unseal it through a local port-forward, securely distribute the recovery
+      material, then rerun with OPENBAO_BOOTSTRAP_TOKEN set to a short-lived admin token.
+  when: openbao_health.status not in [200, 429]
+
+- name: Stop secret bootstrap until OpenBao is initialized and unsealed
+  ansible.builtin.meta: end_role
+  when: openbao_health.status not in [200, 429]
+
+- name: Explain how to supply the ephemeral OpenBao bootstrap token
+  ansible.builtin.debug:
+    msg: >-
+      OpenBao is ready. Rerun with OPENBAO_BOOTSTRAP_TOKEN set to a short-lived
+      token that can manage mounts, auth methods, policies, audit devices, and
+      the bootstrap secrets. Revoke it immediately after bootstrap.
+  when: openbao_bootstrap_token | length == 0
+
+- name: Stop secret bootstrap until an ephemeral token is supplied
+  ansible.builtin.meta: end_role
+  when: openbao_bootstrap_token | length == 0
+
+- name: Validate required production application secrets
+  ansible.builtin.assert:
+    that:
+      - authentik_secret_key | length >= 50
+      - authentik_postgresql_password | length >= 24
+      - platform_postgresql_password | length >= 24
+      - authentik_bootstrap_password | length >= 16
+      - valkey_password | length >= 24
+    fail_msg: >-
+      Set AUTHENTIK_SECRET_KEY (at least 50 characters),
+      AUTHENTIK_POSTGRESQL_PASSWORD and PLATFORM_POSTGRESQL_PASSWORD (at least
+      24 characters), AUTHENTIK_BOOTSTRAP_PASSWORD (at least 16 characters),
+      and VALKEY_PASSWORD (at least 24 characters) for the bootstrap run.
+  no_log: true
+
+- name: Discover the active OpenBao service
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    name: "{{ openbao_service_name }}"
+    namespace: "{{ openbao_namespace }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+  register: openbao_active_service
+  until: openbao_active_service.resources | length == 1
+  retries: 30
+  delay: 5
+
+- name: Use the active OpenBao API endpoint for bootstrap writes
+  ansible.builtin.set_fact:
+    openbao_url: "https://{{ openbao_active_service.resources[0].spec.clusterIP }}:8200"
+
+- name: Read enabled OpenBao secret engines
+  ansible.builtin.uri:
+    url: "{{ openbao_url }}/v1/sys/mounts"
+    method: GET
+    validate_certs: false
+    headers:
+      X-Vault-Token: "{{ openbao_bootstrap_token }}"
+    status_code: 200
+    return_content: true
+  register: openbao_mounts
+  no_log: true
+
+- name: Enable the versioned KV secret engine
+  ansible.builtin.uri:
+    url: "{{ openbao_url }}/v1/sys/mounts/secret"
+    method: POST
+    validate_certs: false
+    headers:
+      X-Vault-Token: "{{ openbao_bootstrap_token }}"
+    body_format: json
+    body:
+      type: kv
+      options:
+        version: "2"
+    status_code: [200, 204]
+  when: "'secret/' not in openbao_mounts.json"
+  no_log: true
+
+- name: Install least-privilege External Secrets policy
+  ansible.builtin.uri:
+    url: "{{ openbao_url }}/v1/sys/policies/acl/external-secrets-read"
+    method: PUT
+    validate_certs: false
+    headers:
+      X-Vault-Token: "{{ openbao_bootstrap_token }}"
+    body_format: json
+    body:
+      policy: |
+        path "secret/data/grafana" {
+          capabilities = ["read"]
+        }
+        path "secret/metadata/grafana" {
+          capabilities = ["read"]
+        }
+        path "secret/data/authentik" {
+          capabilities = ["read"]
+        }
+        path "secret/metadata/authentik" {
+          capabilities = ["read"]
+        }
+        path "secret/data/platform-postgresql" {
+          capabilities = ["read"]
+        }
+        path "secret/metadata/platform-postgresql" {
+          capabilities = ["read"]
+        }
+        path "secret/data/valkey" {
+          capabilities = ["read"]
+        }
+        path "secret/metadata/valkey" {
+          capabilities = ["read"]
+        }
+    status_code: [200, 204]
+  no_log: true
+
+- name: Read enabled OpenBao auth methods
+  ansible.builtin.uri:
+    url: "{{ openbao_url }}/v1/sys/auth"
+    method: GET
+    validate_certs: false
+    headers:
+      X-Vault-Token: "{{ openbao_bootstrap_token }}"
+    status_code: 200
+    return_content: true
+  register: openbao_auth_methods
+  no_log: true
+
+- name: Enable OpenBao Kubernetes authentication
+  ansible.builtin.uri:
+    url: "{{ openbao_url }}/v1/sys/auth/kubernetes"
+    method: POST
+    validate_certs: false
+    headers:
+      X-Vault-Token: "{{ openbao_bootstrap_token }}"
+    body_format: json
+    body:
+      type: kubernetes
+    status_code: [200, 204]
+  when: "'kubernetes/' not in openbao_auth_methods.json"
+  no_log: true
+
+- name: Configure OpenBao Kubernetes authentication
+  ansible.builtin.uri:
+    url: "{{ openbao_url }}/v1/auth/kubernetes/config"
+    method: POST
+    validate_certs: false
+    headers:
+      X-Vault-Token: "{{ openbao_bootstrap_token }}"
+    body_format: json
+    body:
+      kubernetes_host: https://kubernetes.default.svc:443
+    status_code: [200, 204]
+  no_log: true
+
+- name: Bind External Secrets service account to the read policy
+  ansible.builtin.uri:
+    url: "{{ openbao_url }}/v1/auth/kubernetes/role/{{ openbao_kubernetes_auth_role }}"
+    method: POST
+    validate_certs: false
+    headers:
+      X-Vault-Token: "{{ openbao_bootstrap_token }}"
+    body_format: json
+    body:
+      bound_service_account_names:
+        - "{{ openbao_external_secrets_service_account }}"
+      bound_service_account_namespaces:
+        - "{{ openbao_external_secrets_namespace }}"
+      audience: "{{ openbao_external_secrets_audience }}"
+      policies:
+        - external-secrets-read
+      token_ttl: 10m
+      token_max_ttl: 30m
+    status_code: [200, 204]
+  no_log: true
+
+- name: Read enabled OpenBao audit devices
+  ansible.builtin.uri:
+    url: "{{ openbao_url }}/v1/sys/audit"
+    method: GET
+    validate_certs: false
+    headers:
+      X-Vault-Token: "{{ openbao_bootstrap_token }}"
+    status_code: 200
+    return_content: true
+  register: openbao_audit_devices
+  no_log: true
+
+- name: Enable persistent OpenBao file audit logging
+  ansible.builtin.uri:
+    url: "{{ openbao_url }}/v1/sys/audit/file"
+    method: PUT
+    validate_certs: false
+    headers:
+      X-Vault-Token: "{{ openbao_bootstrap_token }}"
+    body_format: json
+    body:
+      type: file
+      options:
+        file_path: /openbao/audit/audit.log
+    status_code: [200, 204]
+  when: "'file/' not in openbao_audit_devices.json"
+  no_log: true
+
+- name: Seed application secrets in OpenBao
   ansible.builtin.uri:
     url: "{{ openbao_url }}/v1/secret/data/{{ item.path }}"
     method: POST
+    validate_certs: false
     headers:
-      X-Vault-Token: "{{ openbao_token }}"
-      Content-Type: "application/json"
+      X-Vault-Token: "{{ openbao_bootstrap_token }}"
     body_format: json
     body:
       data: "{{ item.data }}"
     status_code: [200, 204]
-  register: openbao_seed_result
-  until: openbao_seed_result.status is defined and openbao_seed_result.status in [200, 204]
-  retries: 10
-  delay: 5
   loop: "{{ openbao_secrets }}"
   loop_control:
     label: "{{ item.path }}"
+  no_log: true
