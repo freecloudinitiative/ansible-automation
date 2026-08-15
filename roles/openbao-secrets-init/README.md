@@ -2,7 +2,7 @@
 
 Performs an idempotent, post-initialization OpenBao bootstrap. It enables KV v2,
 persistent audit logging, Kubernetes authentication, a narrow read-only policy,
-and the initial Grafana, Authentik, PostgreSQL, and Valkey secrets.
+and the initial Grafana, Authentik, PostgreSQL, Valkey, and Cloudflared secrets.
 
 The role never writes an OpenBao token into Kubernetes. External Secrets uses a
 short-lived Kubernetes ServiceAccount token to authenticate to OpenBao.
@@ -17,6 +17,7 @@ AUTHENTIK_POSTGRESQL_PASSWORD='at-least-24-random-characters' \
 PLATFORM_POSTGRESQL_PASSWORD='at-least-24-random-characters' \
 AUTHENTIK_BOOTSTRAP_PASSWORD='at-least-16-random-characters' \
 VALKEY_PASSWORD='at-least-24-random-characters' \
+CLOUDFLARED_TUNNEL_TOKEN='optional-cloudflared-tunnel-token' \
 OPENBAO_BOOTSTRAP_TOKEN='hvs.example' \
 ansible-playbook playbook.yml
 ```

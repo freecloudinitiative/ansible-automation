@@ -152,6 +152,12 @@
         path "secret/metadata/valkey" {
           capabilities = ["read"]
         }
+        path "secret/data/cloudflared" {
+          capabilities = ["read"]
+        }
+        path "secret/metadata/cloudflared" {
+          capabilities = ["read"]
+        }
     status_code: [200, 204]
   no_log: true
 

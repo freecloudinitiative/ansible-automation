@@ -16,6 +16,7 @@ authentik_postgresql_password: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_POST
 authentik_secret_key: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_SECRET_KEY') | default('', true) }}"
 platform_postgresql_password: "{{ lookup('ansible.builtin.env', 'PLATFORM_POSTGRESQL_PASSWORD') | default('', true) }}"
 valkey_password: "{{ lookup('ansible.builtin.env', 'VALKEY_PASSWORD') | default('', true) }}"
+cloudflared_tunnel_token: "{{ lookup('ansible.builtin.env', 'CLOUDFLARED_TUNNEL_TOKEN') | default('', true) }}"
 
 openbao_secrets:
   - path: grafana
@@ -34,3 +35,6 @@ openbao_secrets:
   - path: valkey
     data:
       password: "{{ valkey_password }}"
+  - path: cloudflared
+    data:
+      tunnel-token: "{{ cloudflared_tunnel_token }}"
