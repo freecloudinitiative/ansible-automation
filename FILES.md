@@ -12,7 +12,6 @@
 | `inventory.ini` | Ansible inventory: `[masters]`, `[workers]`, `[high_memory]`, `[mid_memory]`, `[low_memory]` groups. |
 | `ansible.cfg` | Ansible config: default inventory, vault password prompt, SSH connection tuning. |
 | `requirements.txt` | Python packages for the control machine (Ansible, etc.). |
-| `caveman.md` | Documentation style guide for this repo. |
 | `.ansible-lint` | ansible-lint config: rules, ignore patterns. |
 | `.gitignore` | Excludes `.retry` files, temp dirs, local secrets. |
 
