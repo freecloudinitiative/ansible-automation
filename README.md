@@ -1,51 +1,96 @@
-# Ansible Roles Catalog
+# ansible-automation
 
-This directory contains Ansible roles used to provision, configure, and manage the **Free Cloud Initiative** infrastructure. The playbooks orchestrate these roles to configure Raspberry Pi boot settings, set up a K3s Kubernetes cluster, and deploy crucial cloud-native infrastructure components.
+## What Code Do
 
-## Infrastructure & OS Management Roles
+Ansible playbooks and roles that provision a bare-metal K3s Kubernetes cluster from scratch on Raspberry Pi nodes.
 
-These roles handle initial hardware/OS configuration and node health checks.
+Run once → get a fully working cluster with:
 
-| Role                                                   | Target Hosts               | Description                                                                                                                                                                             |
-| ------------------------------------------------------ | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`raspberry-pi-boot-config`](raspberry-pi-boot-config) | `all` / Raspberry Pi nodes | Configures boot options specific to Raspberry Pi nodes, such as enabling container features in `/boot/cmdline.txt` (e.g., `cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory`). |
-| [`rpi-thermal-check`](rpi-thermal-check)               | `all` / Raspberry Pi nodes | Monitors and logs CPU temperatures on Raspberry Pi nodes to prevent overheating and thermal throttling.                                                                                 |
+- K3s installed on 1 master + 3 workers
+- Nodes labelled by memory tier (`high-memory`, `mid-memory`, `low-memory`)
+- ArgoCD running and connected to the GitOps repo (App of Apps pattern)
+- OpenBao (open-source Vault) running with TLS, Kubernetes auth, and all application secrets seeded
+- k9s TUI installed on master node and local machine
+- Local `~/.kube/config` ready to use
 
----
+Four playbooks, run in order:
 
-## K3s Cluster Setup Roles
+| Playbook | What it does | Targets |
+|---|---|---|
+| `pi-boot.yml` | Writes `/boot/firmware/config.txt`. Reboots if changed. | all nodes |
+| `playbook.yml` | Full cluster: k3s, labels, ArgoCD, OpenBao, k9s | masters + workers |
+| `ssh-config.yml` | Writes local `~/.ssh/config`, scans known_hosts | localhost |
+| `local-setup.yml` | Fetches kubeconfig, installs k9s on local machine | localhost |
+| `thermal-check.yml` | Prints CPU temperature for all Raspberry Pi nodes | all nodes |
 
-These roles manage the lifecycle of the K3s Kubernetes cluster, from initial node preparation to joining worker nodes.
+## Why Need It
 
-| Role                                       | Target Hosts | Description                                                                                                                                                             |
-| ------------------------------------------ | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`k3s-pre-setup`](k3s-pre-setup)           | `all`        | Prepares target hosts for K3s installation. Disables swap, configures necessary kernel modules, installs prerequisite system packages, and prepares the OS environment. |
-| [`k3s-master-setup`](k3s-master-setup)     | `masters`    | Installs, configures, and starts the K3s control plane on master nodes.                                                                                                 |
-| [`k3s-fact-gathering`](k3s-fact-gathering) | `masters`    | Gathers runtime facts from the master node (such as the K3s node token and master IP) so worker nodes can use them to join the cluster.                                 |
-| [`k3s-worker-setup`](k3s-worker-setup)     | `workers`    | Installs K3s agent and registers worker nodes to the cluster using the gathered master IP and token.                                                                    |
-| [`k3s-node-labeling`](k3s-node-labeling)   | `masters`    | Post-join tasks to label and taint nodes dynamically based on inventory variables.                                                                                      |
+No cloud provider. Bare-metal Raspberry Pi cluster needs manual provisioning. Ansible makes it idempotent and repeatable — run again after a node replacement or config change without breaking what already works.
 
----
+## How Start
 
-## Core Cluster Services & GitOps
+```bash
+# 1. Install Ansible and dependencies
+pip install -r requirements.txt
 
-Services deployed on top of K3s to provide networking, certs, and deployment automation.
+# 2. Install Ansible collections
+ansible-galaxy collection install -r collections/requirements.yml
 
-| Role                                   | Target Hosts | Description                                                                                                |
-| -------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------- |
-| [`argocd-setup`](argocd-setup)         | `masters[0]` | Installs ArgoCD for GitOps-driven deployment and synchronization of Kubernetes manifests and applications. |
-| [`argocd-bootstrap`](argocd-bootstrap) | `masters[0]` | Bootstraps the K3s cluster by applying the ArgoCD root application (App of Apps) manifest.                 |
-| [`openbao-setup`](openbao-setup)       | `masters[0]` | Installs OpenBao via Helm to provide open-source identity-based secret management, storage, and PKI.       |
+# 3. Fill in node IPs
+# Edit group_vars/all/main.yml with real IPs for all nodes.
+# Edit group_vars/all/secret.yml with secrets (encrypted with Ansible Vault).
 
----
+# 4. Step 1: Write boot config to Raspberry Pi nodes and reboot
+ansible-playbook pi-boot.yml
 
-## Developer Tooling & Registries
+# 5. Step 2: Provision k3s cluster, ArgoCD, OpenBao, k9s
+ansible-playbook playbook.yml
 
-These roles deploy local developer tools and registries for hosting code and container images.
+# IMPORTANT: OpenBao must be initialized and unsealed manually before
+# step 5 completes. See openbao-secrets-init role section in ROLES.md.
 
-| Role                                           | Target Hosts | Description                                                                                   |
-| ---------------------------------------------- | ------------ | --------------------------------------------------------------------------------------------- |
-| [`k9s-setup`](k9s-setup)                       | `masters`    | Downloads and installs K9s terminal UI for Kubernetes cluster management.                     |
-| [`local-k9s-setup`](local-k9s-setup)           | `localhost`  | Downloads and installs K9s terminal UI locally.                                               |
-| [`openbao-secrets-init`](openbao-secrets-init) | `masters[0]` | Seeds initial secrets to OpenBao service.                                                     |
-| [`ssh-config-setup`](ssh-config-setup)         | `localhost`  | Generates local `~/.ssh/config` and removes stale host key entries from `~/.ssh/known_hosts`. |
+# 6. (Optional) Set up local SSH config
+ansible-playbook ssh-config.yml
+
+# 7. Pull kubeconfig and set up local k9s
+ansible-playbook local-setup.yml
+
+# 8. (Anytime) Check Raspberry Pi temperatures
+ansible-playbook thermal-check.yml
+```
+
+Vault password prompt appears automatically (`ask_vault_pass = true` in `ansible.cfg`).
+
+## Language
+
+YAML. Ansible 2.x. Python 3 required on target nodes (installed automatically). Collections: `kubernetes.core`, `community.general`.
+
+## Folders
+
+```
+roles/                  One folder per role. Each has tasks/, defaults/, templates/, meta/.
+  raspberry-pi-boot-config/   Write Pi boot config, reboot.
+  k3s-pre-setup/              Disable swap, install packages, Python k8s libs.
+  k3s-master-setup/           Install k3s server, Helm, kubectx, popeye, stern, kube-ps1.
+  k3s-worker-setup/           Install k3s agent, connect to master.
+  k3s-fact-gathering/         Read node token, set kubeconfig_path fact.
+  k3s-node-labeling/          Label and taint nodes by memory tier.
+  argocd-setup/               Install ArgoCD CLI and manifests, wait for ready.
+  argocd-bootstrap/           Apply GitOps root Application (App of Apps).
+  openbao-setup/              Deploy OpenBao via Helm with TLS from cert-manager.
+  openbao-secrets-init/       Initialize KV engine, Kubernetes auth, seed secrets.
+  k9s-setup/                  Install k9s on master node.
+  local-k9s-setup/            Fetch kubeconfig, install k9s on local machine.
+  ssh-config-setup/           Write ~/.ssh/config, populate known_hosts.
+  rpi-thermal-check/          Print CPU temperature.
+group_vars/all/
+  main.yml                    Node IPs and non-secret vars.
+  secret.yml                  Encrypted secrets (Ansible Vault).
+collections/
+  requirements.yml            Ansible collection dependencies.
+```
+
+## Read More
+
+- [ROLES.md](ROLES.md) — what each role does, step by step
+- [FILES.md](FILES.md) — every file, one line
