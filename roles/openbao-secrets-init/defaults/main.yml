@@ -14,8 +14,27 @@ authentik_bootstrap_email: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_BOOTSTRA
 authentik_bootstrap_password: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_BOOTSTRAP_PASSWORD') | default('', true) }}"
 authentik_postgresql_password: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_POSTGRESQL_PASSWORD') | default('', true) }}"
 authentik_secret_key: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_SECRET_KEY') | default('', true) }}"
+api_gateway_internal_public_key: "{{ lookup('ansible.builtin.env', 'API_GATEWAY_INTERNAL_PUBLIC_KEY') | default('', true) }}"
+api_gateway_internal_signing_key: "{{ lookup('ansible.builtin.env', 'API_GATEWAY_INTERNAL_SIGNING_KEY') | default('', true) }}"
+cloudflared_tunnel_token: "{{ lookup('ansible.builtin.env', 'CLOUDFLARED_TUNNEL_TOKEN') | default('', true) }}"
+compute_postgresql_password: "{{ lookup('ansible.builtin.env', 'COMPUTE_POSTGRESQL_PASSWORD') | default('', true) }}"
+database_postgresql_password: "{{ lookup('ansible.builtin.env', 'DATABASE_POSTGRESQL_PASSWORD') | default('', true) }}"
+
+garage_storage_service_access_key: "{{ lookup('ansible.builtin.env', 'GARAGE_STORAGE_SERVICE_ACCESS_KEY') | default('', true) }}"
+garage_storage_service_secret_key: "{{ lookup('ansible.builtin.env', 'GARAGE_STORAGE_SERVICE_SECRET_KEY') | default('', true) }}"
+iam_postgresql_password: "{{ lookup('ansible.builtin.env', 'IAM_POSTGRESQL_PASSWORD') | default('', true) }}"
+
 platform_postgresql_password: "{{ lookup('ansible.builtin.env', 'PLATFORM_POSTGRESQL_PASSWORD') | default('', true) }}"
+storage_postgresql_password: "{{ lookup('ansible.builtin.env', 'STORAGE_POSTGRESQL_PASSWORD') | default('', true) }}"
+terminal_gateway_internal_public_key: "{{ lookup('ansible.builtin.env', 'TERMINAL_GATEWAY_INTERNAL_PUBLIC_KEY') | default('', true) }}"
+terminal_gateway_internal_signing_key: "{{ lookup('ansible.builtin.env', 'TERMINAL_GATEWAY_INTERNAL_SIGNING_KEY') | default('', true) }}"
+
 valkey_password: "{{ lookup('ansible.builtin.env', 'VALKEY_PASSWORD') | default('', true) }}"
+zot_registry_htpasswd: "{{ lookup('ansible.builtin.env', 'ZOT_REGISTRY_HTPASSWD') | default('', true) }}"
+zot_registry_pull_password: "{{ lookup('ansible.builtin.env', 'ZOT_REGISTRY_PULL_PASSWORD') | default('', true) }}"
+zot_registry_pull_username: "{{ lookup('ansible.builtin.env', 'ZOT_REGISTRY_PULL_USERNAME') | default('', true) }}"
+zot_registry_s3_access_key_id: "{{ lookup('ansible.builtin.env', 'ZOT_REGISTRY_S3_ACCESS_KEY_ID') | default('', true) }}"
+zot_registry_s3_secret_access_key: "{{ lookup('ansible.builtin.env', 'ZOT_REGISTRY_S3_SECRET_ACCESS_KEY') | default('', true) }}"
 
 openbao_secrets:
   - path: grafana
@@ -31,6 +50,43 @@ openbao_secrets:
   - path: platform-postgresql
     data:
       password: "{{ platform_postgresql_password }}"
+      ca-cert: "{{ cluster_ca_cert }}"
   - path: valkey
     data:
       password: "{{ valkey_password }}"
+      ca-cert: "{{ cluster_ca_cert }}"
+  - path: api-gateway
+    data:
+      internal-public-key: "{{ api_gateway_internal_public_key }}"
+      internal-signing-key: "{{ api_gateway_internal_signing_key }}"
+  - path: cloudflared
+    data:
+      tunnel-token: "{{ cloudflared_tunnel_token }}"
+  - path: compute
+    data:
+      postgresql-password: "{{ compute_postgresql_password }}"
+  - path: database
+    data:
+      postgresql-password: "{{ database_postgresql_password }}"
+  - path: garage
+    data:
+      ca-cert: "{{ cluster_ca_cert }}"
+      storage-service-access-key: "{{ garage_storage_service_access_key }}"
+      storage-service-secret-key: "{{ garage_storage_service_secret_key }}"
+  - path: iam
+    data:
+      postgresql-password: "{{ iam_postgresql_password }}"
+  - path: storage
+    data:
+      postgresql-password: "{{ storage_postgresql_password }}"
+  - path: terminal-gateway
+    data:
+      internal-public-key: "{{ terminal_gateway_internal_public_key }}"
+      internal-signing-key: "{{ terminal_gateway_internal_signing_key }}"
+  - path: zot-registry
+    data:
+      htpasswd: "{{ zot_registry_htpasswd }}"
+      pull-password: "{{ zot_registry_pull_password }}"
+      pull-username: "{{ zot_registry_pull_username }}"
+      s3-access-key-id: "{{ zot_registry_s3_access_key_id }}"
+      s3-secret-access-key: "{{ zot_registry_s3_secret_access_key }}"

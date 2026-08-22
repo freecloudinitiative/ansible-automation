@@ -27,24 +27,25 @@
   roles:
     - k3s-node-labeling
     - argocd-setup
-    # GitOps installs cert-manager and the private CA issuer required by OpenBao.
-    - openbao-setup
-    - openbao-secrets-init
     - argocd-bootstrap
-    - k9s-setup
+    # GitOps installs cert-manager and the private CA issuer required by OpenBao.
+    # OpenBao is now deployed via GitOps in k3s-manifests
+    # - openbao-setup
+    - openbao-secrets-init
+    # - k9s-setup
 
   post_tasks:
     - name: Print NodePort Service URLs and Passwords in JSON format
       ansible.builtin.debug:
         msg:
-          argocd: "http://{{ k3s_master1_public_ip }}/argocd/"
-          grafana: "http://{{ k3s_master1_public_ip }}/grafana/"
-          prometheus: "http://{{ k3s_master1_public_ip }}/prometheus/"
-          openbao: "http://{{ k3s_master1_public_ip }}/ui/"
-          authentik: "http://{{ k3s_master1_public_ip }}:30900/"
-          alloy: "http://{{ k3s_master1_public_ip }}/alloy"
-          traefik_dashboard: "http://{{ k3s_master1_public_ip }}/traefik-dashboard/"
-          frontend: "http://{{ k3s_master1_public_ip }}/frontend"
+          argocd: "https://argocd.freecloudinitiative.com"
+          grafana: "https://grafana.freecloudinitiative.com"
+          prometheus: "https://prometheus.freecloudinitiative.com"
+          openbao: "https://vault.freecloudinitiative.com"
+          authentik: "https://auth.freecloudinitiative.com"
+          alloy: "https://alloy.freecloudinitiative.com"
+          traefik_dashboard: "https://traefik.freecloudinitiative.com"
+          frontend: "https://freecloudinitiative.com"
           # argocd_password: "{{ argocd_admin_password | default('') }}"
           # grafana_password: "{{ grafana_admin_password | default('') }}"
           # openbao_password: "{{ openbao_token | default(openbao_dev_root_token | default('root')) }}"
