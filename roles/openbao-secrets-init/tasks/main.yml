@@ -128,10 +128,10 @@
     body_format: json
     body:
       policy: |
-        path "secret/data/grafana" {
+        path "secret/data/api-gateway" {
           capabilities = ["read"]
         }
-        path "secret/metadata/grafana" {
+        path "secret/metadata/api-gateway" {
           capabilities = ["read"]
         }
         path "secret/data/authentik" {
@@ -140,16 +140,70 @@
         path "secret/metadata/authentik" {
           capabilities = ["read"]
         }
+        path "secret/data/cloudflared" {
+          capabilities = ["read"]
+        }
+        path "secret/metadata/cloudflared" {
+          capabilities = ["read"]
+        }
+        path "secret/data/compute" {
+          capabilities = ["read"]
+        }
+        path "secret/metadata/compute" {
+          capabilities = ["read"]
+        }
+        path "secret/data/database" {
+          capabilities = ["read"]
+        }
+        path "secret/metadata/database" {
+          capabilities = ["read"]
+        }
+        path "secret/data/garage" {
+          capabilities = ["read"]
+        }
+        path "secret/metadata/garage" {
+          capabilities = ["read"]
+        }
+        path "secret/data/grafana" {
+          capabilities = ["read"]
+        }
+        path "secret/metadata/grafana" {
+          capabilities = ["read"]
+        }
+        path "secret/data/iam" {
+          capabilities = ["read"]
+        }
+        path "secret/metadata/iam" {
+          capabilities = ["read"]
+        }
         path "secret/data/platform-postgresql" {
           capabilities = ["read"]
         }
         path "secret/metadata/platform-postgresql" {
           capabilities = ["read"]
         }
+        path "secret/data/storage" {
+          capabilities = ["read"]
+        }
+        path "secret/metadata/storage" {
+          capabilities = ["read"]
+        }
+        path "secret/data/terminal-gateway" {
+          capabilities = ["read"]
+        }
+        path "secret/metadata/terminal-gateway" {
+          capabilities = ["read"]
+        }
         path "secret/data/valkey" {
           capabilities = ["read"]
         }
         path "secret/metadata/valkey" {
+          capabilities = ["read"]
+        }
+        path "secret/data/zot-registry" {
+          capabilities = ["read"]
+        }
+        path "secret/metadata/zot-registry" {
           capabilities = ["read"]
         }
     status_code: [200, 204]
@@ -241,6 +295,26 @@
         file_path: /openbao/audit/audit.log
     status_code: [200, 204]
   when: "'file/' not in openbao_audit_devices.json"
+  no_log: true
+
+- name: Fetch selfsigned-ca-secret from Kubernetes
+  kubernetes.core.k8s_info:
+    kind: Secret
+    name: selfsigned-ca-secret
+    namespace: cert-manager
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+  register: k8s_ca_secret
+  retries: 30
+  delay: 5
+  until:
+    - k8s_ca_secret.resources is defined
+    - k8s_ca_secret.resources | length > 0
+    - k8s_ca_secret.resources[0].data['ca.crt'] is defined
+  no_log: true
+
+- name: Set cluster_ca_cert fact
+  ansible.builtin.set_fact:
+    cluster_ca_cert: "{{ k8s_ca_secret.resources[0].data['ca.crt'] | b64decode }}"
   no_log: true
 
 - name: Seed application secrets in OpenBao
