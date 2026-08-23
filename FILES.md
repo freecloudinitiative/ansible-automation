@@ -1,27 +1,26 @@
 # FILES — Where Code Live
 
+Playbook path only. One line per file.
+
+IGNORE `.github/`, `local-setup.yml`, `pi-boot.yml`, `thermal-check.yml`, `ssh-config.yml` and roles they alone use are not listed.
+
+---
+
 ## Root
 
 | File | What |
 |---|---|
-| `playbook.yml` | Main cluster playbook: k3s master, workers, labels, ArgoCD, OpenBao, k9s. |
-| `pi-boot.yml` | Writes Raspberry Pi boot config (`/boot/firmware/config.txt`) on all nodes. |
-| `local-setup.yml` | Fetches kubeconfig from master, sets up k9s on local machine. |
-| `ssh-config.yml` | Generates local `~/.ssh/config` and populates `known_hosts`. |
-| `thermal-check.yml` | Reads and prints Raspberry Pi CPU temperatures via `vcgencmd`. |
-| `inventory.ini` | Ansible inventory: `[masters]`, `[workers]`, `[high_memory]`, `[mid_memory]`, `[low_memory]` groups. |
-| `ansible.cfg` | Ansible config: default inventory, vault password prompt, SSH connection tuning. |
-| `requirements.txt` | Python packages for the control machine (Ansible, etc.). |
-| `.ansible-lint` | ansible-lint config: rules, ignore patterns. |
-| `.gitignore` | Excludes `.retry` files, temp dirs, local secrets. |
-
----
-
-## collections/
-
-| File | What |
-|---|---|
-| `requirements.yml` | Declares `kubernetes.core` and `community.general` Ansible collections. |
+| `playbook.yml` | Three plays: masters, workers, first-master components. |
+| `ansible.cfg` | `inventory.ini`, vault prompt, `roles_path=./roles`, SSH ControlMaster. |
+| `inventory.ini` | Groups `masters`, `workers`, `high_memory`, `mid_memory`, `low_memory`. |
+| `collections/requirements.yml` | `kubernetes.core`, `community.general`, `ansible.posix`, `community.grafana`. |
+| `requirements.txt` | `ansible` pip pin for the control node. |
+| `.ansible-lint` | Lint skip/warn. Excludes `.github`. |
+| `.gitignore` | Retry files, venv, editor junk. |
+| `caveman.md` | Doc style. |
+| `README.md` | What `playbook.yml` does. |
+| `ROLES.md` | How plays and roles connect. |
+| `FILES.md` | This index. |
 
 ---
 
@@ -29,30 +28,21 @@
 
 | File | What |
 |---|---|
-| `main.yml` | Non-secret vars: public IPs for all nodes (`k3s_master1_public_ip`, etc.). |
-| `secret.yml` | Ansible Vault–encrypted secrets: passwords, tokens, secret keys used by roles. |
-
----
-
-## roles/raspberry-pi-boot-config/
-
-| File | What |
-|---|---|
-| `tasks/main.yml` | Deploys boot config template; reboots Pi if changed. |
-| `defaults/main.yml` | GPU memory split, cgroup flags, and other boot parameters. |
-| `templates/config.txt.j2` | Jinja2 template for `/boot/firmware/config.txt`. |
-| `README.md` | Role description. |
+| `group_vars/all/main.yml` | `k3s_*_public_ip` placeholders. Join address source. |
+| `group_vars/all/secret.yml` | Ansible Vault ciphertext. Unlock with `--ask-vault-pass`. |
 
 ---
 
 ## roles/k3s-pre-setup/
 
+Runs on every master and worker before k3s.
+
 | File | What |
 |---|---|
-| `tasks/main.yml` | Disables swap, installs packages, installs Python k8s libraries. |
-| `defaults/main.yml` | Package list (`k3s_presetup_packages`). |
-| `meta/main.yml` | Role metadata (author, min Ansible version). |
-| `README.md` | Role description. |
+| `roles/k3s-pre-setup/tasks/main.yml` | Swap off, fstab comment, stop `dphys-swapfile`, apt, containerd, pip k8s libs. |
+| `roles/k3s-pre-setup/defaults/main.yml` | `k3s_presetup_packages` list. |
+| `roles/k3s-pre-setup/meta/main.yml` | Galaxy metadata. |
+| `roles/k3s-pre-setup/README.md` | Role notes. |
 
 ---
 
@@ -60,21 +50,10 @@
 
 | File | What |
 |---|---|
-| `tasks/main.yml` | Installs k3s server, Helm, kubectx, kubens, popeye, stern, kube-ps1. |
-| `defaults/main.yml` | Tool versions (`kubectx_version`, `popeye_version`, `stern_version`, `kube_ps1_version`), kubeconfig path. |
-| `meta/main.yml` | Role metadata. |
-| `README.md` | Role description. |
-
----
-
-## roles/k3s-worker-setup/
-
-| File | What |
-|---|---|
-| `tasks/main.yml` | Installs k3s agent, connects to primary master using node token. |
-| `defaults/main.yml` | Default kubeconfig path. |
-| `meta/main.yml` | Role metadata. |
-| `README.md` | Role description. |
+| `roles/k3s-master-setup/tasks/main.yml` | Download `get.k3s.io`. Primary `--cluster-init`. Secondary join. Readyz. Helm + kubectx/kubens/popeye/stern/kube-ps1. |
+| `roles/k3s-master-setup/defaults/main.yml` | `kubeconfig_path`, tool versions. |
+| `roles/k3s-master-setup/meta/main.yml` | Galaxy metadata. |
+| `roles/k3s-master-setup/README.md` | Role notes. |
 
 ---
 
@@ -82,10 +61,21 @@
 
 | File | What |
 |---|---|
-| `tasks/main.yml` | Reads node token from master disk; sets `kubeconfig_path` fact. |
-| `defaults/main.yml` | Default kubeconfig path. |
-| `meta/main.yml` | Role metadata. |
-| `README.md` | Role description. |
+| `roles/k3s-fact-gathering/tasks/main.yml` | Slurp node-token on `masters[0]`. Set `kubeconfig_path`. |
+| `roles/k3s-fact-gathering/defaults/main.yml` | Default kubeconfig path. |
+| `roles/k3s-fact-gathering/meta/main.yml` | Galaxy metadata. |
+| `roles/k3s-fact-gathering/README.md` | Role notes. |
+
+---
+
+## roles/k3s-worker-setup/
+
+| File | What |
+|---|---|
+| `roles/k3s-worker-setup/tasks/main.yml` | `k3s` agent join using `k3s_master1_public_ip` + token. |
+| `roles/k3s-worker-setup/defaults/main.yml` | `k3s_embedded_registry: true`. |
+| `roles/k3s-worker-setup/meta/main.yml` | Galaxy metadata. |
+| `roles/k3s-worker-setup/README.md` | Role notes. |
 
 ---
 
@@ -93,10 +83,10 @@
 
 | File | What |
 |---|---|
-| `tasks/main.yml` | Labels nodes by memory tier; taints low-memory and master nodes. |
-| `defaults/main.yml` | Default kubeconfig path. |
-| `meta/main.yml` | Role metadata. |
-| `README.md` | Role description. |
+| `roles/k3s-node-labeling/tasks/main.yml` | Label by inventory group. Taint low-memory and masters. |
+| `roles/k3s-node-labeling/defaults/main.yml` | Label/taint maps (tasks use groups + kubectl, not this map). |
+| `roles/k3s-node-labeling/meta/main.yml` | Galaxy metadata. |
+| `roles/k3s-node-labeling/README.md` | Role notes. |
 
 ---
 
@@ -104,11 +94,11 @@
 
 | File | What |
 |---|---|
-| `tasks/main.yml` | Installs ArgoCD CLI + manifest, patches Deployments, waits for ready, reads admin password. |
-| `defaults/main.yml` | ArgoCD version, namespace, manifest URL, node selector, deployment names. |
-| `handlers/main.yml` | Handler: restarts `argocd-server` Deployment when ConfigMap changes. |
-| `meta/main.yml` | Role metadata. |
-| `README.md` | Role description. |
+| `roles/argocd-setup/tasks/main.yml` | argocd CLI, namespace, install.yaml, nodeSelector patch, wait, admin secret. |
+| `roles/argocd-setup/defaults/main.yml` | `argocd_version` `v3.5.1`, `argocd_deployments`, `node-tier: high-memory`. |
+| `roles/argocd-setup/handlers/main.yml` | Restart `argocd-server` after cmd-params ConfigMap. |
+| `roles/argocd-setup/meta/main.yml` | Galaxy metadata. |
+| `roles/argocd-setup/README.md` | Role notes. |
 
 ---
 
@@ -116,23 +106,11 @@
 
 | File | What |
 |---|---|
-| `tasks/main.yml` | Waits for Application CRD, renders and applies the GitOps root Application. |
-| `defaults/main.yml` | GitOps repo URL, revision, bootstrap dir, `argocd_bootstrap_enabled` flag. |
-| `templates/root-app.yaml.j2` | ArgoCD `Application` manifest (App of Apps). Points to `infrastructure/` and `applications/` paths in GitOps repo with auto-sync, prune, self-heal. |
-| `meta/main.yml` | Role metadata. |
-| `README.md` | Role description. |
-
----
-
-## roles/openbao-setup/
-
-| File | What |
-|---|---|
-| `tasks/main.yml` | Adds Helm repo, creates namespace (restricted pod security), waits for CA issuer, creates TLS cert, deploys OpenBao via Helm, installs `bao` CLI. |
-| `defaults/main.yml` | Namespace, Helm chart version, storage sizes, cert issuer name, CLI version, arch map. |
-| `templates/openbao-values.yaml.j2` | Helm values for OpenBao: HA mode, TLS, storage, UI, audit log PVC. |
-| `meta/main.yml` | Role metadata. |
-| `README.md` | Role description. |
+| `roles/argocd-bootstrap/tasks/main.yml` | Wait Application CRD. Render and apply `root-app`. |
+| `roles/argocd-bootstrap/templates/root-app.yaml.j2` | App-of-apps. Paths `infrastructure` and `applications` in `k3s-manifests`. |
+| `roles/argocd-bootstrap/defaults/main.yml` | Repo URL, `HEAD`, `argocd_bootstrap_enabled`. |
+| `roles/argocd-bootstrap/meta/main.yml` | Galaxy metadata. Needs `kubernetes.core`. |
+| `roles/argocd-bootstrap/README.md` | Role notes. |
 
 ---
 
@@ -140,52 +118,8 @@
 
 | File | What |
 |---|---|
-| `tasks/main.yml` | Waits for OpenBao healthy, enables KV engine, configures Kubernetes auth, installs ESO policy, enables audit log, seeds all application secrets. |
-| `defaults/main.yml` | Service names, namespace, bootstrap token var name, secret paths, audience, ESO role name. |
-| `README.md` | Role description. |
+| `roles/openbao-secrets-init/tasks/main.yml` | Health gate, token gate, KV/auth/policy/audit, seed `openbao_secrets`. |
+| `roles/openbao-secrets-init/defaults/main.yml` | Env lookups, namespace names, secret path list. |
+| `roles/openbao-secrets-init/README.md` | Second-run env vars. Revoke token after. |
 
----
-
-## roles/k9s-setup/
-
-| File | What |
-|---|---|
-| `tasks/main.yml` | Downloads and installs k9s on master node, writes config and aliases for root. |
-| `defaults/main.yml` | k9s version, install dir, arch map, kubeconfig path. |
-| `templates/config.yaml.j2` | k9s `config.yaml` template (skin, default namespace, log settings). |
-| `templates/aliases.yaml.j2` | k9s `aliases.yaml` template (command shortcuts). |
-| `meta/main.yml` | Role metadata. |
-| `README.md` | Role description. |
-
----
-
-## roles/local-k9s-setup/
-
-| File | What |
-|---|---|
-| `tasks/main.yml` | Fetches kubeconfig, patches master IP, installs k9s on local machine (Homebrew or direct download), templates k9s config locally. |
-| `defaults/main.yml` | Local kubeconfig path, remote kubeconfig path, k9s version, `install_local_k9s` flag, `set_insecure_tls` flag. |
-| `templates/config.yaml.j2` | k9s config template for local machine. |
-| `templates/aliases.yaml.j2` | k9s aliases template for local machine. |
-| `README.md` | Role description. |
-
----
-
-## roles/ssh-config-setup/
-
-| File | What |
-|---|---|
-| `tasks/main.yml` | Cleans known_hosts, writes `~/.ssh/config`, scans and adds host public keys. |
-| `defaults/main.yml` | SSH config dir, config file path, known_hosts path, `ssh_config_clean_known_hosts` flag, `ssh_hosts` dict. |
-| `templates/config.j2` | Jinja2 template for `~/.ssh/config`: one `Host` block per node with IP, user, identity file. |
-| `meta/main.yml` | Role metadata. |
-| `README.md` | Role description. |
-
----
-
-## roles/rpi-thermal-check/
-
-| File | What |
-|---|---|
-| `tasks/main.yml` | Runs `vcgencmd measure_temp`, prints hostname + temperature. Read-only. |
-| `README.md` | Role description. |
+No `templates/`. No `meta/`.
