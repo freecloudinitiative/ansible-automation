@@ -14,6 +14,9 @@ authentik_bootstrap_email: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_BOOTSTRA
 authentik_bootstrap_password: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_BOOTSTRAP_PASSWORD') | default('', true) }}"
 authentik_postgresql_password: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_POSTGRESQL_PASSWORD') | default('', true) }}"
 authentik_secret_key: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_SECRET_KEY') | default('', true) }}"
+authentik_grafana_oidc_secret: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_GRAFANA_OIDC_SECRET') | default('', true) }}"
+authentik_argocd_oidc_secret: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_ARGOCD_OIDC_SECRET') | default('', true) }}"
+authentik_zot_oidc_secret: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_ZOT_OIDC_SECRET') | default('', true) }}"
 api_gateway_internal_public_key: "{{ lookup('ansible.builtin.env', 'API_GATEWAY_INTERNAL_PUBLIC_KEY') | default('', true) }}"
 api_gateway_internal_signing_key: "{{ lookup('ansible.builtin.env', 'API_GATEWAY_INTERNAL_SIGNING_KEY') | default('', true) }}"
 cloudflared_tunnel_token: "{{ lookup('ansible.builtin.env', 'CLOUDFLARED_TUNNEL_TOKEN') | default('', true) }}"
@@ -47,6 +50,9 @@ openbao_secrets:
       bootstrap-password: "{{ authentik_bootstrap_password }}"
       postgresql-password: "{{ authentik_postgresql_password }}"
       secret-key: "{{ authentik_secret_key }}"
+      grafana-oidc-secret: "{{ authentik_grafana_oidc_secret }}"
+      argocd-oidc-secret: "{{ authentik_argocd_oidc_secret }}"
+      zot-oidc-secret: "{{ authentik_zot_oidc_secret }}"
   - path: platform-postgresql
     data:
       password: "{{ platform_postgresql_password }}"

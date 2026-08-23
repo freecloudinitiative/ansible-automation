@@ -75,6 +75,9 @@ authentik_bootstrap_email
 authentik_bootstrap_password
 authentik_postgresql_password
 authentik_secret_key
+authentik_grafana_oidc_secret
+authentik_argocd_oidc_secret
+authentik_zot_oidc_secret
 
 cloudflared_tunnel_token
 compute_postgresql_password
