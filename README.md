@@ -100,6 +100,8 @@ zot_registry_pull_password
 zot_registry_pull_username
 zot_registry_s3_access_key_id
 zot_registry_s3_secret_access_key
+ghcr_registry_username
+ghcr_registry_token
 ```
 
 ## Folder Where

@@ -12,6 +12,8 @@ short-lived administrative bootstrap token supplied only through the process
 environment:
 
 ```sh
+GHCR_REGISTRY_USERNAME='github_username' \
+GHCR_REGISTRY_TOKEN='ghp_random_token_with_read_packages_scope' \
 AUTHENTIK_SECRET_KEY='at-least-50-random-characters' \
 AUTHENTIK_POSTGRESQL_PASSWORD='at-least-24-random-characters' \
 PLATFORM_POSTGRESQL_PASSWORD='at-least-24-random-characters' \
