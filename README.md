@@ -34,6 +34,18 @@ ansible-playbook playbook.yml --ask-vault-pass
 - Argo CD is the cutover: this repo stops at `root-app`. `k3s-manifests` owns Traefik, cert-manager, OpenBao, apps.
 - Secrets never land in Git as plaintext. Vault file + env vars + OpenBao. External Secrets reads OpenBao with a short-lived ServiceAccount token. Playbook never writes an OpenBao token into Kubernetes.
 
+## Security
+
+`group_vars/all/secret.yml` is tracked in Git as an Ansible Vault-encrypted blob. Never decrypt it and commit the result.
+
+**Activate the pre-commit hook once after cloning:**
+
+```bash
+git config core.hooksPath hooks
+```
+
+The hook (`hooks/pre-commit`) inspects the **staged** content of any `secret.yml` file and refuses the commit if the file does not start with `$ANSIBLE_VAULT`. CI runs the same check as a backstop.
+
 ## Folder Where
 
 ```

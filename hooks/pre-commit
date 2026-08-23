@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+for f in $(git diff --cached --name-only --diff-filter=ACM | grep -E 'secret\.ya?ml$' || true); do
+  if ! git show ":$f" | head -1 | grep -q '^\$ANSIBLE_VAULT'; then
+    echo "refusing commit: $f is not ansible-vault encrypted" >&2
+    echo "run: ansible-vault encrypt $f" >&2
+    exit 1
+  fi
+done
