@@ -1,238 +1,111 @@
-# ROLES — What Roles Do
+# ROLES — How Code Work Together
 
----
+## Big Picture
 
-## raspberry-pi-boot-config
+```
+operator
+  │
+  │  ansible-playbook playbook.yml --ask-vault-pass
+  ▼
+playbook.yml
+  │
+  ├─ play 1  hosts: masters
+  │    k3s-pre-setup → k3s-master-setup → k3s-fact-gathering
+  │    first master: k3s server --cluster-init
+  │    later masters: join :6443 (inventory has only master-1 uncommented)
+  │    slurp node-token → hostvars
+  │
+  ├─ play 2  hosts: workers
+  │    k3s-pre-setup → k3s-worker-setup
+  │    token from hostvars[groups['masters'][0]]
+  │
+  └─ play 3  hosts: groups['masters'][0]
+       k3s-node-labeling → argocd-setup → argocd-bootstrap
+       → openbao-secrets-init
+            │
+            ▼
+       Argo CD Application root-app
+            │
+            ▼
+       k3s-manifests  (infrastructure/ + applications/)
+            │
+            ▼
+       OpenBao (GitOps) ── wait, init/unseal, OPENBAO_BOOTSTRAP_TOKEN
+            │
+            ▼
+       KV secrets + kubernetes auth + External Secrets policy
+```
 
-**Used by**: `pi-boot.yml` (all nodes)
+Post-play debug prints public URLs. Passwords stay commented out.
 
-Writes `/boot/firmware/config.txt` from a Jinja2 template. If file changes, reboots the Pi and waits 300 s for it to come back.
+## What Part Do
 
-Sets GPU memory, cgroup memory/CPU flags required by Kubernetes, and any other boot-level hardware parameters.
+| Part | Job |
+|---|---|
+| `playbook.yml` | Three plays. Order is the contract. |
+| `inventory.ini` | Host groups. `masters[0]` is primary. Memory groups drive labels/taints. |
+| `group_vars/all/main.yml` | `k3s_*_public_ip` slots. Empty until filled. |
+| `group_vars/all/secret.yml` | Vault. `--ask-vault-pass`. |
+| `ansible.cfg` | Default inventory, vault prompt, `roles_path=./roles`. |
+| `collections/requirements.yml` | `kubernetes.core` for k8s modules. |
 
-**Run first, before any k3s work.** Reboot must complete before next playbook touches the node.
+## What Roles Do
 
----
-
-## k3s-pre-setup
-
-**Used by**: `playbook.yml` (masters + workers)
-
-Prepares every node before k3s installs:
-
-1. Disables swap (`swapoff -a`, comments out fstab entry, stops `dphys-swapfile` service if present). K3s requires swap off.
-2. Updates apt cache.
-3. Installs required packages (e.g. `containerd`).
-4. Ensures `containerd` is started and enabled.
-5. Installs `python3-pip`, `python3-jsonpatch`, `python3-yaml`.
-6. Upgrades `kubernetes>=24.2.0`, `jsonpatch`, `PyYAML` Python packages — required by `kubernetes.core` Ansible collection tasks later.
-
----
-
-## k3s-master-setup
-
-**Used by**: `playbook.yml` (masters group)
-
-Installs and configures the k3s server on master nodes:
-
-1. Downloads `https://get.k3s.io` install script.
-2. **Primary master** (`masters[0]`): installs k3s with `--cluster-init`, disables built-in Traefik and ServiceLB (GitOps manages these instead), enables embedded registry.
-3. **Secondary masters**: joins cluster using primary master IP + node token.
-4. Waits for `/readyz` to return `ok` (retries 12×, 5 s delay).
-5. Creates `/var/lib/rancher/k3s/storage` local storage directory.
-6. Copies kubeconfig to user `~/.kube/config`, sets `KUBECONFIG` in `.bashrc`.
-7. Installs **Helm** if not present.
-8. Installs **kubectx** + **kubens** (arch-aware: arm64/amd64).
-9. Installs **popeye** (Kubernetes cluster sanitizer).
-10. Installs **stern** (multi-pod log tailer).
-11. Installs **kube-ps1** (Kubernetes context in bash prompt), sources it in `.bashrc`.
-
----
-
-## k3s-worker-setup
-
-**Used by**: `playbook.yml` (workers group)
-
-Installs k3s agent on each worker node:
-
-1. Downloads k3s install script.
-2. Installs k3s as `agent` pointing to primary master (`https://<master-ip>:6443`) using node token read by `k3s-fact-gathering`.
-3. Worker name comes from `worker_label` inventory variable.
-
-Runs after master setup. Node token is passed as a play variable decoded from `hostvars`.
-
----
-
-## k3s-fact-gathering
-
-**Used by**: `playbook.yml` (masters group, after master setup)
-
-Bridge between master setup and worker setup:
-
-1. Reads `/var/lib/rancher/k3s/server/node-token` from primary master. Sets it as a registered fact so workers can read it via `hostvars`.
-2. Sets `kubeconfig_path` fact (`/etc/rancher/k3s/k3s.yaml`) so downstream roles use a consistent variable.
-
----
-
-## k3s-node-labeling
-
-**Used by**: `playbook.yml` (primary master only, `run_once`)
-
-Applies Kubernetes node labels and taints based on inventory groups:
-
-| Inventory group | Label applied | Taint applied |
+| Role | Play | Job |
 |---|---|---|
-| `high_memory` | `node-tier=high-memory` | none |
-| `mid_memory` | `node-tier=mid-memory` | none |
-| `low_memory` | `node-tier=low-memory` | `memory=limited:NoSchedule` |
-| `masters` | none | `node-role.kubernetes.io/master=:NoSchedule` |
+| `k3s-pre-setup` | 1, 2 | Swap off. `dphys-swapfile` stopped. APT packages: wireguard, iscsi, nfs, containerd, python k8s libs. |
+| `k3s-master-setup` | 1 | `get.k3s.io` server. `--disable traefik`, `--disable servicelb`, `--embedded-registry`. Readyz wait. Helm + CLI tools. |
+| `k3s-fact-gathering` | 1 | Slurp node-token on `masters[0]`. Set `kubeconfig_path`. |
+| `k3s-worker-setup` | 2 | `get.k3s.io` agent. `--server` + `--token`. `--node-name` from `worker_label`. |
+| `k3s-node-labeling` | 3 | `node-tier=high-memory\|mid-memory\|low-memory`. Taint low-memory `memory=limited:NoSchedule`. Taint masters `node-role.kubernetes.io/master=:NoSchedule`. |
+| `argocd-setup` | 3 | Official install.yaml into `argocd`. Pin Deployments/StatefulSet to `node-tier=high-memory`. Wait ready. Read initial admin secret. |
+| `argocd-bootstrap` | 3 | Wait `applications.argoproj.io` CRD. Render `root-app.yaml.j2`. Apply. Watches `k3s-manifests` `infrastructure/` and `applications/`. prune + selfHeal. |
+| `openbao-secrets-init` | 3 | Wait OpenBao Service. Health must be 200 or 429. Need `OPENBAO_BOOTSTRAP_TOKEN`. Enable KV v2, file audit, Kubernetes auth. Policy `external-secrets-read`. Bind SA `external-secrets-openbao`. Seed paths. Copy `selfsigned-ca-secret` `ca.crt` into Postgres/Valkey/Garage secrets. `end_role` if not ready. |
 
-Checks which nodes are actually in the cluster before labelling — safe to run when some nodes are not yet joined.
+`openbao-setup` and `k9s-setup` sit in `roles/` but are commented out in `playbook.yml`. Not part of this path.
 
----
+## Part Talk to Part How
 
-## argocd-setup
+| From | To | How |
+|---|---|---|
+| Play 1 → play 2 | node-token | `hostvars[groups['masters'][0]]['k3s_node_token']['content']` base64-decoded. Workers never read the file. |
+| Master → workers | API | `https://{{ k3s_master1_public_ip }}:6443`. Must be set. |
+| Play 3 → cluster | kubeconfig | `/etc/rancher/k3s/k3s.yaml` via `kubernetes.core.k8s`. |
+| `argocd-bootstrap` → Git | HTTPS | `https://github.com/freecloudinitiative/k3s-manifests.git` @ `HEAD`. |
+| GitOps → OpenBao | cluster | Chart in `k3s-manifests`. Playbook does not install OpenBao. |
+| `openbao-secrets-init` → OpenBao | HTTPS to ClusterIP `:8200` | `X-Vault-Token` from env. `validate_certs: false` (private CA). |
+| External Secrets → OpenBao | later | Kubernetes auth. Role `external-secrets`. Audience `vault`. Token TTL 10m / max 30m. Playbook never stores bootstrap token in-cluster. |
 
-**Used by**: `playbook.yml` (primary master)
+## Why Build This Way
 
-Installs ArgoCD into the cluster:
+**Ansible for nodes, GitOps for apps.** Node OS, k3s flags, join token, first Argo CD install need SSH and once-only ceremony. Everything after `root-app` must live in Git so drift heals.
 
-1. Downloads `argocd` CLI binary (arch-aware).
-2. Creates `argocd` namespace.
-3. Downloads official ArgoCD install manifest.
-4. Applies manifest to cluster via `kubernetes.core.k8s`.
-5. Patches all ArgoCD Deployments with `nodeSelector` so they run on the correct node tier.
-6. Configures `argocd-cmd-params-cm` ConfigMap for subpath routing (`server.insecure: false`). Restarts `argocd-server` via handler.
-7. Waits for all ArgoCD Deployments to have all replicas ready (retries 60×, 10 s delay).
-8. Reads the initial admin password from `argocd-initial-admin-secret` and sets it as a fact for the post-task output.
+**Disable Traefik and ServiceLB at install.** Stock k3s ingress would fight GitOps Traefik and MetalLB.
 
----
+**Token via hostvars, not a file on workers.** One slurp on primary. Workers never open `/var/lib/rancher/k3s/server/node-token`.
 
-## argocd-bootstrap
+**OpenBao seed is a second run.** No dev root token. Operator init/unseal out of band. Env token, then revoke. Fail closed: no token → `end_role`, cluster still up.
 
-**Used by**: `playbook.yml` (primary master, after `argocd-setup`)
+**Labels and taints before Argo CD.** Argo CD pinned to `high-memory`. Masters and low-memory nodes do not take that load.
 
-Connects ArgoCD to the GitOps repository using the App of Apps pattern:
+**No OpenBao token in Kubernetes.** External Secrets uses a ServiceAccount. Blast radius stays a 10-minute Vault token.
 
-1. Waits for the `applications.argoproj.io` CRD to be established (retries 24×, 5 s delay).
-2. Creates the bootstrap stack directory on master.
-3. Renders `root-app.yaml.j2` → `root-app.yaml`. The root Application watches two paths in the GitOps repo:
-   - `infrastructure/`: all infra app manifests
-   - `applications/`: all service app manifests
-   Both with `automated.prune=true` and `automated.selfHeal=true`.
-4. Applies the root Application to Kubernetes. ArgoCD picks it up and starts reconciling the full stack.
+## Tool Use
 
-Controlled by `argocd_bootstrap_enabled` flag. Set to `false` to skip (e.g. first-time run before GitOps repo is ready).
+| Tool | Why |
+|---|---|
+| Ansible 2.16+ | SSH + `become` on Ubuntu Jammy Pis. Roles, hostvars, vault. |
+| Ansible Vault | `secret.yml` encrypted at rest. `ask_vault_pass`. |
+| `kubernetes.core` | Apply Namespace, manifests, CRD wait, patches. |
+| k3s | Single binary Kubernetes. `--cluster-init` HA-ready. Embedded registry for air-gapped-ish pulls. |
+| Argo CD | App-of-apps. `root-app` is the only cluster object this repo keeps applying. |
+| OpenBao | KV v2 for app secrets. Kubernetes auth for External Secrets. |
+| Helm (on master) | Installed for operator use. App install is Argo CD, not `helm install` in this playbook. |
 
----
+## Code Live Where When Run
 
-## openbao-setup
-
-**Used by**: `playbook.yml` (primary master, after `argocd-bootstrap`)
-
-Deploys OpenBao (open-source HashiCorp Vault fork) via Helm with mTLS:
-
-1. Creates OpenBao stack directory.
-2. Adds OpenBao Helm repository.
-3. Creates `openbao` namespace and labels it with `pod-security.kubernetes.io/enforce: restricted`.
-4. **Waits for the private CA `ClusterIssuer`** (`ca-cluster-issuer`) to be ready. This issuer is created by GitOps (cert-manager), so this step blocks until GitOps finishes deploying cert-manager.
-5. Creates an ECDSA-256 TLS certificate via cert-manager for all OpenBao internal DNS names.
-6. Waits for the TLS Secret to be provisioned.
-7. Renders `openbao-values.yaml.j2` and deploys OpenBao Helm chart (`wait: false` — sealed pods are not Ready by design).
-8. Installs `bao` CLI binary on master.
-9. Writes `/etc/profile.d/openbao.sh` with `VAULT_ADDR` and `BAO_ADDR` env vars.
-10. Copies OpenBao CA certificate to master for local admin use.
-
-**After this role finishes, OpenBao pods run but are uninitialized and sealed.** Manual ceremony required before `openbao-secrets-init` can continue.
-
----
-
-## openbao-secrets-init
-
-**Used by**: `playbook.yml` (primary master, after `openbao-setup`)
-
-Initializes OpenBao configuration and seeds all application secrets:
-
-**Requires**: OpenBao initialized + unsealed (do this manually via `kubectl port-forward`), and `OPENBAO_BOOTSTRAP_TOKEN` env var set to a short-lived admin token.
-
-Steps:
-
-1. Ensures `external-secrets` namespace exists.
-2. Waits for OpenBao health service to appear.
-3. Polls `/v1/sys/health` until OpenBao is accessible (accepts 200, 429, 501, 503 — all mean "reachable").
-4. Stops early (prints instructions) if OpenBao is uninitialized (501) or sealed (503).
-5. Stops early (prints instructions) if no bootstrap token supplied.
-6. Validates all required secret values meet minimum length: `AUTHENTIK_SECRET_KEY` ≥ 50 chars, passwords ≥ 24 chars, etc.
-7. Enables versioned KV engine at `secret/` path (v2).
-8. Installs `external-secrets-read` ACL policy (read-only on `grafana`, `authentik`, `platform-postgresql`, `valkey` paths).
-9. Enables Kubernetes authentication method.
-10. Configures Kubernetes auth (`kubernetes_host: https://kubernetes.default.svc:443`).
-11. Binds External Secrets Operator service account to `external-secrets-read` policy (10 m TTL, 30 m max).
-12. Enables file audit log at `/openbao/audit/audit.log`.
-13. Seeds all application secrets into OpenBao KV (`/v1/secret/data/<path>`). All `no_log: true`.
-
-Bootstrap token should be revoked immediately after this role completes.
-
----
-
-## k9s-setup
-
-**Used by**: `playbook.yml` (primary master)
-
-Installs k9s (Kubernetes TUI) on the master node:
-
-1. Detects CPU architecture (arm64/amd64).
-2. Downloads and installs k9s binary to `/usr/local/bin/`.
-3. Ensures kubeconfig is readable (`0644`).
-4. Writes `/etc/profile.d/k9s_kubeconfig.sh` with `KUBECONFIG` env var.
-5. Copies kubeconfig to `/root/.kube/config`.
-6. Creates `~/.config/k9s/`, `~/.config/k9s/clusters/`, `~/.local/state/k9s/screen-dumps/` directories for root.
-7. Templates `config.yaml` and `aliases.yaml` into `/root/.config/k9s/`.
-
----
-
-## local-k9s-setup
-
-**Used by**: `local-setup.yml` (runs on local control node, not on cluster)
-
-Fetches kubeconfig from master and sets up k9s on the local development machine:
-
-1. Ensures local `~/.kube/` directory exists.
-2. Fetches kubeconfig from primary master to local `~/.kube/config`.
-3. Replaces `127.0.0.1` in kubeconfig with the master's public IP so remote access works.
-4. Replaces `certificate-authority-data` with `insecure-skip-tls-verify: true` for public IP access (when `set_insecure_tls=true`).
-5. Sets kubeconfig permissions to `0600`.
-6. Installs k9s on macOS via **Homebrew** (preferred). Falls back to direct binary download if Homebrew fails.
-7. Creates local k9s config directories.
-8. Templates `config.yaml` and `aliases.yaml` into local `~/.config/k9s/`.
-9. Prints connection instructions.
-
----
-
-## ssh-config-setup
-
-**Used by**: `ssh-config.yml` (runs on local control node)
-
-Generates a local `~/.ssh/config` file and populates `known_hosts` for all cluster nodes:
-
-1. Ensures `~/.ssh/` directory exists (`0700`) and `known_hosts` file exists (`0600`).
-2. Removes stale host keys from `known_hosts` (by IP and hostname) using `ssh-keygen -R`.
-3. Renders `~/.ssh/config` from `config.j2` template with all node aliases, IPs, and SSH key paths.
-4. Scans host public keys via `ssh-keyscan` (ed25519, ecdsa, rsa) and appends them to `known_hosts`.
-
-After this, `ssh master-1`, `ssh worker-1` etc. work without accepting host key prompts.
-
----
-
-## rpi-thermal-check
-
-**Used by**: `thermal-check.yml` (all nodes)
-
-Read-only. Runs `vcgencmd measure_temp` on each Raspberry Pi and prints the result:
-
-```
-master-1: 52.1'C
-worker-1: 48.7'C
-```
-
-No changes made. Safe to run at any time.
+- **Control node**: this repo. `ansible-playbook` from here. Needs Python 3, collections from `collections/requirements.yml`.
+- **Masters / workers**: remote over SSH. `become: true`. k3s at `/usr/local/bin/k3s`. State under `/var/lib/rancher/k3s`. Kubeconfig `/etc/rancher/k3s/k3s.yaml` and `~/.kube/config`.
+- **Argo CD**: namespace `argocd`. Manifest cached at `~/k3s-stack/argocd/install.yaml`. `root-app.yaml` rendered to `~/k3s-stack/argocd/root-app.yaml`.
+- **OpenBao**: namespace `openbao` (GitOps). Seed talks to ClusterIP. Secrets under `secret/data/<path>`.
+- **External Secrets**: namespace `external-secrets`. SA `external-secrets-openbao`. Role `external-secrets`.

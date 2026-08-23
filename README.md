@@ -2,95 +2,50 @@
 
 ## What Code Do
 
-Ansible playbooks and roles that provision a bare-metal K3s Kubernetes cluster from scratch on Raspberry Pi nodes.
+`playbook.yml` builds the FCI K3s cluster on bare-metal nodes, then hands the cluster to GitOps.
 
-Run once → get a fully working cluster with:
+Three plays, in order:
 
-- K3s installed on 1 master + 3 workers
-- Nodes labelled by memory tier (`high-memory`, `mid-memory`, `low-memory`)
-- ArgoCD running and connected to the GitOps repo (App of Apps pattern)
-- OpenBao (open-source Vault) running with TLS, Kubernetes auth, and all application secrets seeded
-- k9s TUI installed on master node and local machine
-- Local `~/.kube/config` ready to use
+1. **Masters** — `k3s-pre-setup` then `k3s-master-setup` then `k3s-fact-gathering`. First host in `masters` runs `k3s server --cluster-init`. Traefik and ServiceLB stay off (GitOps owns ingress and LB). Embedded registry on. Kubeconfig copied to `~/.kube/config`. Helm, kubectx, kubens, popeye, stern, kube-ps1 installed. Node token slurped from `/var/lib/rancher/k3s/server/node-token`.
+2. **Workers** — `k3s-pre-setup` then `k3s-worker-setup`. Join `https://{{ k3s_master1_public_ip }}:6443` with that token.
+3. **First master only** — `k3s-node-labeling`, `argocd-setup`, `argocd-bootstrap`, `openbao-secrets-init`. Labels `node-tier`. Taints `low_memory` and masters. Installs Argo CD from official manifest. Applies `root-app` pointing at `k3s-manifests`. Seeds OpenBao after operator init/unseal.
 
-Four playbooks, run in order:
+OpenBao install is **not** in this playbook. `k3s-manifests` deploys it. `openbao-secrets-init` waits, then exits unless OpenBao is initialized **and** `OPENBAO_BOOTSTRAP_TOKEN` is set.
 
-| Playbook | What it does | Targets |
-|---|---|---|
-| `pi-boot.yml` | Writes `/boot/firmware/config.txt`. Reboots if changed. | all nodes |
-| `playbook.yml` | Full cluster: k3s, labels, ArgoCD, OpenBao, k9s | masters + workers |
-| `ssh-config.yml` | Writes local `~/.ssh/config`, scans known_hosts | localhost |
-| `local-setup.yml` | Fetches kubeconfig, installs k9s on local machine | localhost |
-| `thermal-check.yml` | Prints CPU temperature for all Raspberry Pi nodes | all nodes |
+```bash
+# First run: cluster + Argo CD + root-app. OpenBao seed stops until unsealed.
+ansible-playbook playbook.yml --ask-vault-pass
+
+# After OpenBao init/unseal: seed KV, Kubernetes auth, External Secrets policy.
+OPENBAO_BOOTSTRAP_TOKEN='hvs....' \
+AUTHENTIK_SECRET_KEY='...' \
+AUTHENTIK_POSTGRESQL_PASSWORD='...' \
+PLATFORM_POSTGRESQL_PASSWORD='...' \
+AUTHENTIK_BOOTSTRAP_PASSWORD='...' \
+VALKEY_PASSWORD='...' \
+ansible-playbook playbook.yml --ask-vault-pass
+```
+
+`ansible.cfg` sets `inventory = inventory.ini` and `ask_vault_pass = true`. Revoke bootstrap token after seed.
 
 ## Why Need It
 
-No cloud provider. Bare-metal Raspberry Pi cluster needs manual provisioning. Ansible makes it idempotent and repeatable — run again after a node replacement or config change without breaking what already works.
+- K3s on Raspberry Pi nodes has no cloud installer. Swap, packages, server/agent flags, token handoff must be exact.
+- Argo CD is the cutover: this repo stops at `root-app`. `k3s-manifests` owns Traefik, cert-manager, OpenBao, apps.
+- Secrets never land in Git as plaintext. Vault file + env vars + OpenBao. External Secrets reads OpenBao with a short-lived ServiceAccount token. Playbook never writes an OpenBao token into Kubernetes.
 
-## How Start
-
-```bash
-# 1. Install Ansible and dependencies
-pip install -r requirements.txt
-
-# 2. Install Ansible collections
-ansible-galaxy collection install -r collections/requirements.yml
-
-# 3. Fill in node IPs
-# Edit group_vars/all/main.yml with real IPs for all nodes.
-# Edit group_vars/all/secret.yml with secrets (encrypted with Ansible Vault).
-
-# 4. Step 1: Write boot config to Raspberry Pi nodes and reboot
-ansible-playbook pi-boot.yml
-
-# 5. Step 2: Provision k3s cluster, ArgoCD, OpenBao, k9s
-ansible-playbook playbook.yml
-
-# IMPORTANT: OpenBao must be initialized and unsealed manually before
-# step 5 completes. See openbao-secrets-init role section in ROLES.md.
-
-# 6. (Optional) Set up local SSH config
-ansible-playbook ssh-config.yml
-
-# 7. Pull kubeconfig and set up local k9s
-ansible-playbook local-setup.yml
-
-# 8. (Anytime) Check Raspberry Pi temperatures
-ansible-playbook thermal-check.yml
-```
-
-Vault password prompt appears automatically (`ask_vault_pass = true` in `ansible.cfg`).
-
-## Language
-
-YAML. Ansible 2.x. Python 3 required on target nodes (installed automatically). Collections: `kubernetes.core`, `community.general`.
-
-## Folders
+## Folder Where
 
 ```
-roles/                  One folder per role. Each has tasks/, defaults/, templates/, meta/.
-  raspberry-pi-boot-config/   Write Pi boot config, reboot.
-  k3s-pre-setup/              Disable swap, install packages, Python k8s libs.
-  k3s-master-setup/           Install k3s server, Helm, kubectx, popeye, stern, kube-ps1.
-  k3s-worker-setup/           Install k3s agent, connect to master.
-  k3s-fact-gathering/         Read node token, set kubeconfig_path fact.
-  k3s-node-labeling/          Label and taint nodes by memory tier.
-  argocd-setup/               Install ArgoCD CLI and manifests, wait for ready.
-  argocd-bootstrap/           Apply GitOps root Application (App of Apps).
-  openbao-setup/              Deploy OpenBao via Helm with TLS from cert-manager.
-  openbao-secrets-init/       Initialize KV engine, Kubernetes auth, seed secrets.
-  k9s-setup/                  Install k9s on master node.
-  local-k9s-setup/            Fetch kubeconfig, install k9s on local machine.
-  ssh-config-setup/           Write ~/.ssh/config, populate known_hosts.
-  rpi-thermal-check/          Print CPU temperature.
-group_vars/all/
-  main.yml                    Node IPs and non-secret vars.
-  secret.yml                  Encrypted secrets (Ansible Vault).
-collections/
-  requirements.yml            Ansible collection dependencies.
+playbook.yml                 Cluster bootstrap. Only playbook this doc covers.
+ansible.cfg                  Inventory, vault prompt, SSH multiplexing.
+inventory.ini                masters / workers / high_memory / mid_memory / low_memory.
+group_vars/all/              Shared vars. secret.yml is Ansible Vault.
+collections/requirements.yml kubernetes.core and friends.
+roles/                       Roles playbook.yml calls. See FILES.md.
 ```
 
-## Read More
+## Read More Where
 
-- [ROLES.md](ROLES.md) — what each role does, step by step
-- [FILES.md](FILES.md) — every file, one line
+- [ROLES.md](ROLES.md) — plays, roles, handoff to GitOps
+- [FILES.md](FILES.md) — every playbook-related file, one line
