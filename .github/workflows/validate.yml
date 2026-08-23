@@ -22,7 +22,5 @@ jobs:
 
       - name: Guard — verify secret.yml is encrypted
         run: |
-          if [ -f "group_vars/all/secret.yml" ]; then
-            head -1 group_vars/all/secret.yml | grep -q '^\$ANSIBLE_VAULT;1\.[12];AES256' \
-              || { echo "secret.yml is not encrypted or malformed — refusing to continue"; exit 1; }
-          fi
+          head -1 group_vars/all/secret.yml | grep -q '^\$ANSIBLE_VAULT;1\.[12];AES256$' \
+            || { echo "secret.yml is missing, not encrypted, or malformed — refusing to continue"; exit 1; }
