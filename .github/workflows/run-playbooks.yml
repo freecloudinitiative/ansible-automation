@@ -50,6 +50,11 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Guard — verify secret.yml is encrypted
+        run: |
+          head -1 group_vars/all/secret.yml | grep -q '^\$ANSIBLE_VAULT;1\.[12];AES256$' \
+            || { echo "secret.yml is not encrypted — refusing to continue"; exit 1; }
+
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:

@@ -34,6 +34,71 @@ ansible-playbook playbook.yml --ask-vault-pass
 - Argo CD is the cutover: this repo stops at `root-app`. `k3s-manifests` owns Traefik, cert-manager, OpenBao, apps.
 - Secrets never land in Git as plaintext. Vault file + env vars + OpenBao. External Secrets reads OpenBao with a short-lived ServiceAccount token. Playbook never writes an OpenBao token into Kubernetes.
 
+## Security
+
+`group_vars/all/secret.yml` is tracked in Git as an Ansible Vault-encrypted blob. Never decrypt it and commit the result.
+
+**Activate the pre-commit hook once after cloning:**
+
+```bash
+git config core.hooksPath hooks
+```
+
+The hook (`hooks/pre-commit`) inspects the **staged** content of any `secret.yml` file and refuses the commit if the file does not start with `$ANSIBLE_VAULT`. CI runs the same check as a backstop.
+
+### Vault Parameters
+
+Parameters in `group_vars/all/secret.yml`:
+
+```yaml
+password
+kubeconfig_path
+traefik_admin_password
+grafana_admin_password
+openbao_dev_root_token
+
+ssh_config_default_user
+ssh_config_default_identity_file
+ssh_config_custom_hosts:
+  - name
+    hostname
+    user
+    identity_file
+    identities_only
+    add_keys_to_agent
+    use_keychain
+
+api_gateway_internal_public_key
+api_gateway_internal_signing_key
+
+authentik_bootstrap_email
+authentik_bootstrap_password
+authentik_postgresql_password
+authentik_secret_key
+
+cloudflared_tunnel_token
+compute_postgresql_password
+database_postgresql_password
+
+garage_storage_service_access_key
+garage_storage_service_secret_key
+
+iam_postgresql_password
+platform_postgresql_password
+storage_postgresql_password
+
+terminal_gateway_internal_public_key
+terminal_gateway_internal_signing_key
+
+valkey_password
+
+zot_registry_htpasswd
+zot_registry_pull_password
+zot_registry_pull_username
+zot_registry_s3_access_key_id
+zot_registry_s3_secret_access_key
+```
+
 ## Folder Where
 
 ```
