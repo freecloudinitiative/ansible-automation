@@ -10,7 +10,7 @@ IGNORE `.github/` and `pi-boot.yml`.
 
 | File | What |
 |---|---|
-| `playbook.yml` | Three plays: masters, workers, first-master components. |
+| `playbook.yml` | Four plays: all hosts pre-setup, masters, workers, first-master components. |
 | `local-setup.yml` | Access cluster from local computer. |
 | `ssh-config.yml` | Nonprod SSH config. |
 | `thermal-check.yml` | Check node temps. |
