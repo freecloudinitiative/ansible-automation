@@ -43,6 +43,9 @@ Post-play debug prints public URLs. Passwords stay commented out.
 | Part | Job |
 |---|---|
 | `playbook.yml` | Three plays. Order is the contract. |
+| `local-setup.yml` | Access cluster from local computer. |
+| `ssh-config.yml` | Nonprod SSH config. |
+| `thermal-check.yml` | Check node temps. |
 | `inventory.ini` | Host groups. `masters[0]` is primary. Memory groups drive labels/taints. |
 | `group_vars/all/main.yml` | `k3s_*_public_ip` slots. Empty until filled. |
 | `group_vars/all/secret.yml` | Vault. `--ask-vault-pass`. |
@@ -61,8 +64,7 @@ Post-play debug prints public URLs. Passwords stay commented out.
 | `argocd-setup` | 3 | Official install.yaml into `argocd`. Pin Deployments/StatefulSet to `node-tier=high-memory`. Wait ready. Read initial admin secret. |
 | `argocd-bootstrap` | 3 | Wait `applications.argoproj.io` CRD. Render `root-app.yaml.j2`. Apply. Watches `k3s-manifests` `infrastructure/` and `applications/`. prune + selfHeal. |
 | `openbao-secrets-init` | 3 | Wait OpenBao Service. Health must be 200 or 429. Need `OPENBAO_BOOTSTRAP_TOKEN`. Enable KV v2, file audit, Kubernetes auth. Policy `external-secrets-read`. Bind SA `external-secrets-openbao`. Seed paths. Copy `selfsigned-ca-secret` `ca.crt` into Postgres/Valkey/Garage secrets. `end_role` if not ready. |
-
-`openbao-setup` and `k9s-setup` sit in `roles/` but are commented out in `playbook.yml`. Not part of this path.
+| `k9s-setup` | 3 | Install k9s. |
 
 ## Part Talk to Part How
 
