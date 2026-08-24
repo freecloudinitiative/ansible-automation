@@ -14,21 +14,6 @@
     creates: "{{ k9s_install_dir }}/k9s"
   become: true
 
-- name: Ensure K3s kubeconfig permissions allow reading
-  ansible.builtin.file:
-    path: "{{ kubeconfig_path }}"
-    mode: '0644'
-  become: true
-  ignore_errors: true
-
-- name: Ensure global KUBECONFIG profile script is set
-  ansible.builtin.copy:
-    dest: /etc/profile.d/k9s_kubeconfig.sh
-    content: |
-      export KUBECONFIG={{ kubeconfig_path }}
-    mode: '0755'
-  become: true
-
 - name: Ensure /root/.kube directory exists
   ansible.builtin.file:
     path: /root/.kube

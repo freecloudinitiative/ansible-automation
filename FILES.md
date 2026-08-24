@@ -2,7 +2,7 @@
 
 Playbook path only. One line per file.
 
-IGNORE `.github/`, `local-setup.yml`, `pi-boot.yml`, `thermal-check.yml`, `ssh-config.yml` and roles they alone use are not listed.
+IGNORE `.github/` and `pi-boot.yml`.
 
 ---
 
@@ -10,7 +10,10 @@ IGNORE `.github/`, `local-setup.yml`, `pi-boot.yml`, `thermal-check.yml`, `ssh-c
 
 | File | What |
 |---|---|
-| `playbook.yml` | Three plays: masters, workers, first-master components. |
+| `playbook.yml` | Four plays: all hosts pre-setup, masters, workers, first-master components. |
+| `local-setup.yml` | Access cluster from local computer. |
+| `ssh-config.yml` | Nonprod SSH config. |
+| `thermal-check.yml` | Check node temps. |
 | `ansible.cfg` | `inventory.ini`, vault prompt, `roles_path=./roles`, SSH ControlMaster. |
 | `inventory.ini` | Groups `masters`, `workers`, `high_memory`, `mid_memory`, `low_memory`. |
 | `collections/requirements.yml` | `kubernetes.core`, `community.general`, `ansible.posix`, `community.grafana`. |
@@ -123,3 +126,11 @@ Runs on every master and worker before k3s.
 | `roles/openbao-secrets-init/README.md` | Second-run env vars. Revoke token after. |
 
 No `templates/`. No `meta/`.
+
+---
+
+## roles/k9s-setup/
+
+| File | What |
+|---|---|
+| `roles/k9s-setup/tasks/main.yml` | Install k9s. |

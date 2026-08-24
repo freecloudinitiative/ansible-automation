@@ -107,7 +107,10 @@ ghcr_registry_token
 ## Folder Where
 
 ```
-playbook.yml                 Cluster bootstrap. Only playbook this doc covers.
+playbook.yml                 Cluster bootstrap.
+local-setup.yml              Access cluster from local computer.
+ssh-config.yml               Nonprod SSH config.
+thermal-check.yml            Check node temps.
 ansible.cfg                  Inventory, vault prompt, SSH multiplexing.
 inventory.ini                masters / workers / high_memory / mid_memory / low_memory.
 group_vars/all/              Shared vars. secret.yml is Ansible Vault.

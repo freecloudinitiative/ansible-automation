@@ -1,10 +1,16 @@
 ---
+- name: Pre-setup
+  hosts: all
+  become: true
+  roles:
+    # - raspberry-pi-boot-config # This role will be used in the prod setup
+    - k3s-pre-setup
+
 - name: Setup K3s master nodes
   hosts: masters
   become: true
   gather_facts: true
   roles:
-    - k3s-pre-setup
     - k3s-master-setup
     - k3s-fact-gathering
 
@@ -15,7 +21,6 @@
   vars:
     k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
   roles:
-    - k3s-pre-setup
     - k3s-worker-setup
 
 - name: Install K3S Components
@@ -28,11 +33,8 @@
     - k3s-node-labeling
     - argocd-setup
     - argocd-bootstrap
-    # GitOps installs cert-manager and the private CA issuer required by OpenBao.
-    # OpenBao is now deployed via GitOps in k3s-manifests
-    # - openbao-setup
     - openbao-secrets-init
-    # - k9s-setup
+    - k9s-setup
 
   post_tasks:
     - name: Print NodePort Service URLs and Passwords in JSON format
