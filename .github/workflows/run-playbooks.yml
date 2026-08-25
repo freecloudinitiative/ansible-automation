@@ -39,7 +39,7 @@ on:
 
 jobs:
   run-playbook:
-    uses: freecloudinitiative/.github/.github/workflows/ansible-run.yml@main
+    uses: freecloudinitiative/.github/.github/workflows/ansible-run.yml@2816605944e9c3355e401d527f7f725b05b71ce5
     with:
       cloud_provider: ${{ github.event.inputs.cloud_provider }}
       master_1_ip: ${{ github.event.inputs.master_1_ip }}
