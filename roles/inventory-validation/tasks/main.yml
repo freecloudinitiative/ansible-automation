@@ -1,0 +1,35 @@
+---
+# ---------------------------------------------------------------------------
+# Inventory validation
+# Runs as the first role in play 1 (hosts: all) before any node is modified.
+# Fail-fast guard for M3 audit finding: an empty k3s_master1_public_ip
+# produces --server=https://:6443, which breaks worker and secondary-master
+# join after k3s is already installed on the primaries.
+# ---------------------------------------------------------------------------
+
+- name: Validate required inventory variables
+  ansible.builtin.assert:
+    that:
+      - k3s_master1_public_ip | default('', true) | length > 0
+      - groups['masters'] | default([]) | length > 0
+      - groups['workers'] | default([]) | length > 0
+    fail_msg: >-
+      Set k3s_master1_public_ip in group_vars/all/main.yml (or pass
+      -e k3s_master1_public_ip=<ip>) and define non-empty masters and
+      workers groups in inventory.ini. Workers join with
+      --server=https://{{ k3s_master1_public_ip }}:6443; an empty value
+      produces https://:6443 and fails after k3s is already installed.
+  run_once: true
+  delegate_to: localhost
+  become: false
+
+- name: Validate the HA master prerequisites
+  ansible.builtin.assert:
+    that:
+      - k3s_master1_public_ip | default('', true) | length > 0
+    fail_msg: >-
+      Secondary masters join via --server=https://{{ k3s_master1_public_ip }}:6443.
+  when: groups['masters'] | length > 1
+  run_once: true
+  delegate_to: localhost
+  become: false

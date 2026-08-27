@@ -12,6 +12,28 @@ Three plays, in order:
 
 OpenBao install is **not** in this playbook. `k3s-manifests` deploys it. `openbao-secrets-init` waits, then exits unless OpenBao is initialized **and** `OPENBAO_BOOTSTRAP_TOKEN` is set.
 
+## Prerequisites
+
+Before running `ansible-playbook playbook.yml`, set `k3s_master1_public_ip` to the public IP of the first master node. Workers and secondary masters join the cluster at:
+
+```
+--server=https://<k3s_master1_public_ip>:6443
+```
+
+Set it in `group_vars/all/main.yml`:
+
+```yaml
+k3s_master1_public_ip: "203.0.113.10"
+```
+
+Or pass it at runtime:
+
+```bash
+ansible-playbook playbook.yml -e k3s_master1_public_ip=203.0.113.10 --ask-vault-pass
+```
+
+The playbook asserts this value is non-empty before any node is modified. An empty value produces `https://:6443` and causes worker join to fail after k3s is already installed on the masters.
+
 ```bash
 # First run: cluster + Argo CD + root-app. OpenBao seed stops until unsealed.
 ansible-playbook playbook.yml --ask-vault-pass
