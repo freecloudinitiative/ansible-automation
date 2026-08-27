@@ -34,6 +34,14 @@ IGNORE `.github/` and `pi-boot.yml`.
 | `group_vars/all/main.yml` | `k3s_*_public_ip` placeholders. Join address source. |
 | `group_vars/all/secret.yml` | Ansible Vault ciphertext. Unlock with `--ask-vault-pass`. |
 
+## roles/inventory-validation/
+
+Validate required inventory variables before any node modification.
+
+| File | What |
+|---|---|
+| `roles/inventory-validation/tasks/main.yml` | Fail-fast assertions for `k3s_master1_public_ip`, `masters`, and `workers` groups. |
+
 ---
 
 ## roles/k3s-pre-setup/
