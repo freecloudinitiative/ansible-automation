@@ -21,7 +21,11 @@ api_gateway_internal_public_key: "{{ lookup('ansible.builtin.env', 'API_GATEWAY_
 api_gateway_internal_signing_key: "{{ lookup('ansible.builtin.env', 'API_GATEWAY_INTERNAL_SIGNING_KEY') | default('', true) }}"
 cloudflared_tunnel_token: "{{ lookup('ansible.builtin.env', 'CLOUDFLARED_TUNNEL_TOKEN') | default('', true) }}"
 compute_postgresql_password: "{{ lookup('ansible.builtin.env', 'COMPUTE_POSTGRESQL_PASSWORD') | default('', true) }}"
+compute_internal_public_key: "{{ lookup('ansible.builtin.env', 'COMPUTE_INTERNAL_PUBLIC_KEY') | default('', true) }}"
+compute_internal_signing_key: "{{ lookup('ansible.builtin.env', 'COMPUTE_INTERNAL_SIGNING_KEY') | default('', true) }}"
 database_postgresql_password: "{{ lookup('ansible.builtin.env', 'DATABASE_POSTGRESQL_PASSWORD') | default('', true) }}"
+database_internal_public_key: "{{ lookup('ansible.builtin.env', 'DATABASE_INTERNAL_PUBLIC_KEY') | default('', true) }}"
+database_internal_signing_key: "{{ lookup('ansible.builtin.env', 'DATABASE_INTERNAL_SIGNING_KEY') | default('', true) }}"
 
 garage_storage_service_access_key: "{{ lookup('ansible.builtin.env', 'GARAGE_STORAGE_SERVICE_ACCESS_KEY') | default('', true) }}"
 garage_storage_service_secret_key: "{{ lookup('ansible.builtin.env', 'GARAGE_STORAGE_SERVICE_SECRET_KEY') | default('', true) }}"
@@ -29,6 +33,8 @@ iam_postgresql_password: "{{ lookup('ansible.builtin.env', 'IAM_POSTGRESQL_PASSW
 
 platform_postgresql_password: "{{ lookup('ansible.builtin.env', 'PLATFORM_POSTGRESQL_PASSWORD') | default('', true) }}"
 storage_postgresql_password: "{{ lookup('ansible.builtin.env', 'STORAGE_POSTGRESQL_PASSWORD') | default('', true) }}"
+storage_internal_public_key: "{{ lookup('ansible.builtin.env', 'STORAGE_INTERNAL_PUBLIC_KEY') | default('', true) }}"
+storage_internal_signing_key: "{{ lookup('ansible.builtin.env', 'STORAGE_INTERNAL_SIGNING_KEY') | default('', true) }}"
 terminal_gateway_internal_public_key: "{{ lookup('ansible.builtin.env', 'TERMINAL_GATEWAY_INTERNAL_PUBLIC_KEY') | default('', true) }}"
 terminal_gateway_internal_signing_key: "{{ lookup('ansible.builtin.env', 'TERMINAL_GATEWAY_INTERNAL_SIGNING_KEY') | default('', true) }}"
 
@@ -73,9 +79,13 @@ openbao_secrets:
   - path: compute
     data:
       postgresql-password: "{{ compute_postgresql_password }}"
+      internal-public-key: "{{ compute_internal_public_key }}"
+      internal-signing-key: "{{ compute_internal_signing_key }}"
   - path: database
     data:
       postgresql-password: "{{ database_postgresql_password }}"
+      internal-public-key: "{{ database_internal_public_key }}"
+      internal-signing-key: "{{ database_internal_signing_key }}"
   - path: garage
     data:
       ca-cert: "{{ cluster_ca_cert }}"
@@ -87,6 +97,8 @@ openbao_secrets:
   - path: storage
     data:
       postgresql-password: "{{ storage_postgresql_password }}"
+      internal-public-key: "{{ storage_internal_public_key }}"
+      internal-signing-key: "{{ storage_internal_signing_key }}"
   - path: terminal-gateway
     data:
       internal-public-key: "{{ terminal_gateway_internal_public_key }}"

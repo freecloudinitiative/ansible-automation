@@ -81,7 +81,11 @@ authentik_zot_oidc_secret
 
 cloudflared_tunnel_token
 compute_postgresql_password
+compute_internal_public_key
+compute_internal_signing_key
 database_postgresql_password
+database_internal_public_key
+database_internal_signing_key
 
 garage_storage_service_access_key
 garage_storage_service_secret_key
@@ -89,6 +93,8 @@ garage_storage_service_secret_key
 iam_postgresql_password
 platform_postgresql_password
 storage_postgresql_password
+storage_internal_public_key
+storage_internal_signing_key
 
 terminal_gateway_internal_public_key
 terminal_gateway_internal_signing_key
@@ -102,6 +108,22 @@ zot_registry_s3_access_key_id
 zot_registry_s3_secret_access_key
 ghcr_registry_username
 ghcr_registry_token
+```
+
+### Generating Keypairs for Services
+
+The compute, database, and storage services each require their own distinct Ed25519 keypair for internal communication. These MUST be distinct from the api-gateway keypair and from each other. A shared `kid` (derived from the public key) will cause the iam-service to fail at boot.
+
+To generate them:
+
+```bash
+for svc in compute database storage; do
+  openssl genpkey -algorithm ed25519 -out "$svc-internal-signing.key"
+  openssl pkey -in "$svc-internal-signing.key" -pubout -out "$svc-internal-public.pem"
+done
+export COMPUTE_INTERNAL_SIGNING_KEY="$(cat compute-internal-signing.key)"
+export COMPUTE_INTERNAL_PUBLIC_KEY="$(cat compute-internal-public.pem)"
+# repeat for DATABASE_* and STORAGE_*
 ```
 
 ## Folder Where

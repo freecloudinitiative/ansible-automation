@@ -70,6 +70,12 @@
       - authentik_grafana_oidc_secret | length >= 16
       - authentik_argocd_oidc_secret | length >= 16
       - authentik_zot_oidc_secret | length >= 16
+      - "'BEGIN PUBLIC KEY' in compute_internal_public_key"
+      - "'BEGIN PRIVATE KEY' in compute_internal_signing_key"
+      - "'BEGIN PUBLIC KEY' in database_internal_public_key"
+      - "'BEGIN PRIVATE KEY' in database_internal_signing_key"
+      - "'BEGIN PUBLIC KEY' in storage_internal_public_key"
+      - "'BEGIN PRIVATE KEY' in storage_internal_signing_key"
     fail_msg: >-
       Set AUTHENTIK_SECRET_KEY (at least 50 characters),
       AUTHENTIK_POSTGRESQL_PASSWORD and PLATFORM_POSTGRESQL_PASSWORD (at least
@@ -77,6 +83,9 @@
       VALKEY_PASSWORD (at least 24 characters), and the three OIDC secrets
       (authentik_grafana_oidc_secret, authentik_argocd_oidc_secret,
       authentik_zot_oidc_secret, at least 16 characters) for the bootstrap run.
+      COMPUTE_INTERNAL_PUBLIC_KEY, COMPUTE_INTERNAL_SIGNING_KEY, DATABASE_INTERNAL_PUBLIC_KEY,
+      DATABASE_INTERNAL_SIGNING_KEY, STORAGE_INTERNAL_PUBLIC_KEY, STORAGE_INTERNAL_SIGNING_KEY
+      must be provided as valid PEM formatted keys.
   no_log: true
 
 - name: Discover the active OpenBao service
