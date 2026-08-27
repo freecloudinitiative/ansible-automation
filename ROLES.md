@@ -10,7 +10,8 @@ operator
 playbook.yml
   │
   ├─ play 1  hosts: all
-  │    k3s-pre-setup
+  │    inventory-validation (fail-fast, localhost only)
+  │    raspberry-pi-cgroups → k3s-pre-setup
   │
   ├─ play 2  hosts: masters
   │    k3s-master-setup → k3s-fact-gathering

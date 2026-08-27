@@ -10,15 +10,17 @@
 - name: Validate required inventory variables
   ansible.builtin.assert:
     that:
-      - k3s_master1_public_ip | default('', true) | length > 0
+      - k3s_master1_public_ip | default('', true) | trim | length > 0
+      - k3s_master1_public_ip | default('', true) | trim == k3s_master1_public_ip | default('', true)
       - groups['masters'] | default([]) | length > 0
       - groups['workers'] | default([]) | length > 0
     fail_msg: >-
       Set k3s_master1_public_ip in group_vars/all/main.yml (or pass
       -e k3s_master1_public_ip=<ip>) and define non-empty masters and
-      workers groups in inventory.ini. Workers join with
-      --server=https://{{ k3s_master1_public_ip }}:6443; an empty value
-      produces https://:6443 and fails after k3s is already installed.
+      workers groups in inventory.ini. Validation stops the play before
+      any node is modified. An empty or whitespace-only value produces
+      https://:6443 and is rejected here to prevent a broken join after
+      k3s is already installed on the primaries.
   run_once: true
   delegate_to: localhost
   become: false
