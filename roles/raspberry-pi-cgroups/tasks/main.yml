@@ -10,9 +10,7 @@
   ansible.builtin.stat:
     path: "{{ item }}"
   register: cmdline_stat
-  loop:
-    - /boot/firmware/cmdline.txt
-    - /boot/cmdline.txt
+  loop: "{{ rpi_cgroups_cmdline_candidates }}"
 
 - name: Select the boot cmdline path
   ansible.builtin.set_fact:
@@ -25,7 +23,7 @@
 
 - name: Record whether the memory controller is already enabled
   ansible.builtin.set_fact:
-    memory_cgroup_enabled: "{{ proc_cgroups_before.stdout is search('^memory\\s+\\d+\\s+\\d+\\s+1', multiline=True) }}"
+    memory_cgroup_enabled: "{{ proc_cgroups_before.stdout is search(rpi_cgroups_proc_pattern, multiline=True) }}"
 
 - name: Ensure cgroup_memory=1 on the kernel command line
   ansible.builtin.replace:
@@ -49,12 +47,12 @@
 
 - name: Reboot to apply the cgroup kernel parameters
   ansible.builtin.reboot:
-    msg: "Rebooting to enable memory cgroups"
-    connect_timeout: 5
-    reboot_timeout: 300
-    pre_reboot_delay: 0
-    post_reboot_delay: 30
-    test_command: uptime
+    msg: "{{ rpi_cgroups_reboot_msg }}"
+    connect_timeout: "{{ rpi_cgroups_reboot_connect_timeout }}"
+    reboot_timeout: "{{ rpi_cgroups_reboot_timeout }}"
+    pre_reboot_delay: "{{ rpi_cgroups_reboot_pre_delay }}"
+    post_reboot_delay: "{{ rpi_cgroups_reboot_post_delay }}"
+    test_command: "{{ rpi_cgroups_reboot_test_command }}"
   when: cmdline_memory.changed or cmdline_enable.changed
 
 - name: Re-read the available cgroup controllers
@@ -65,7 +63,7 @@
 - name: Fail when the memory cgroup controller is unavailable
   ansible.builtin.assert:
     that:
-      - proc_cgroups_after.stdout is search('^memory\s+\d+\s+\d+\s+1', multiline=True)
+      - proc_cgroups_after.stdout is search(rpi_cgroups_proc_pattern, multiline=True)
     fail_msg: >-
       Memory cgroup controller is not enabled on {{ inventory_hostname }}.
       k3s cannot enforce ResourceQuota, LimitRange, or per-engine memory limits.
