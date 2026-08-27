@@ -59,6 +59,7 @@ Post-play debug prints public URLs. Passwords stay commented out.
 
 | Role | Play | Job |
 |---|---|---|
+| `raspberry-pi-cgroups` | 1 | Memory cgroups enabled and asserted (`cgroup_memory=1 cgroup_enable=memory` in `cmdline.txt`; no-op on Ubuntu where already active). Fails play if controller still off after reboot. |
 | `k3s-pre-setup` | 1 | Swap off. `dphys-swapfile` stopped. APT packages: wireguard, iscsi, nfs, containerd, python k8s libs. |
 | `k3s-master-setup` | 2 | `get.k3s.io` server. `--disable traefik`, `--disable servicelb`, `--embedded-registry`. Readyz wait. Helm + CLI tools. |
 | `k3s-fact-gathering` | 2 | Slurp node-token on `masters[0]`. Set `kubeconfig_path`. |

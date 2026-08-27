@@ -4,6 +4,7 @@
   become: true
   roles:
     # - raspberry-pi-boot-config # This role will be used in the prod setup
+    - raspberry-pi-cgroups
     - k3s-pre-setup
 
 - name: Setup K3s master nodes
