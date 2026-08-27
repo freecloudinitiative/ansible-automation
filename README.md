@@ -121,10 +121,9 @@ for svc in compute database storage; do
   openssl genpkey -algorithm ed25519 -out "$svc-internal-signing.key"
   openssl pkey -in "$svc-internal-signing.key" -pubout -out "$svc-internal-public.pem"
 done
-export COMPUTE_INTERNAL_SIGNING_KEY="$(cat compute-internal-signing.key)"
-export COMPUTE_INTERNAL_PUBLIC_KEY="$(cat compute-internal-public.pem)"
-# repeat for DATABASE_* and STORAGE_*
 ```
+
+Add the generated keys to `group_vars/all/secret.yml` before running the playbook (or export them as environment variables `COMPUTE_INTERNAL_SIGNING_KEY`, `COMPUTE_INTERNAL_PUBLIC_KEY`, etc. if bootstrapping without `secret.yml`).
 
 ## Folder Where
 
