@@ -40,12 +40,17 @@ ansible-playbook playbook.yml --ask-vault-pass
 
 # After OpenBao init/unseal: seed KV, Kubernetes auth, External Secrets policy.
 OPENBAO_BOOTSTRAP_TOKEN='hvs....' \
+GRAFANA_ADMIN_PASSWORD='...' \
 AUTHENTIK_SECRET_KEY='...' \
 AUTHENTIK_POSTGRESQL_PASSWORD='...' \
 PLATFORM_POSTGRESQL_PASSWORD='...' \
 AUTHENTIK_BOOTSTRAP_PASSWORD='...' \
+AUTHENTIK_ADMIN_TOKEN='...' \
 VALKEY_PASSWORD='...' \
 ansible-playbook playbook.yml --ask-vault-pass
+
+- `AUTHENTIK_ADMIN_TOKEN`: Value is an Authentik API token for a service account with user and group write scope. Created in Authentik after bootstrap admin exists, so first seed run may leave it empty; rerun seed once token exists. Empty value disables iam-service Authentik sync. Dashboard-created IAM users cannot sign in until set.
+- `GRAFANA_ADMIN_PASSWORD`: May instead live in `group_vars/all/secret.yml`. Note that `group_vars` overrides the role default.
 ```
 
 `ansible.cfg` sets `inventory = inventory.ini` and `ask_vault_pass = true`. Revoke bootstrap token after seed.
@@ -93,6 +98,7 @@ ssh_config_custom_hosts:
 api_gateway_internal_public_key
 api_gateway_internal_signing_key
 
+authentik_admin_token
 authentik_bootstrap_email
 authentik_bootstrap_password
 authentik_postgresql_password
