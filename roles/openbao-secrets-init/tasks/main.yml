@@ -70,6 +70,8 @@
       - authentik_grafana_oidc_secret | length >= 16
       - authentik_argocd_oidc_secret | length >= 16
       - authentik_zot_oidc_secret | length >= 16
+      - grafana_admin_password | length >= 16
+      - authentik_admin_token | length > 0
       - "'BEGIN PUBLIC KEY' in compute_internal_public_key"
       - "'BEGIN PRIVATE KEY' in compute_internal_signing_key"
       - "'BEGIN PUBLIC KEY' in database_internal_public_key"
@@ -89,6 +91,10 @@
       VALKEY_PASSWORD (at least 24 characters), and the three OIDC secrets
       (authentik_grafana_oidc_secret, authentik_argocd_oidc_secret,
       authentik_zot_oidc_secret, at least 16 characters) for the bootstrap run.
+      GRAFANA_ADMIN_PASSWORD (at least 16 characters) and AUTHENTIK_ADMIN_TOKEN
+      must be set. AUTHENTIK_ADMIN_TOKEN is an Authentik API token with user and
+      group write scope; without it iam-service cannot provision Authentik
+      identities and dashboard-created IAM users can never sign in.
       COMPUTE_INTERNAL_PUBLIC_KEY, COMPUTE_INTERNAL_SIGNING_KEY, DATABASE_INTERNAL_PUBLIC_KEY,
       DATABASE_INTERNAL_SIGNING_KEY, STORAGE_INTERNAL_PUBLIC_KEY, STORAGE_INTERNAL_SIGNING_KEY
       must be provided as distinct, valid PEM formatted keys.

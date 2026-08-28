@@ -10,6 +10,8 @@ openbao_external_secrets_service_account: external-secrets-openbao
 openbao_external_secrets_namespace: external-secrets
 openbao_external_secrets_audience: vault
 grafana_admin_user: admin
+grafana_admin_password: "{{ lookup('ansible.builtin.env', 'GRAFANA_ADMIN_PASSWORD') | default('', true) }}"
+authentik_admin_token: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_ADMIN_TOKEN') | default('', true) }}"
 authentik_bootstrap_email: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_BOOTSTRAP_EMAIL') | default('admin@freecloudinitiative.com', true) }}"
 authentik_bootstrap_password: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_BOOTSTRAP_PASSWORD') | default('', true) }}"
 authentik_postgresql_password: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_POSTGRESQL_PASSWORD') | default('', true) }}"
@@ -58,6 +60,7 @@ openbao_secrets:
       bootstrap-password: "{{ authentik_bootstrap_password }}"
       postgresql-password: "{{ authentik_postgresql_password }}"
       secret-key: "{{ authentik_secret_key }}"
+      admin-token: "{{ authentik_admin_token }}"
       grafana-oidc-secret: "{{ authentik_grafana_oidc_secret }}"
       argocd-oidc-secret: "{{ authentik_argocd_oidc_secret }}"
       zot-oidc-secret: "{{ authentik_zot_oidc_secret }}"
