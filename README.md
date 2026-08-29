@@ -39,21 +39,106 @@ The playbook validates this value before modifying any node. An empty or whitesp
 ansible-playbook playbook.yml --ask-vault-pass
 
 # After OpenBao init/unseal: seed KV, Kubernetes auth, External Secrets policy.
+# Every variable below is asserted before any OpenBao write; an unset variable
+# would seed an empty string and surface as a CrashLoopBackOff or
+# ImagePullBackOff with no pointer back at this run.
 OPENBAO_BOOTSTRAP_TOKEN='hvs....' \
 GRAFANA_ADMIN_PASSWORD='...' \
 AUTHENTIK_SECRET_KEY='...' \
 AUTHENTIK_POSTGRESQL_PASSWORD='...' \
-PLATFORM_POSTGRESQL_PASSWORD='...' \
 AUTHENTIK_BOOTSTRAP_PASSWORD='...' \
-AUTHENTIK_ADMIN_TOKEN='...' \
+AUTHENTIK_GRAFANA_OIDC_SECRET='...' \
+AUTHENTIK_ARGOCD_OIDC_SECRET='...' \
+AUTHENTIK_ZOT_OIDC_SECRET='...' \
+PLATFORM_POSTGRESQL_PASSWORD='...' \
 VALKEY_PASSWORD='...' \
+IAM_POSTGRESQL_PASSWORD='...' \
+COMPUTE_POSTGRESQL_PASSWORD='...' \
+DATABASE_POSTGRESQL_PASSWORD='...' \
+STORAGE_POSTGRESQL_PASSWORD='...' \
+API_GATEWAY_INTERNAL_PUBLIC_KEY='...' \
+API_GATEWAY_INTERNAL_SIGNING_KEY='...' \
+TERMINAL_GATEWAY_INTERNAL_PUBLIC_KEY='...' \
+TERMINAL_GATEWAY_INTERNAL_SIGNING_KEY='...' \
+COMPUTE_INTERNAL_PUBLIC_KEY='...' \
+COMPUTE_INTERNAL_SIGNING_KEY='...' \
+DATABASE_INTERNAL_PUBLIC_KEY='...' \
+DATABASE_INTERNAL_SIGNING_KEY='...' \
+STORAGE_INTERNAL_PUBLIC_KEY='...' \
+STORAGE_INTERNAL_SIGNING_KEY='...' \
+GARAGE_STORAGE_SERVICE_ACCESS_KEY='...' \
+GARAGE_STORAGE_SERVICE_SECRET_KEY='...' \
+ZOT_REGISTRY_HTPASSWD='...' \
+ZOT_REGISTRY_PULL_USERNAME='...' \
+ZOT_REGISTRY_PULL_PASSWORD='...' \
+ZOT_REGISTRY_S3_ACCESS_KEY_ID='...' \
+ZOT_REGISTRY_S3_SECRET_ACCESS_KEY='...' \
+GHCR_REGISTRY_USERNAME='...' \
+GHCR_REGISTRY_TOKEN='...' \
+CLOUDFLARED_TUNNEL_TOKEN='...' \
 ansible-playbook playbook.yml --ask-vault-pass
-
-- `AUTHENTIK_ADMIN_TOKEN`: Value is an Authentik API token for a service account with user and group write scope. Created in Authentik after bootstrap admin exists, so first seed run may leave it empty; rerun seed once token exists. Empty value disables iam-service Authentik sync. Dashboard-created IAM users cannot sign in until set.
-- `GRAFANA_ADMIN_PASSWORD`: May instead live in `group_vars/all/secret.yml`. Note that `group_vars` overrides the role default.
 ```
 
+Minimum lengths and format requirements enforced by the assert task before any write:
+
+| Variable | Requirement |
+|---|---|
+| `AUTHENTIK_SECRET_KEY` | >= 50 chars |
+| `AUTHENTIK_POSTGRESQL_PASSWORD`, `PLATFORM_POSTGRESQL_PASSWORD`, `VALKEY_PASSWORD` | >= 24 chars |
+| `IAM_POSTGRESQL_PASSWORD`, `COMPUTE_POSTGRESQL_PASSWORD`, `DATABASE_POSTGRESQL_PASSWORD`, `STORAGE_POSTGRESQL_PASSWORD` | >= 24 chars |
+| `AUTHENTIK_BOOTSTRAP_PASSWORD`, `AUTHENTIK_GRAFANA_OIDC_SECRET`, `AUTHENTIK_ARGOCD_OIDC_SECRET`, `AUTHENTIK_ZOT_OIDC_SECRET`, `GRAFANA_ADMIN_PASSWORD` | >= 16 chars |
+| `*_INTERNAL_PUBLIC_KEY` (5 keys) | valid PEM `BEGIN PUBLIC KEY`, distinct across all issuers |
+| `*_INTERNAL_SIGNING_KEY` (5 keys) | valid PEM `BEGIN PRIVATE KEY` |
+| `GARAGE_STORAGE_SERVICE_ACCESS_KEY`, `GARAGE_STORAGE_SERVICE_SECRET_KEY` | >= 16 chars |
+| `ZOT_REGISTRY_PULL_PASSWORD`, `ZOT_REGISTRY_S3_ACCESS_KEY_ID`, `ZOT_REGISTRY_S3_SECRET_ACCESS_KEY`, `GHCR_REGISTRY_TOKEN` | >= 16 chars |
+| `ZOT_REGISTRY_PULL_USERNAME`, `ZOT_REGISTRY_HTPASSWD`, `GHCR_REGISTRY_USERNAME` | non-empty |
+| `CLOUDFLARED_TUNNEL_TOKEN` | >= 32 chars |
+
+- `GRAFANA_ADMIN_PASSWORD`: May instead live in `group_vars/all/secret.yml`. Note that `group_vars` overrides the role default.
+
 `ansible.cfg` sets `inventory = inventory.ini` and `ask_vault_pass = true`. Revoke bootstrap token after seed.
+
+## Two-run bootstrap
+
+`AUTHENTIK_ADMIN_TOKEN` cannot be supplied on run 1 — Authentik does not exist
+until `k3s-manifests` syncs it at sync-wave 5, which happens after
+`openbao-secrets-init` has already run. The token is therefore seeded in a
+separate, narrowly tagged second run.
+
+**Run 1** — everything except the Authentik admin token:
+
+```bash
+OPENBAO_BOOTSTRAP_TOKEN='hvs....' ansible-playbook playbook.yml --ask-vault-pass
+```
+
+The playbook prints a reminder at the end that the second run is still pending.
+
+**Run 2** — after Argo CD syncs Authentik (sync-wave 5) and the bootstrap admin
+exists. Create an API token for a service account with user and group write
+scope in the Authentik admin UI, then:
+
+```bash
+AUTHENTIK_ADMIN_TOKEN='...' OPENBAO_BOOTSTRAP_TOKEN='hvs....' \
+  ansible-playbook playbook.yml --tags authentik-token --ask-vault-pass
+```
+
+This PATCHes only the `admin-token` field into the existing `secret/authentik`
+entry, leaving the other seven keys (`bootstrap-email`, `bootstrap-password`,
+`postgresql-password`, `secret-key`, and the three OIDC secrets) unchanged.
+
+External Secrets refreshes `iam-service-authentik-token` within `refreshInterval`
+(1 h by default); force it sooner:
+
+```bash
+kubectl -n backend annotate externalsecret iam-service-authentik-token \
+  force-sync=$(date +%s) --overwrite
+```
+
+No iam-service restart is needed — the token file is re-read per call, not
+cached at startup.
+
+Until run 2 completes, iam-service starts normally and every Authentik user sync
+fails silently at WARN. Dashboard-created IAM users cannot sign in.
 
 ## Why Need It
 
@@ -140,18 +225,18 @@ ghcr_registry_token
 
 ### Generating Keypairs for Services
 
-The compute, database, and storage services each require their own distinct Ed25519 keypair for internal communication. These MUST be distinct from the api-gateway keypair and from each other. A shared `kid` (derived from the public key) will cause the iam-service to fail at boot.
+The api-gateway, terminal-gateway, compute, database, and storage services each require their own distinct Ed25519 keypair for internal communication. All five keypairs MUST be distinct from each other. A shared `kid` (derived from the public key) will cause the iam-service to fail at boot with a kid-collision error that names a key fingerprint, not an environment variable.
 
-To generate them:
+To generate all five:
 
 ```bash
-for svc in compute database storage; do
+for svc in api-gateway terminal-gateway compute database storage; do
   openssl genpkey -algorithm ed25519 -out "$svc-internal-signing.key"
   openssl pkey -in "$svc-internal-signing.key" -pubout -out "$svc-internal-public.pem"
 done
 ```
 
-Add the generated keys to `group_vars/all/secret.yml` before running the playbook (or export them as environment variables `COMPUTE_INTERNAL_SIGNING_KEY`, `COMPUTE_INTERNAL_PUBLIC_KEY`, etc. if bootstrapping without `secret.yml`).
+Add the generated keys to `group_vars/all/secret.yml` before running the playbook, or export them as environment variables (e.g. `API_GATEWAY_INTERNAL_SIGNING_KEY`, `API_GATEWAY_INTERNAL_PUBLIC_KEY`, `TERMINAL_GATEWAY_INTERNAL_SIGNING_KEY`, `TERMINAL_GATEWAY_INTERNAL_PUBLIC_KEY`, `COMPUTE_INTERNAL_SIGNING_KEY`, `COMPUTE_INTERNAL_PUBLIC_KEY`, etc.) for runs that bypass the vault file.
 
 ## Folder Where
 

@@ -6,6 +6,7 @@
     name: "{{ openbao_external_secrets_namespace }}"
     state: present
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+  tags: [openbao, bootstrap]
 
 - name: Discover the OpenBao health service
   kubernetes.core.k8s_info:
@@ -18,10 +19,12 @@
   until: openbao_health_service.resources | length == 1
   retries: 30
   delay: 5
+  tags: [openbao, bootstrap, authentik-token]
 
 - name: Set the private OpenBao health address
   ansible.builtin.set_fact:
     openbao_url: "https://{{ openbao_health_service.resources[0].spec.clusterIP }}:8200"
+  tags: [openbao, bootstrap, authentik-token]
 
 - name: Wait for initialized and unsealed OpenBao
   ansible.builtin.uri:
@@ -34,6 +37,7 @@
   until: openbao_health.status is defined and openbao_health.status in [200, 429, 501, 503]
   retries: 30
   delay: 5
+  tags: [openbao, bootstrap, authentik-token]
 
 - name: Explain the required OpenBao initialization ceremony
   ansible.builtin.debug:
@@ -42,10 +46,12 @@
       and unseal it through a local port-forward, securely distribute the recovery
       material, then rerun with OPENBAO_BOOTSTRAP_TOKEN set to a short-lived admin token.
   when: openbao_health.status not in [200, 429]
+  tags: [openbao, bootstrap, authentik-token]
 
 - name: Stop secret bootstrap until OpenBao is initialized and unsealed
   ansible.builtin.meta: end_role
   when: openbao_health.status not in [200, 429]
+  tags: [openbao, bootstrap, authentik-token]
 
 - name: Explain how to supply the ephemeral OpenBao bootstrap token
   ansible.builtin.debug:
@@ -54,14 +60,46 @@
       token that can manage mounts, auth methods, policies, audit devices, and
       the bootstrap secrets. Revoke it immediately after bootstrap.
   when: openbao_bootstrap_token | length == 0
+  tags: [openbao, bootstrap, authentik-token]
 
 - name: Stop secret bootstrap until an ephemeral token is supplied
   ansible.builtin.meta: end_role
   when: openbao_bootstrap_token | length == 0
+  tags: [openbao, bootstrap, authentik-token]
+
+# Backstop: fail fast when any value destined for OpenBao is empty.
+# Every key in openbao_secrets is written unconditionally; an empty string
+# seeds successfully, the ExternalSecret syncs successfully with that empty
+# value, and the failure surfaces much later as a CrashLoopBackOff or
+# ImagePullBackOff with nothing pointing back at this run.
+# authentik_admin_token is exempt — it is seeded empty on first run and
+# populated in a second run once Authentik bootstrap has completed (PR-02).
+- name: Fail when any seeded value is empty
+  ansible.builtin.assert:
+    that:
+      - item.1.value | string | length > 0
+    fail_msg: >-
+      openbao_secrets[{{ item.0.path }}].{{ item.1.key }} has an empty value.
+      Every value is written to OpenBao unconditionally; an unset variable seeds
+      an empty string, the ExternalSecret then syncs successfully with an empty
+      value, and the failure surfaces much later as a CrashLoopBackOff or
+      ImagePullBackOff with nothing pointing back at this run.
+  loop: >-
+    {%- set ns = namespace(pairs=[]) -%}
+    {%- for entry in openbao_secrets -%}
+      {%- for kv in entry.data | dict2items -%}
+        {%- set ns.pairs = ns.pairs + [[entry, kv]] -%}
+      {%- endfor -%}
+    {%- endfor -%}
+    {{ ns.pairs }}
+  no_log: true
+  when: not (item.1.key == 'admin-token' and item.0.path == 'authentik')
+  tags: [openbao, bootstrap]
 
 - name: Validate required production application secrets
   ansible.builtin.assert:
     that:
+      # Authentik app secret + database
       - authentik_secret_key | length >= 50
       - authentik_postgresql_password | length >= 24
       - platform_postgresql_password | length >= 24
@@ -71,32 +109,92 @@
       - authentik_argocd_oidc_secret | length >= 16
       - authentik_zot_oidc_secret | length >= 16
       - grafana_admin_password | length >= 16
+      # Ed25519 keypairs. Every consumer parses these as PEM at boot and exits
+      # on failure; an empty seed is a CrashLoopBackOff with no pointer here.
+      - "'BEGIN PUBLIC KEY' in api_gateway_internal_public_key"
+      - "'BEGIN PRIVATE KEY' in api_gateway_internal_signing_key"
+      - "'BEGIN PUBLIC KEY' in terminal_gateway_internal_public_key"
+      - "'BEGIN PRIVATE KEY' in terminal_gateway_internal_signing_key"
       - "'BEGIN PUBLIC KEY' in compute_internal_public_key"
       - "'BEGIN PRIVATE KEY' in compute_internal_signing_key"
       - "'BEGIN PUBLIC KEY' in database_internal_public_key"
       - "'BEGIN PRIVATE KEY' in database_internal_signing_key"
       - "'BEGIN PUBLIC KEY' in storage_internal_public_key"
       - "'BEGIN PRIVATE KEY' in storage_internal_signing_key"
+      # iam-service loadTrustedKeys refuses to start when two issuers share a
+      # kid, and kid is derived from the public key — so every public key across
+      # every issuer must be distinct, terminal-gateway included.
       - compute_internal_public_key != database_internal_public_key
       - compute_internal_public_key != storage_internal_public_key
       - compute_internal_public_key != api_gateway_internal_public_key
       - database_internal_public_key != storage_internal_public_key
       - database_internal_public_key != api_gateway_internal_public_key
       - storage_internal_public_key != api_gateway_internal_public_key
+      - terminal_gateway_internal_public_key != api_gateway_internal_public_key
+      - terminal_gateway_internal_public_key != compute_internal_public_key
+      - terminal_gateway_internal_public_key != database_internal_public_key
+      - terminal_gateway_internal_public_key != storage_internal_public_key
+      # Per-service Postgres roles. An empty password seeds a valid-looking DSN
+      # and a CNPG DatabaseRole with no password; connections are refused.
+      - iam_postgresql_password | length >= 24
+      - compute_postgresql_password | length >= 24
+      - database_postgresql_password | length >= 24
+      - storage_postgresql_password | length >= 24
+      # Garage S3 credentials for storage-service's shared platform bucket.
+      - garage_storage_service_access_key | length >= 16
+      - garage_storage_service_secret_key | length >= 16
+      # Registry pull credentials. Empty renders auth ":" into
+      # zot-registry-pull-credentials and every FCI pod ImagePullBackOffs.
+      - zot_registry_pull_username | length > 0
+      - zot_registry_pull_password | length >= 16
+      - ghcr_registry_username | length > 0
+      - ghcr_registry_token | length >= 16
+      - zot_registry_htpasswd | length > 0
+      - zot_registry_s3_access_key_id | length >= 16
+      - zot_registry_s3_secret_access_key | length >= 16
+      # Cloudflare tunnel. Empty means nothing is reachable from outside.
+      - cloudflared_tunnel_token | length >= 32
     fail_msg: >-
-      Set AUTHENTIK_SECRET_KEY (at least 50 characters),
-      AUTHENTIK_POSTGRESQL_PASSWORD and PLATFORM_POSTGRESQL_PASSWORD (at least
-      24 characters), AUTHENTIK_BOOTSTRAP_PASSWORD (at least 16 characters),
-      VALKEY_PASSWORD (at least 24 characters), and the three OIDC secrets
-      (authentik_grafana_oidc_secret, authentik_argocd_oidc_secret,
-      authentik_zot_oidc_secret, at least 16 characters) and GRAFANA_ADMIN_PASSWORD
-      (at least 16 characters) for the bootstrap run.
-      (Note: AUTHENTIK_ADMIN_TOKEN is also required eventually for iam-service,
-      but must be seeded in a second run after the Authentik admin exists).
-      COMPUTE_INTERNAL_PUBLIC_KEY, COMPUTE_INTERNAL_SIGNING_KEY, DATABASE_INTERNAL_PUBLIC_KEY,
-      DATABASE_INTERNAL_SIGNING_KEY, STORAGE_INTERNAL_PUBLIC_KEY, STORAGE_INTERNAL_SIGNING_KEY
-      must be provided as distinct, valid PEM formatted keys.
+      Every value below is written to OpenBao unconditionally; an unset variable
+      seeds an empty string, the ExternalSecret then syncs successfully with an
+      empty value, and the failure surfaces much later as a CrashLoopBackOff or
+      ImagePullBackOff with nothing pointing back at this run.
+
+      Ed25519 PEM keypairs (must contain BEGIN PUBLIC KEY / BEGIN PRIVATE KEY
+      headers and be distinct across all issuers):
+        API_GATEWAY_INTERNAL_PUBLIC_KEY, API_GATEWAY_INTERNAL_SIGNING_KEY,
+        TERMINAL_GATEWAY_INTERNAL_PUBLIC_KEY, TERMINAL_GATEWAY_INTERNAL_SIGNING_KEY,
+        COMPUTE_INTERNAL_PUBLIC_KEY, COMPUTE_INTERNAL_SIGNING_KEY,
+        DATABASE_INTERNAL_PUBLIC_KEY, DATABASE_INTERNAL_SIGNING_KEY,
+        STORAGE_INTERNAL_PUBLIC_KEY, STORAGE_INTERNAL_SIGNING_KEY
+
+      Authentik (>= 50 / 24 / 16 chars respectively):
+        AUTHENTIK_SECRET_KEY, AUTHENTIK_POSTGRESQL_PASSWORD,
+        AUTHENTIK_BOOTSTRAP_PASSWORD, VALKEY_PASSWORD,
+        AUTHENTIK_GRAFANA_OIDC_SECRET, AUTHENTIK_ARGOCD_OIDC_SECRET,
+        AUTHENTIK_ZOT_OIDC_SECRET, GRAFANA_ADMIN_PASSWORD
+
+      Per-service Postgres (>= 24 chars each):
+        IAM_POSTGRESQL_PASSWORD, COMPUTE_POSTGRESQL_PASSWORD,
+        DATABASE_POSTGRESQL_PASSWORD, STORAGE_POSTGRESQL_PASSWORD,
+        PLATFORM_POSTGRESQL_PASSWORD
+
+      Garage S3 (>= 16 chars each):
+        GARAGE_STORAGE_SERVICE_ACCESS_KEY, GARAGE_STORAGE_SERVICE_SECRET_KEY
+
+      Registry credentials:
+        ZOT_REGISTRY_PULL_USERNAME (non-empty),
+        ZOT_REGISTRY_PULL_PASSWORD (>= 16 chars),
+        ZOT_REGISTRY_HTPASSWD (non-empty),
+        ZOT_REGISTRY_S3_ACCESS_KEY_ID (>= 16 chars),
+        ZOT_REGISTRY_S3_SECRET_ACCESS_KEY (>= 16 chars),
+        GHCR_REGISTRY_USERNAME (non-empty),
+        GHCR_REGISTRY_TOKEN (>= 16 chars)
+
+      Cloudflare tunnel (>= 32 chars):
+        CLOUDFLARED_TUNNEL_TOKEN
   no_log: true
+  tags: [openbao, bootstrap]
 
 - name: Discover the active OpenBao service
   kubernetes.core.k8s_info:
@@ -109,10 +207,12 @@
   until: openbao_active_service.resources | length == 1
   retries: 30
   delay: 5
+  tags: [openbao, bootstrap, authentik-token]
 
 - name: Use the active OpenBao API endpoint for bootstrap writes
   ansible.builtin.set_fact:
     openbao_url: "https://{{ openbao_active_service.resources[0].spec.clusterIP }}:8200"
+  tags: [openbao, bootstrap, authentik-token]
 
 - name: Read enabled OpenBao secret engines
   ansible.builtin.uri:
@@ -125,6 +225,7 @@
     return_content: true
   register: openbao_mounts
   no_log: true
+  tags: [openbao, bootstrap]
 
 - name: Enable the versioned KV secret engine
   ansible.builtin.uri:
@@ -141,6 +242,7 @@
     status_code: [200, 204]
   when: "'secret/' not in openbao_mounts.json"
   no_log: true
+  tags: [openbao, bootstrap]
 
 - name: Install least-privilege External Secrets policy
   ansible.builtin.uri:
@@ -232,6 +334,7 @@
         }
     status_code: [200, 204]
   no_log: true
+  tags: [openbao, bootstrap]
 
 - name: Read enabled OpenBao auth methods
   ansible.builtin.uri:
@@ -244,6 +347,7 @@
     return_content: true
   register: openbao_auth_methods
   no_log: true
+  tags: [openbao, bootstrap]
 
 - name: Enable OpenBao Kubernetes authentication
   ansible.builtin.uri:
@@ -258,6 +362,7 @@
     status_code: [200, 204]
   when: "'kubernetes/' not in openbao_auth_methods.json"
   no_log: true
+  tags: [openbao, bootstrap]
 
 - name: Configure OpenBao Kubernetes authentication
   ansible.builtin.uri:
@@ -271,6 +376,7 @@
       kubernetes_host: https://kubernetes.default.svc:443
     status_code: [200, 204]
   no_log: true
+  tags: [openbao, bootstrap]
 
 - name: Bind External Secrets service account to the read policy
   ansible.builtin.uri:
@@ -292,6 +398,7 @@
       token_max_ttl: 30m
     status_code: [200, 204]
   no_log: true
+  tags: [openbao, bootstrap]
 
 - name: Read enabled OpenBao audit devices
   ansible.builtin.uri:
@@ -304,6 +411,7 @@
     return_content: true
   register: openbao_audit_devices
   no_log: true
+  tags: [openbao, bootstrap]
 
 - name: Enable persistent OpenBao file audit logging
   ansible.builtin.uri:
@@ -320,6 +428,7 @@
     status_code: [200, 204]
   when: "'file/' not in openbao_audit_devices.json"
   no_log: true
+  tags: [openbao, bootstrap]
 
 - name: Fetch selfsigned-ca-secret from Kubernetes
   kubernetes.core.k8s_info:
@@ -335,11 +444,13 @@
     - k8s_ca_secret.resources | length > 0
     - k8s_ca_secret.resources[0].data['ca.crt'] is defined
   no_log: true
+  tags: [openbao, bootstrap]
 
 - name: Set cluster_ca_cert fact
   ansible.builtin.set_fact:
     cluster_ca_cert: "{{ k8s_ca_secret.resources[0].data['ca.crt'] | b64decode }}"
   no_log: true
+  tags: [openbao, bootstrap]
 
 - name: Seed application secrets in OpenBao
   ansible.builtin.uri:
@@ -356,3 +467,22 @@
   loop_control:
     label: "{{ item.path }}"
   no_log: true
+  tags: [openbao, bootstrap]
+
+# Authentik admin token — seeded in a separate second run once the Authentik
+# bootstrap admin exists (sync-wave 5). The include is skipped on the first run
+# when authentik_admin_token is empty; --tags authentik-token runs it directly
+# and the assert inside authentik-token.yml fails loudly if the token is absent.
+- name: Seed the Authentik admin token when supplied
+  ansible.builtin.include_tasks: authentik-token.yml
+  when: authentik_admin_token | length > 0
+  tags: [openbao, authentik-token]
+
+- name: Report that the Authentik admin token still needs a second run
+  ansible.builtin.debug:
+    msg: >-
+      AUTHENTIK_ADMIN_TOKEN was not supplied. Bootstrap is complete, but
+      iam-service Authentik user sync is inert until the second run — see
+      README.md. Rerun with --tags authentik-token once Authentik is up.
+  when: authentik_admin_token | length == 0
+  tags: [openbao, authentik-token]
