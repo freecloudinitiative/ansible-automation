@@ -69,7 +69,7 @@ Post-play debug prints public URLs. Passwords stay commented out.
 | `k3s-node-labeling` | 4 | `node-tier=high-memory\|mid-memory\|low-memory`. Taint low-memory `memory=limited:NoSchedule`. Taint masters `node-role.kubernetes.io/master=:NoSchedule`. |
 | `argocd-setup` | 4 | Official install.yaml into `argocd`. Pin Deployments/StatefulSet to `node-tier=high-memory`. Wait ready. Read initial admin secret. |
 | `argocd-bootstrap` | 4 | Wait `applications.argoproj.io` CRD. Render `root-app.yaml.j2`. Apply. Watches `k3s-manifests` `infrastructure/` and `applications/`. prune + selfHeal. |
-| `openbao-secrets-init` | 4 | Wait OpenBao Service. Health must be 200 or 429. Need `OPENBAO_BOOTSTRAP_TOKEN`. Enable KV v2, file audit, Kubernetes auth. Policy `external-secrets-read`. Bind SA `external-secrets-openbao`. Seed paths. Copy `selfsigned-ca-secret` `ca.crt` into Postgres/Valkey/Garage secrets. `end_role` if not ready. |
+| `openbao-secrets-init` | 4 | Wait OpenBao Service. Health must be 200 or 429. Need `OPENBAO_BOOTSTRAP_TOKEN`. Enable KV v2, file audit, Kubernetes auth. Policy `external-secrets-read`. Bind SA `external-secrets-openbao`. Assert all seeded secrets are non-empty and meet length/PEM requirements. Seed paths (`tags: openbao, bootstrap`). On first run, skips `authentik_admin_token` and prints a reminder. Run 2 (`--tags authentik-token`) PATCHes only `admin-token` into `secret/authentik` once the Authentik bootstrap admin exists. `end_role` if not ready. |
 | `k9s-setup` | 4 | Install k9s. |
 
 ## Part Talk to Part How
@@ -92,7 +92,7 @@ Post-play debug prints public URLs. Passwords stay commented out.
 
 **Token via hostvars, not a file on workers.** One slurp on primary. Workers never open `/var/lib/rancher/k3s/server/node-token`.
 
-**OpenBao seed is a second run.** No dev root token. Operator init/unseal out of band. Env token, then revoke. Fail closed: no token → `end_role`, cluster still up.
+**OpenBao seed is a two-run operation.** No dev root token. Operator init/unseal out of band. Env token, then revoke. Fail closed: no token → `end_role`, cluster still up. Run 1 (`ansible-playbook playbook.yml`) seeds everything except `authentik_admin_token`, which does not exist until Authentik bootstraps at sync-wave 5. Run 2 (`--tags authentik-token`) PATCHes only that field once the token is created; no other secrets are overwritten. Until run 2 completes, iam-service starts normally but Authentik user sync fails silently.
 
 **Labels and taints before Argo CD.** Argo CD pinned to `high-memory`. Masters and low-memory nodes do not take that load.
 
