@@ -19,12 +19,12 @@
   until: openbao_health_service.resources | length == 1
   retries: 30
   delay: 5
-  tags: [openbao, bootstrap]
+  tags: [openbao, bootstrap, authentik-token]
 
 - name: Set the private OpenBao health address
   ansible.builtin.set_fact:
     openbao_url: "https://{{ openbao_health_service.resources[0].spec.clusterIP }}:8200"
-  tags: [openbao, bootstrap]
+  tags: [openbao, bootstrap, authentik-token]
 
 - name: Wait for initialized and unsealed OpenBao
   ansible.builtin.uri:
@@ -37,7 +37,7 @@
   until: openbao_health.status is defined and openbao_health.status in [200, 429, 501, 503]
   retries: 30
   delay: 5
-  tags: [openbao, bootstrap]
+  tags: [openbao, bootstrap, authentik-token]
 
 - name: Explain the required OpenBao initialization ceremony
   ansible.builtin.debug:
@@ -46,12 +46,12 @@
       and unseal it through a local port-forward, securely distribute the recovery
       material, then rerun with OPENBAO_BOOTSTRAP_TOKEN set to a short-lived admin token.
   when: openbao_health.status not in [200, 429]
-  tags: [openbao, bootstrap]
+  tags: [openbao, bootstrap, authentik-token]
 
 - name: Stop secret bootstrap until OpenBao is initialized and unsealed
   ansible.builtin.meta: end_role
   when: openbao_health.status not in [200, 429]
-  tags: [openbao, bootstrap]
+  tags: [openbao, bootstrap, authentik-token]
 
 - name: Explain how to supply the ephemeral OpenBao bootstrap token
   ansible.builtin.debug:
@@ -60,12 +60,12 @@
       token that can manage mounts, auth methods, policies, audit devices, and
       the bootstrap secrets. Revoke it immediately after bootstrap.
   when: openbao_bootstrap_token | length == 0
-  tags: [openbao, bootstrap]
+  tags: [openbao, bootstrap, authentik-token]
 
 - name: Stop secret bootstrap until an ephemeral token is supplied
   ansible.builtin.meta: end_role
   when: openbao_bootstrap_token | length == 0
-  tags: [openbao, bootstrap]
+  tags: [openbao, bootstrap, authentik-token]
 
 # Backstop: fail fast when any value destined for OpenBao is empty.
 # Every key in openbao_secrets is written unconditionally; an empty string
@@ -77,28 +77,23 @@
 - name: Fail when any seeded value is empty
   ansible.builtin.assert:
     that:
-      - item.1 | string | length > 0
+      - item.1.value | string | length > 0
     fail_msg: >-
-      openbao_secrets entry under path '{{ item.0.path }}' has an empty value.
-      Every value below is written to OpenBao unconditionally; an unset variable
-      seeds an empty string, the ExternalSecret then syncs successfully with an
-      empty value, and the failure surfaces much later as a CrashLoopBackOff or
+      openbao_secrets[{{ item.0.path }}].{{ item.1.key }} has an empty value.
+      Every value is written to OpenBao unconditionally; an unset variable seeds
+      an empty string, the ExternalSecret then syncs successfully with an empty
+      value, and the failure surfaces much later as a CrashLoopBackOff or
       ImagePullBackOff with nothing pointing back at this run.
-  loop: >
-    {{
-      openbao_secrets
-      | map(attribute='data')
-      | zip(openbao_secrets | map(attribute='path'))
-      | list
-    }}
+  loop: >-
+    {%- set ns = namespace(pairs=[]) -%}
+    {%- for entry in openbao_secrets -%}
+      {%- for kv in entry.data | dict2items -%}
+        {%- set ns.pairs = ns.pairs + [[entry, kv]] -%}
+      {%- endfor -%}
+    {%- endfor -%}
+    {{ ns.pairs }}
   no_log: true
-  when: >
-    not (
-      item.0 | dict2items
-      | selectattr('key', 'equalto', 'admin-token')
-      | list | length > 0
-      and item.1 == 'authentik'
-    )
+  when: not (item.1.key == 'admin-token' and item.0.path == 'authentik')
   tags: [openbao, bootstrap]
 
 - name: Validate required production application secrets
@@ -212,12 +207,12 @@
   until: openbao_active_service.resources | length == 1
   retries: 30
   delay: 5
-  tags: [openbao, bootstrap]
+  tags: [openbao, bootstrap, authentik-token]
 
 - name: Use the active OpenBao API endpoint for bootstrap writes
   ansible.builtin.set_fact:
     openbao_url: "https://{{ openbao_active_service.resources[0].spec.clusterIP }}:8200"
-  tags: [openbao, bootstrap]
+  tags: [openbao, bootstrap, authentik-token]
 
 - name: Read enabled OpenBao secret engines
   ansible.builtin.uri:
