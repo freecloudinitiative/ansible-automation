@@ -25,6 +25,11 @@ Available variables are listed below, along with default values (see `defaults/m
 | `node_labels.low_memory`  | `{'node-tier': 'low-memory'}`                                         | Labels applied to nodes in the `low_memory` inventory group.  |
 | `node_taints.low_memory`  | `[{'key': 'memory', 'value': 'limited', 'effect': 'NoSchedule'}]`     | Taints applied to `low_memory` nodes.                         |
 | `node_taints.master`      | `[{'key': 'node-role.kubernetes.io/master', 'effect': 'NoSchedule'}]` | Taints applied to control plane / master nodes.               |
+| `node_arch.masters`       | `arm64`                                                               | CPU architecture label for master nodes (`arm64` or `amd64`). |
+| `node_arch.workers`       | `arm64`                                                               | CPU architecture label for worker nodes (`arm64` or `amd64`). |
+| `node_arch.high_memory`   | `arm64`                                                               | CPU architecture label for high-memory nodes.                 |
+| `node_arch.mid_memory`    | `arm64`                                                               | CPU architecture label for mid-memory nodes.                  |
+| `node_arch.low_memory`    | `arm64`                                                               | CPU architecture label for low-memory nodes.                  |
 
 ## Dependencies
 
