@@ -16,4 +16,14 @@ node_taints:
     - key: node-role.kubernetes.io/master
       effect: NoSchedule
 
+# Architecture labels applied per inventory group.
+# Supported values: arm64, amd64 (x86_64)
+# Override per group when adding mixed-arch nodes.
+node_arch:
+  masters: arm64
+  workers: arm64
+  high_memory: arm64
+  mid_memory: arm64
+  low_memory: arm64
+
 kubeconfig_path: /etc/rancher/k3s/k3s.yaml

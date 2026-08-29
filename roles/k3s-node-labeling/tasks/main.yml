@@ -64,3 +64,23 @@
   when: item in cluster_nodes
   delegate_to: "{{ groups['masters'][0] }}"
   run_once: true
+
+- name: Label master nodes with architecture
+  ansible.builtin.command:
+    cmd: "kubectl label node {{ item }} kubernetes.io/arch={{ node_arch.masters | default('arm64') }} --overwrite"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+  loop: "{{ groups['masters'] | default([]) | map('regex_replace', '\\..*', '') | list }}"
+  when: item in cluster_nodes
+  delegate_to: "{{ groups['masters'][0] }}"
+  run_once: true
+
+- name: Label worker nodes with architecture
+  ansible.builtin.command:
+    cmd: "kubectl label node {{ item }} kubernetes.io/arch={{ node_arch.workers | default('arm64') }} --overwrite"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+  loop: "{{ groups['workers'] | default([]) | map('regex_replace', '\\..*', '') | list }}"
+  when: item in cluster_nodes
+  delegate_to: "{{ groups['masters'][0] }}"
+  run_once: true
