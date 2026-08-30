@@ -255,7 +255,7 @@
   no_log: true
   tags: [openbao, bootstrap]
 
-- name: Discover the active OpenBao endpoint
+- name: Discover a serving, non-terminating active OpenBao endpoint
   kubernetes.core.k8s_info:
     api_version: discovery.k8s.io/v1
     kind: EndpointSlice
@@ -272,6 +272,10 @@
       | flatten
       | selectattr('addresses', 'defined')
       | selectattr('nodeName', 'defined')
+      | selectattr('conditions.serving', 'defined')
+      | selectattr('conditions.serving', 'equalto', true)
+      | selectattr('conditions.terminating', 'defined')
+      | selectattr('conditions.terminating', 'equalto', false)
       | list
       | length > 0
   retries: 30
@@ -286,6 +290,10 @@
          | flatten
          | selectattr('addresses', 'defined')
          | selectattr('nodeName', 'defined')
+         | selectattr('conditions.serving', 'defined')
+         | selectattr('conditions.serving', 'equalto', true)
+         | selectattr('conditions.terminating', 'defined')
+         | selectattr('conditions.terminating', 'equalto', false)
          | first }}
   tags: [openbao, bootstrap, authentik-token]
 
