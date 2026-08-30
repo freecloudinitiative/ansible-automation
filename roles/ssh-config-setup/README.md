@@ -21,7 +21,7 @@ Available variables and their default values (see `defaults/main.yml`):
 | `ssh_config_clean_known_hosts` | `false` | Purges old keys for target host IPs using `ssh-keygen -R` |
 | `ssh_config_scan_known_hosts` | `true` | Auto-scans host keys using `ssh-keyscan` to pre-trust target servers |
 | `ssh_config_strict_host_key_checking` | `"no"` | Configures `StrictHostKeyChecking` in SSH config so first connections never prompt |
-| `ssh_hosts` | `{}` | Map of hostname to IP address (supplied via playbook `vars` or `group_vars`) |
+| `ssh_hosts` | `{}` | Map of hostname to IP address (supplied via playbook `vars` or `group_vars`). Entries with an empty IP (`""`) are skipped. |
 | `ssh_config_custom_hosts` | `[]` | Additional custom SSH host blocks (e.g. `github.com`) |
 
 ## Example Usage

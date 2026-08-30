@@ -2,23 +2,30 @@
 # Do not edit manually
 
 {% for host_name, host_data in (ssh_hosts | default({})).items() %}
+{% if host_data is mapping %}
+{% set host_address = (host_data.hostname | default(host_data.ip | default(''), true)) | default('', true) | string | trim %}
+{% else %}
+{% set host_address = host_data | default('', true) | string | trim %}
+{% endif %}
+{% if host_address %}
 Host {{ host_name }}
 {% if host_data is mapping %}
-    HostName {{ host_data.hostname | default(host_data.ip) }}
+    HostName {{ host_address }}
     User {{ host_data.user | default(ssh_config_default_user) }}
     IdentityFile {{ host_data.identity_file | default(ssh_config_default_identity_file) }}
 {% else %}
-    HostName {{ host_data }}
+    HostName {{ host_address }}
     User {{ ssh_config_default_user }}
     IdentityFile {{ ssh_config_default_identity_file }}
 {% endif %}
     StrictHostKeyChecking {{ ssh_config_strict_host_key_checking | default('no') }}
     UserKnownHostsFile {{ ssh_known_hosts_file }}
 
+{% endif %}
 {% endfor %}
 {% for custom_host in (ssh_config_custom_hosts | default([])) %}
 Host {{ custom_host.name }}
-{% if custom_host.hostname is defined %}
+{% if custom_host.hostname | default('', true) | string | trim %}
   HostName {{ custom_host.hostname }}
 {% endif %}
 {% if custom_host.user is defined %}

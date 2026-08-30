@@ -1,4 +1,20 @@
 ---
+- name: Select SSH hosts that have a non-empty address
+  ansible.builtin.set_fact:
+    ssh_hosts_active: >-
+      {%- set ns = namespace(items=[]) -%}
+      {%- for h in (ssh_hosts | default({})) | dict2items -%}
+        {%- if h.value is string -%}
+          {%- set addr = h.value | default('', true) | string | trim -%}
+        {%- else -%}
+          {%- set addr = (h.value.hostname | default(h.value.ip | default(''), true)) | default('', true) | string | trim -%}
+        {%- endif -%}
+        {%- if addr -%}
+          {%- set ns.items = ns.items + [h] -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ ns.items }}
+
 - name: Ensure SSH directory exists
   ansible.builtin.file:
     path: "{{ ssh_config_dir }}"
@@ -21,10 +37,8 @@
       - "{{ ssh_known_hosts_file }}"
       - -R
       - "{{ item.value if (item.value is string) else (item.value.hostname | default(item.value.ip)) }}"
-  loop: "{{ (ssh_hosts | default({})) | dict2items }}"
-  when:
-    - ssh_config_clean_known_hosts | bool
-    - (item.value if (item.value is string) else (item.value.hostname | default(item.value.ip))) is defined
+  loop: "{{ ssh_hosts_active }}"
+  when: ssh_config_clean_known_hosts | bool
   register: ssh_keygen_ip_result
   changed_when:
     - "'updated' in (ssh_keygen_ip_result.stderr | default('')) or 'found' in (ssh_keygen_ip_result.stdout | default(''))"
@@ -37,7 +51,7 @@
       - "{{ ssh_known_hosts_file }}"
       - -R
       - "{{ item.key }}"
-  loop: "{{ (ssh_hosts | default({})) | dict2items }}"
+  loop: "{{ ssh_hosts_active }}"
   when: ssh_config_clean_known_hosts | bool
   register: ssh_keygen_host_result
   changed_when:
@@ -56,6 +70,6 @@
     if [ -n "$TARGET" ]; then
       ssh-keyscan -H -t ed25519,ecdsa,rsa "$TARGET" "$ALIAS" >> "{{ ssh_known_hosts_file }}" 2>/dev/null || true
     fi
-  loop: "{{ (ssh_hosts | default({})) | dict2items }}"
+  loop: "{{ ssh_hosts_active }}"
   when: ssh_config_scan_known_hosts | default(true) | bool
   changed_when: false
