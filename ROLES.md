@@ -58,7 +58,7 @@ Post-play debug prints public URLs. Passwords stay commented out.
 | `ssh-config.yml` | Nonprod SSH config. |
 | `thermal-check.yml` | Check node temps. |
 | `inventory.ini` | Host groups. `masters[0]` is primary. Memory groups drive labels/taints. |
-| `group_vars/all/main.yml` | `k3s_*_public_ip` slots. Empty until filled. |
+| `group_vars/all/main.yml` | `ssh_config_cloud`. `k3s_*_public_ip` slots. Empty until filled. |
 | `group_vars/all/secret.yml` | Vault. `--ask-vault-pass`. |
 | `ansible.cfg` | Default inventory, vault prompt, `roles_path=./roles`. |
 | `collections/requirements.yml` | `kubernetes.core` for k8s modules. |

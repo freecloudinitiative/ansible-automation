@@ -30,7 +30,7 @@ IGNORE `.github/` and `pi-boot.yml`.
 
 | File | What |
 |---|---|
-| `group_vars/all/main.yml` | `k3s_*_public_ip` placeholders. Join address source. |
+| `group_vars/all/main.yml` | `ssh_config_cloud` (`gcp` \| `aws`). `k3s_*_public_ip` placeholders. Join address source. |
 | `group_vars/all/secret.yml` | Ansible Vault ciphertext. Unlock with `--ask-vault-pass`. |
 
 ## roles/inventory-validation/

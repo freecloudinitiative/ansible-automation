@@ -172,8 +172,10 @@ traefik_admin_password
 grafana_admin_password
 openbao_dev_root_token
 
-ssh_config_default_user
-ssh_config_default_identity_file
+ssh_config_gcp_user
+ssh_config_gcp_identity_file
+ssh_config_aws_user
+ssh_config_aws_identity_file
 ssh_config_custom_hosts:
   - name
     hostname
