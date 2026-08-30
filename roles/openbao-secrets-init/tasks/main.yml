@@ -46,32 +46,14 @@
       endpoint from its local inventory node.
   tags: [openbao, bootstrap, authentik-token]
 
-- name: Explain the required OpenBao initialization ceremony
-  ansible.builtin.debug:
-    msg: >-
-      OpenBao is intentionally deployed without a development root token. Initialize
-      and unseal it through a local port-forward, securely distribute the recovery
-      material, then rerun with OPENBAO_BOOTSTRAP_TOKEN set to a short-lived admin token.
-  when: (openbao_health.status | default(0) | int) not in [200, 429]
+- name: Automate OpenBao initialization if uninitialized or sealed
+  ansible.builtin.include_tasks: init.yml
+  when: (openbao_health.status | default(0) | int) in [501, 503]
   tags: [openbao, bootstrap, authentik-token]
 
-- name: Stop secret bootstrap until OpenBao is initialized and unsealed
-  ansible.builtin.meta: end_role
-  when: (openbao_health.status | default(0) | int) not in [200, 429]
-  tags: [openbao, bootstrap, authentik-token]
-
-- name: Explain how to supply the ephemeral OpenBao bootstrap token
-  ansible.builtin.debug:
-    msg: >-
-      OpenBao is ready. Rerun with OPENBAO_BOOTSTRAP_TOKEN set to a short-lived
-      token that can manage mounts, auth methods, policies, audit devices, and
-      the bootstrap secrets. Revoke it immediately after bootstrap.
-  when: openbao_bootstrap_token | length == 0
-  tags: [openbao, bootstrap, authentik-token]
-
-- name: Stop secret bootstrap until an ephemeral token is supplied
-  ansible.builtin.meta: end_role
-  when: openbao_bootstrap_token | length == 0
+- name: Automate OpenBao unsealing if uninitialized or sealed
+  ansible.builtin.include_tasks: unseal.yml
+  when: (openbao_health.status | default(0) | int) in [501, 503]
   tags: [openbao, bootstrap, authentik-token]
 
 # openbao_secrets references cluster_ca_cert, so the fact must exist before any task templates it.

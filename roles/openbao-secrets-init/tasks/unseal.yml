@@ -1,0 +1,32 @@
+---
+- name: Read OpenBao health EndpointSlices for unsealing
+  kubernetes.core.k8s_info:
+    api_version: discovery.k8s.io/v1
+    kind: EndpointSlice
+    namespace: "{{ openbao_namespace }}"
+    label_selectors:
+      - "kubernetes.io/service-name={{ openbao_health_service_name }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+  register: openbao_health_endpoint_slices
+
+- name: Collect all OpenBao health candidates
+  ansible.builtin.set_fact:
+    openbao_all_health_candidates: >-
+      {%- set ns = namespace(endpoints=[]) -%}
+      {%- for slice in openbao_health_endpoint_slices.resources | default([], true) -%}
+        {%- for endpoint in slice.endpoints | default([], true) -%}
+          {%- if endpoint.addresses | default([], true) | length > 0
+                and endpoint.nodeName is defined
+                and not ((endpoint.conditions | default({}, true)).terminating | default(false) | bool) -%}
+            {%- set ns.endpoints = ns.endpoints + [endpoint] -%}
+          {%- endif -%}
+        {%- endfor -%}
+      {%- endfor -%}
+      {{ ns.endpoints }}
+
+- name: Unseal all OpenBao nodes
+  ansible.builtin.include_tasks: unseal-node.yml
+  loop: "{{ openbao_all_health_candidates }}"
+  loop_control:
+    loop_var: unseal_node
+    label: "{{ unseal_node.nodeName }}"
