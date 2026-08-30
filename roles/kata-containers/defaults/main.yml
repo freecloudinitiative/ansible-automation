@@ -1,0 +1,46 @@
+---
+# Official static release. 4.x ships kata-static (runtime-rs) and kata-go-static.
+kata_version: "4.1.0"
+kata_release_artifact: kata-static
+
+kata_install_root: /opt/kata
+kata_config_dir: /etc/kata-containers
+kata_download_dir: /var/tmp
+kata_cleanup_tarball: true
+
+kata_shim_name: containerd-shim-kata-v2
+kata_runtime_bin: kata-runtime
+kata_runtime_handler: kata
+
+# Packaged QEMU config. Copied to /etc/kata-containers so host edits survive upgrades.
+kata_source_config: "{{ kata_install_root }}/share/defaults/kata-containers/configuration-qemu.toml"
+kata_config_path: "{{ kata_config_dir }}/configuration.toml"
+
+kata_shim_path: "{{ kata_install_root }}/bin/{{ kata_shim_name }}"
+kata_runtime_path: "{{ kata_install_root }}/bin/{{ kata_runtime_bin }}"
+
+kata_containerd_dir: /var/lib/rancher/k3s/agent/etc/containerd
+kata_containerd_v3_tmpl: "{{ kata_containerd_dir }}/config-v3.toml.tmpl"
+kata_containerd_v2_tmpl: "{{ kata_containerd_dir }}/config.toml.tmpl"
+
+kata_packages:
+  - zstd
+  - curl
+  - ca-certificates
+
+# Guest VM boot memory (MiB). Per-pod overhead on high_memory workers.
+kata_default_memory_mb: 2048
+kata_default_vcpus: 1
+
+kata_require_kvm: true
+kata_apply_runtimeclass: true
+kata_runtimeclass_name: kata
+
+# Matches k3s-node-labeling: only high_memory workers get Kata.
+kata_runtimeclass_node_selector:
+  node-tier: high-memory
+
+kata_node_label_key: katacontainers.io/kata-runtime
+kata_node_label_value: "true"
+
+kubeconfig_path: /etc/rancher/k3s/k3s.yaml

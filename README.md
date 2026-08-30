@@ -4,11 +4,13 @@
 
 `playbook.yml` builds the FCI K3s cluster on bare-metal nodes, then hands the cluster to GitOps.
 
-Three plays, in order:
+Five plays, in order:
 
-1. **Masters** — `k3s-pre-setup` then `k3s-master-setup` then `k3s-fact-gathering`. First host in `masters` runs `k3s server --cluster-init`. Traefik and ServiceLB stay off (GitOps owns ingress and LB). Embedded registry on. Kubeconfig copied to `~/.kube/config`. Helm, kubectx, kubens, popeye, stern, kube-ps1 installed. Node token slurped from `/var/lib/rancher/k3s/server/node-token`.
-2. **Workers** — `k3s-pre-setup` then `k3s-worker-setup`. Join `https://{{ k3s_master1_public_ip }}:6443` with that token.
-3. **First master only** — `k3s-node-labeling`, `argocd-setup`, `argocd-bootstrap`, `openbao-secrets-init`. Labels `node-tier`. Taints `low_memory` and masters. Installs Argo CD from official manifest. Applies `root-app` pointing at `k3s-manifests`. Seeds OpenBao after operator init/unseal.
+1. **All hosts** — inventory validation, cgroups, `k3s-pre-setup`.
+2. **Masters** — `k3s-master-setup` then `k3s-fact-gathering`. First host in `masters` runs `k3s server --cluster-init`. Traefik and ServiceLB stay off (GitOps owns ingress and LB). Embedded registry on. Kubeconfig copied to `~/.kube/config`. Helm, kubectx, kubens, popeye, stern, kube-ps1 installed. Node token slurped from `/var/lib/rancher/k3s/server/node-token`.
+3. **Workers** — `k3s-worker-setup`. Join `https://{{ k3s_master1_public_ip }}:6443` with that token.
+4. **high_memory workers** — `kata-containers`. Official static tarball into `/opt/kata`. Registers CRI runtime `kata` with k3s containerd. Applies RuntimeClass `kata` (`node-tier=high-memory`). Needs `/dev/kvm` (nested virt if the worker is a VM). ~3 GB disk. Re-run with `--tags kata`.
+5. **First master only** — `k3s-node-labeling`, `argocd-setup`, `argocd-bootstrap`, `openbao-secrets-init`. Labels `node-tier`. Taints `low_memory` and masters. Installs Argo CD from official manifest. Applies `root-app` pointing at `k3s-manifests`. Seeds OpenBao after operator init/unseal.
 
 OpenBao install is **not** in this playbook. `k3s-manifests` deploys it. `openbao-secrets-init` waits, then exits unless OpenBao is initialized **and** `OPENBAO_BOOTSTRAP_TOKEN` is set.
 
