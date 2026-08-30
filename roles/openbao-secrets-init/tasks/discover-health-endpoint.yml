@@ -13,11 +13,11 @@
   ansible.builtin.set_fact:
     openbao_health_candidates: >-
       {%- set ns = namespace(endpoints=[]) -%}
-      {%- for slice in openbao_health_endpoint_slices.resources -%}
-        {%- for endpoint in slice.endpoints | default([]) -%}
-          {%- if endpoint.addresses | default([]) | length > 0
+      {%- for slice in openbao_health_endpoint_slices.resources | default([], true) -%}
+        {%- for endpoint in slice.endpoints | default([], true) -%}
+          {%- if endpoint.addresses | default([], true) | length > 0
                 and endpoint.nodeName is defined
-                and not (endpoint.conditions.terminating | default(false) | bool) -%}
+                and not ((endpoint.conditions | default({}, true)).terminating | default(false) | bool) -%}
             {%- set ns.endpoints = ns.endpoints + [endpoint] -%}
           {%- endif -%}
         {%- endfor -%}
@@ -56,7 +56,7 @@
   ansible.builtin.set_fact:
     openbao_selected_health_probe: >-
       {%- set ns = namespace(ready=[], pending=[]) -%}
-      {%- for probe in openbao_health_probes.results | default([]) -%}
+      {%- for probe in openbao_health_probes.results | default([], true) -%}
         {%- if probe.status | default(0) in [200, 429] -%}
           {%- set ns.ready = ns.ready + [probe] -%}
         {%- elif probe.status | default(0) in [501, 503] -%}

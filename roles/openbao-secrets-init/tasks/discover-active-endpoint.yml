@@ -13,12 +13,12 @@
   ansible.builtin.set_fact:
     openbao_active_candidates: >-
       {%- set ns = namespace(endpoints=[]) -%}
-      {%- for slice in openbao_active_endpoint_slices.resources -%}
-        {%- for endpoint in slice.endpoints | default([]) -%}
-          {%- if endpoint.addresses | default([]) | length > 0
+      {%- for slice in openbao_active_endpoint_slices.resources | default([], true) -%}
+        {%- for endpoint in slice.endpoints | default([], true) -%}
+          {%- if endpoint.addresses | default([], true) | length > 0
                 and endpoint.nodeName is defined
-                and endpoint.conditions.serving | default(true) | bool
-                and not (endpoint.conditions.terminating | default(false) | bool) -%}
+                and (endpoint.conditions | default({}, true)).serving | default(true) | bool
+                and not ((endpoint.conditions | default({}, true)).terminating | default(false) | bool) -%}
             {%- set ns.endpoints = ns.endpoints + [endpoint] -%}
           {%- endif -%}
         {%- endfor -%}
@@ -57,7 +57,7 @@
   ansible.builtin.set_fact:
     openbao_selected_active_probe: >-
       {%- set ns = namespace(healthy=[]) -%}
-      {%- for probe in openbao_active_probes.results | default([]) -%}
+      {%- for probe in openbao_active_probes.results | default([], true) -%}
         {%- if probe.status | default(0) == 200 -%}
           {%- set ns.healthy = ns.healthy + [probe] -%}
         {%- endif -%}
