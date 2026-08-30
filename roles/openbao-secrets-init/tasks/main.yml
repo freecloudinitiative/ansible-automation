@@ -246,6 +246,9 @@
 - name: Initialize active OpenBao endpoint discovery state
   ansible.builtin.set_fact:
     openbao_active_health: {}
+    openbao_discovery_deadline_epoch: >-
+      {{ (lookup('ansible.builtin.pipe', 'date +%s') | int)
+         + (openbao_endpoint_discovery_timeout | int) }}
   tags: [openbao, bootstrap, authentik-token]
 
 - name: Discover and probe current active OpenBao endpoints
