@@ -1,0 +1,12 @@
+---
+- name: Send unseal keys to node {{ unseal_node.nodeName }}
+  ansible.builtin.uri:
+    url: "https://{{ unseal_node.addresses[0] }}:8200/v1/sys/unseal"
+    method: PUT
+    validate_certs: false
+    body_format: json
+    body:
+      key: "{{ item }}"
+    status_code: 200
+  loop: "{{ openbao_unseal_keys[:3] }}"
+  delegate_to: "{{ unseal_node.nodeName }}"
