@@ -8,71 +8,32 @@
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
   tags: [openbao, bootstrap]
 
-- name: Discover an OpenBao health endpoint
-  kubernetes.core.k8s_info:
-    api_version: discovery.k8s.io/v1
-    kind: EndpointSlice
-    namespace: "{{ openbao_namespace }}"
-    label_selectors:
-      - "kubernetes.io/service-name={{ openbao_health_service_name }}"
-    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
-  register: openbao_health_endpoint_slices
-  until:
-    - openbao_health_endpoint_slices.resources | length > 0
-    - >-
-      openbao_health_endpoint_slices.resources
-      | map(attribute='endpoints')
-      | flatten
-      | selectattr('addresses', 'defined')
-      | selectattr('nodeName', 'defined')
-      | list
-      | length > 0
-  retries: 30
-  delay: 5
-  tags: [openbao, bootstrap, authentik-token]
-
-- name: Select the endpoint-local node for OpenBao health checks
+- name: Initialize OpenBao health discovery state
   ansible.builtin.set_fact:
-    openbao_health_endpoint: >-
-      {{ openbao_health_endpoint_slices.resources
-         | map(attribute='endpoints')
-         | flatten
-         | selectattr('addresses', 'defined')
-         | selectattr('nodeName', 'defined')
-         | first }}
+    openbao_health: {}
   tags: [openbao, bootstrap, authentik-token]
 
-- name: Verify the OpenBao endpoint node is managed by Ansible
+- name: Discover and probe current OpenBao health endpoints
+  ansible.builtin.include_tasks:
+    file: discover-health-endpoint.yml
+    apply:
+      tags: [openbao, bootstrap, authentik-token]
+  loop: "{{ range(0, openbao_endpoint_discovery_retries | int) | list }}"
+  loop_control:
+    loop_var: openbao_health_discovery_attempt
+    label: "attempt {{ openbao_health_discovery_attempt + 1 }}"
+  when: (openbao_health.status | default(0)) not in [200, 429, 501, 503]
+  tags: [openbao, bootstrap, authentik-token]
+
+- name: Require a reachable OpenBao health endpoint
   ansible.builtin.assert:
     that:
-      - openbao_health_endpoint.addresses | length > 0
-      - openbao_health_endpoint.nodeName in groups['all']
+      - openbao_health.status | default(0) in [200, 429, 501, 503]
     fail_msg: >-
-      OpenBao endpoint {{ openbao_health_endpoint.addresses | default([]) }} is on
-      Kubernetes node {{ openbao_health_endpoint.nodeName | default('unknown') }},
-      but that node is not present in the Ansible inventory. K3s node names must
-      match inventory host names so the bootstrap request can run on the endpoint's
-      local node without widening the OpenBao NetworkPolicy.
-  tags: [openbao, bootstrap, authentik-token]
-
-- name: Set the private OpenBao health address
-  ansible.builtin.set_fact:
-    openbao_url: "https://{{ openbao_health_endpoint.addresses[0] }}:8200"
-    openbao_api_delegate: "{{ openbao_health_endpoint.nodeName }}"
-  tags: [openbao, bootstrap, authentik-token]
-
-- name: Wait for an OpenBao API health response
-  ansible.builtin.uri:
-    url: "{{ openbao_url }}/v1/sys/health"
-    method: GET
-    validate_certs: false
-    status_code: [200, 429, 501, 503]
-    return_content: true
-  register: openbao_health
-  until: openbao_health.status is defined and openbao_health.status in [200, 429, 501, 503]
-  retries: 30
-  delay: 5
-  delegate_to: "{{ openbao_api_delegate }}"
+      No current OpenBao endpoint returned a recognized health status after
+      {{ openbao_endpoint_discovery_retries }} discovery attempts. Each attempt
+      refreshed EndpointSlices and probed every non-terminating endpoint from its
+      local inventory node.
   tags: [openbao, bootstrap, authentik-token]
 
 - name: Explain the required OpenBao initialization ceremony
@@ -255,79 +216,31 @@
   no_log: true
   tags: [openbao, bootstrap]
 
-- name: Discover a serving, non-terminating active OpenBao endpoint
-  kubernetes.core.k8s_info:
-    api_version: discovery.k8s.io/v1
-    kind: EndpointSlice
-    namespace: "{{ openbao_namespace }}"
-    label_selectors:
-      - "kubernetes.io/service-name={{ openbao_service_name }}"
-    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
-  register: openbao_active_endpoint_slices
-  until:
-    - openbao_active_endpoint_slices.resources | length > 0
-    - >-
-      openbao_active_endpoint_slices.resources
-      | map(attribute='endpoints')
-      | flatten
-      | selectattr('addresses', 'defined')
-      | selectattr('nodeName', 'defined')
-      | selectattr('conditions.serving', 'defined')
-      | selectattr('conditions.serving', 'equalto', true)
-      | selectattr('conditions.terminating', 'defined')
-      | selectattr('conditions.terminating', 'equalto', false)
-      | list
-      | length > 0
-  retries: 30
-  delay: 5
-  tags: [openbao, bootstrap, authentik-token]
-
-- name: Select the endpoint-local node for OpenBao bootstrap writes
+- name: Initialize active OpenBao endpoint discovery state
   ansible.builtin.set_fact:
-    openbao_active_endpoint: >-
-      {{ openbao_active_endpoint_slices.resources
-         | map(attribute='endpoints')
-         | flatten
-         | selectattr('addresses', 'defined')
-         | selectattr('nodeName', 'defined')
-         | selectattr('conditions.serving', 'defined')
-         | selectattr('conditions.serving', 'equalto', true)
-         | selectattr('conditions.terminating', 'defined')
-         | selectattr('conditions.terminating', 'equalto', false)
-         | first }}
+    openbao_active_health: {}
   tags: [openbao, bootstrap, authentik-token]
 
-- name: Verify the active OpenBao endpoint node is managed by Ansible
+- name: Discover and probe current active OpenBao endpoints
+  ansible.builtin.include_tasks:
+    file: discover-active-endpoint.yml
+    apply:
+      tags: [openbao, bootstrap, authentik-token]
+  loop: "{{ range(0, openbao_endpoint_discovery_retries | int) | list }}"
+  loop_control:
+    loop_var: openbao_active_discovery_attempt
+    label: "attempt {{ openbao_active_discovery_attempt + 1 }}"
+  when: openbao_active_health.status | default(0) != 200
+  tags: [openbao, bootstrap, authentik-token]
+
+- name: Require a healthy active OpenBao endpoint
   ansible.builtin.assert:
     that:
-      - openbao_active_endpoint.addresses | length > 0
-      - openbao_active_endpoint.nodeName in groups['all']
+      - openbao_active_health.status | default(0) == 200
     fail_msg: >-
-      Active OpenBao endpoint {{ openbao_active_endpoint.addresses | default([]) }}
-      is on Kubernetes node {{ openbao_active_endpoint.nodeName | default('unknown') }},
-      but that node is not present in the Ansible inventory. K3s node names must
-      match inventory host names so bootstrap writes can run on the endpoint's
-      local node without widening the OpenBao NetworkPolicy.
-  tags: [openbao, bootstrap, authentik-token]
-
-- name: Use the active OpenBao API endpoint for bootstrap writes
-  ansible.builtin.set_fact:
-    openbao_url: "https://{{ openbao_active_endpoint.addresses[0] }}:8200"
-    openbao_api_delegate: "{{ openbao_active_endpoint.nodeName }}"
-  tags: [openbao, bootstrap, authentik-token]
-
-- name: Verify the selected OpenBao endpoint is active and healthy
-  ansible.builtin.uri:
-    url: "{{ openbao_url }}/v1/sys/health"
-    method: GET
-    validate_certs: false
-    status_code: 200
-    return_content: true
-  register: openbao_active_health
-  until: openbao_active_health.status is defined and openbao_active_health.status == 200
-  retries: 30
-  delay: 5
-  delegate_to: "{{ openbao_api_delegate }}"
+      No serving, non-terminating OpenBao endpoint returned HTTP 200 after
+      {{ openbao_endpoint_discovery_retries }} discovery attempts. Each attempt
+      refreshed the active Service's EndpointSlices before probing candidates.
   tags: [openbao, bootstrap, authentik-token]
 
 - name: Read enabled OpenBao secret engines

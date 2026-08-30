@@ -1,0 +1,80 @@
+---
+- name: Refresh OpenBao health EndpointSlices
+  kubernetes.core.k8s_info:
+    api_version: discovery.k8s.io/v1
+    kind: EndpointSlice
+    namespace: "{{ openbao_namespace }}"
+    label_selectors:
+      - "kubernetes.io/service-name={{ openbao_health_service_name }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+  register: openbao_health_endpoint_slices
+
+- name: Collect non-terminating OpenBao health candidates
+  ansible.builtin.set_fact:
+    openbao_health_candidates: >-
+      {%- set ns = namespace(endpoints=[]) -%}
+      {%- for slice in openbao_health_endpoint_slices.resources -%}
+        {%- for endpoint in slice.endpoints | default([]) -%}
+          {%- if endpoint.addresses | default([]) | length > 0
+                and endpoint.nodeName is defined
+                and not (endpoint.conditions.terminating | default(false) | bool) -%}
+            {%- set ns.endpoints = ns.endpoints + [endpoint] -%}
+          {%- endif -%}
+        {%- endfor -%}
+      {%- endfor -%}
+      {{ ns.endpoints }}
+
+- name: Verify OpenBao health candidate nodes are managed by Ansible
+  ansible.builtin.assert:
+    that:
+      - item.nodeName in groups['all']
+    fail_msg: >-
+      OpenBao endpoint {{ item.addresses }} is on Kubernetes node
+      {{ item.nodeName }}, but that node is not present in the Ansible inventory.
+      K3s node names must match inventory host names so health probes can run on
+      endpoint-local nodes without widening the OpenBao NetworkPolicy.
+  loop: "{{ openbao_health_candidates }}"
+  loop_control:
+    label: "{{ item.nodeName }} {{ item.addresses[0] }}"
+
+- name: Probe current OpenBao health candidates
+  ansible.builtin.uri:
+    url: "https://{{ item.addresses[0] }}:8200/v1/sys/health"
+    method: GET
+    validate_certs: false
+    status_code: [200, 429, 501, 503]
+    return_content: true
+  loop: "{{ openbao_health_candidates }}"
+  loop_control:
+    label: "{{ item.nodeName }} {{ item.addresses[0] }}"
+  register: openbao_health_probes
+  failed_when: false
+  delegate_to: "{{ item.nodeName }}"
+
+- name: Prefer a ready OpenBao health response
+  ansible.builtin.set_fact:
+    openbao_selected_health_probe: >-
+      {%- set ns = namespace(ready=[], pending=[]) -%}
+      {%- for probe in openbao_health_probes.results | default([]) -%}
+        {%- if probe.status | default(0) in [200, 429] -%}
+          {%- set ns.ready = ns.ready + [probe] -%}
+        {%- elif probe.status | default(0) in [501, 503] -%}
+          {%- set ns.pending = ns.pending + [probe] -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ (ns.ready + ns.pending) | first | default({}) }}
+
+- name: Use the selected OpenBao health endpoint
+  ansible.builtin.set_fact:
+    openbao_health: "{{ openbao_selected_health_probe }}"
+    openbao_health_endpoint: "{{ openbao_selected_health_probe.item }}"
+    openbao_url: "https://{{ openbao_selected_health_probe.item.addresses[0] }}:8200"
+    openbao_api_delegate: "{{ openbao_selected_health_probe.item.nodeName }}"
+  when: openbao_selected_health_probe.status is defined
+
+- name: Wait before refreshing OpenBao health endpoints
+  ansible.builtin.pause:
+    seconds: "{{ openbao_endpoint_discovery_delay }}"
+  when:
+    - openbao_selected_health_probe.status is not defined
+    - openbao_health_discovery_attempt + 1 < openbao_endpoint_discovery_retries | int

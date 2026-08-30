@@ -15,7 +15,9 @@ OpenBao NetworkPolicy without granting every cluster node or a public ingress
 bootstrap access. The role also waits for a serving, non-terminating
 `openbao-active` endpoint before performing authenticated writes, rather than
 treating creation of the Service object—or a stale EndpointSlice entry—as proof
-that an active server is reachable.
+that an active server is reachable. Health and active-endpoint retries refresh
+EndpointSlices and probe every eligible candidate on each attempt, so a replaced
+Pod does not leave the bootstrap loop pinned to an obsolete Pod IP.
 
 After OpenBao has been initialized and unsealed, rerun the playbook with a
 short-lived administrative bootstrap token supplied only through the process
