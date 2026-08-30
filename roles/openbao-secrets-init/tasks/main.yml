@@ -51,11 +51,6 @@
   when: (openbao_health.status | default(0) | int) in [501, 503]
   tags: [openbao, bootstrap, authentik-token]
 
-- name: Automate OpenBao unsealing if uninitialized or sealed
-  ansible.builtin.include_tasks: unseal.yml
-  when: (openbao_health.status | default(0) | int) in [501, 503]
-  tags: [openbao, bootstrap, authentik-token]
-
 - name: Ensure OpenBao credentials are loaded
   block:
     - name: Read OpenBao keys from master-1
@@ -70,7 +65,30 @@
         openbao_bootstrap_token: "{{ (openbao_keys_file.content | b64decode | from_json).root_token }}"
         openbao_unseal_keys: "{{ (openbao_keys_file.content | b64decode | from_json).keys_base64 }}"
       no_log: true
-  when: openbao_bootstrap_token | length == 0
+  when: openbao_bootstrap_token is not defined or openbao_bootstrap_token | length == 0
+  tags: [openbao, bootstrap, authentik-token]
+
+- name: Fetch OpenBao StatefulSet to check HA readiness
+  kubernetes.core.k8s_info:
+    kind: StatefulSet
+    name: openbao
+    namespace: "{{ openbao_namespace }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+  register: openbao_sts
+  tags: [openbao, bootstrap, authentik-token]
+
+- name: Automate HA OpenBao unsealing (Wait for all replicas)
+  ansible.builtin.include_tasks:
+    file: unseal-ha-step.yml
+    apply:
+      tags: [openbao, bootstrap, authentik-token]
+  loop: "{{ range(0, 60) | list }}"
+  loop_control:
+    loop_var: unseal_ha_attempt
+    label: "HA Unseal Attempt {{ unseal_ha_attempt + 1 }}"
+  when: >
+    (openbao_sts.resources[0].status.readyReplicas | default(0)) !=
+    (openbao_sts.resources[0].spec.replicas | default(1))
   tags: [openbao, bootstrap, authentik-token]
 
 # openbao_secrets references cluster_ca_cert, so the fact must exist before any task templates it.
