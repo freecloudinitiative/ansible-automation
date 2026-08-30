@@ -29,7 +29,7 @@
     loop_var: openbao_health_discovery_attempt
     label: "attempt {{ openbao_health_discovery_attempt + 1 }}"
   when:
-    - (openbao_health.status | default(0)) not in [200, 429, 501, 503]
+    - (openbao_health.status | default(0) | int) not in [200, 429, 501, 503]
     - >-
       lookup('ansible.builtin.pipe', 'date +%s') | int
       < openbao_discovery_deadline_epoch | int
@@ -38,7 +38,7 @@
 - name: Require a reachable OpenBao health endpoint
   ansible.builtin.assert:
     that:
-      - openbao_health.status | default(0) in [200, 429, 501, 503]
+      - (openbao_health.status | default(0) | int) in [200, 429, 501, 503]
     fail_msg: >-
       No current OpenBao endpoint returned a recognized health status after
       the shared {{ openbao_endpoint_discovery_timeout }}-second discovery window.
@@ -52,12 +52,12 @@
       OpenBao is intentionally deployed without a development root token. Initialize
       and unseal it through a local port-forward, securely distribute the recovery
       material, then rerun with OPENBAO_BOOTSTRAP_TOKEN set to a short-lived admin token.
-  when: openbao_health.status not in [200, 429]
+  when: (openbao_health.status | default(0) | int) not in [200, 429]
   tags: [openbao, bootstrap, authentik-token]
 
 - name: Stop secret bootstrap until OpenBao is initialized and unsealed
   ansible.builtin.meta: end_role
-  when: openbao_health.status not in [200, 429]
+  when: (openbao_health.status | default(0) | int) not in [200, 429]
   tags: [openbao, bootstrap, authentik-token]
 
 - name: Explain how to supply the ephemeral OpenBao bootstrap token
@@ -241,7 +241,7 @@
     loop_var: openbao_active_discovery_attempt
     label: "attempt {{ openbao_active_discovery_attempt + 1 }}"
   when:
-    - openbao_active_health.status | default(0) != 200
+    - (openbao_active_health.status | default(0) | int) != 200
     - >-
       lookup('ansible.builtin.pipe', 'date +%s') | int
       < openbao_discovery_deadline_epoch | int
@@ -250,7 +250,7 @@
 - name: Require a healthy active OpenBao endpoint
   ansible.builtin.assert:
     that:
-      - openbao_active_health.status | default(0) == 200
+      - (openbao_active_health.status | default(0) | int) == 200
     fail_msg: >-
       No serving, non-terminating OpenBao endpoint returned HTTP 200 after
       the shared {{ openbao_endpoint_discovery_timeout }}-second discovery window.
