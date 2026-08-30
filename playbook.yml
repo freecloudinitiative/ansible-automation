@@ -3,9 +3,9 @@
   hosts: all
   become: true
   roles:
-    - inventory-validation
+    # - inventory-validation
     # - raspberry-pi-boot-config # This role will be used in the prod setup
-    - raspberry-pi-cgroups
+    # - raspberry-pi-cgroups
     - k3s-pre-setup
 
 - name: Setup K3s master nodes
