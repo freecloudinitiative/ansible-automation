@@ -36,6 +36,10 @@ on:
         description: 'IP for worker-3'
         required: true
         type: string
+      worker_4_ip:
+        description: 'IP for worker-4 (optional)'
+        required: false
+        type: string
 
 jobs:
   run-playbook:
@@ -48,4 +52,5 @@ jobs:
       worker_1_ip: ${{ github.event.inputs.worker_1_ip }}
       worker_2_ip: ${{ github.event.inputs.worker_2_ip }}
       worker_3_ip: ${{ github.event.inputs.worker_3_ip }}
+      worker_4_ip: ${{ github.event.inputs.worker_4_ip }}
     secrets: inherit
