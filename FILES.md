@@ -10,8 +10,7 @@ IGNORE `.github/` and `pi-boot.yml`.
 
 | File | What |
 |---|---|
-| `playbook.yml` | Five plays: all hosts pre-setup, masters, workers, high_memory Kata, first-master components. |
-| `local-setup.yml` | Access cluster from local computer. |
+| `playbook.yml` | Six plays: all hosts pre-setup, masters, workers, high_memory Kata, first-master components, local k9s. |
 | `ssh-config.yml` | Nonprod SSH config. |
 | `thermal-check.yml` | Check node temps. |
 | `ansible.cfg` | `inventory.ini`, vault prompt, `roles_path=./roles`, SSH ControlMaster. |

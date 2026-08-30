@@ -60,3 +60,10 @@
           # argocd_password: "{{ argocd_admin_password | default('') }}"
           # grafana_password: "{{ grafana_admin_password | default('') }}"
           # openbao_password: "{{ openbao_token | default(openbao_dev_root_token | default('root')) }}"
+
+- name: Fetch Kubeconfig and Setup Local K9s
+  hosts: "{{ groups['masters'][0] }}"
+  gather_facts: false
+  become: false
+  roles:
+    - local-k9s-setup
