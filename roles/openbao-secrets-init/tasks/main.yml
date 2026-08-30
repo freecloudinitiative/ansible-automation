@@ -11,6 +11,12 @@
 - name: Initialize OpenBao health discovery state
   ansible.builtin.set_fact:
     openbao_health: {}
+    openbao_discovery_deadline_epoch: >-
+      {{ (lookup('ansible.builtin.pipe', 'date +%s') | int)
+         + (openbao_endpoint_discovery_timeout | int) }}
+    openbao_endpoint_discovery_attempts: >-
+      {{ ((openbao_endpoint_discovery_timeout | int)
+          // (openbao_endpoint_discovery_delay | int)) + 2 }}
   tags: [openbao, bootstrap, authentik-token]
 
 - name: Discover and probe current OpenBao health endpoints
@@ -18,11 +24,15 @@
     file: discover-health-endpoint.yml
     apply:
       tags: [openbao, bootstrap, authentik-token]
-  loop: "{{ range(0, openbao_endpoint_discovery_retries | int) | list }}"
+  loop: "{{ range(0, openbao_endpoint_discovery_attempts | int) | list }}"
   loop_control:
     loop_var: openbao_health_discovery_attempt
     label: "attempt {{ openbao_health_discovery_attempt + 1 }}"
-  when: (openbao_health.status | default(0)) not in [200, 429, 501, 503]
+  when:
+    - (openbao_health.status | default(0)) not in [200, 429, 501, 503]
+    - >-
+      lookup('ansible.builtin.pipe', 'date +%s') | int
+      < openbao_discovery_deadline_epoch | int
   tags: [openbao, bootstrap, authentik-token]
 
 - name: Require a reachable OpenBao health endpoint
@@ -31,9 +41,9 @@
       - openbao_health.status | default(0) in [200, 429, 501, 503]
     fail_msg: >-
       No current OpenBao endpoint returned a recognized health status after
-      {{ openbao_endpoint_discovery_retries }} discovery attempts. Each attempt
-      refreshed EndpointSlices and probed every non-terminating endpoint from its
-      local inventory node.
+      the shared {{ openbao_endpoint_discovery_timeout }}-second discovery window.
+      Each attempt refreshed EndpointSlices and probed every non-terminating
+      endpoint from its local inventory node.
   tags: [openbao, bootstrap, authentik-token]
 
 - name: Explain the required OpenBao initialization ceremony
@@ -226,11 +236,15 @@
     file: discover-active-endpoint.yml
     apply:
       tags: [openbao, bootstrap, authentik-token]
-  loop: "{{ range(0, openbao_endpoint_discovery_retries | int) | list }}"
+  loop: "{{ range(0, openbao_endpoint_discovery_attempts | int) | list }}"
   loop_control:
     loop_var: openbao_active_discovery_attempt
     label: "attempt {{ openbao_active_discovery_attempt + 1 }}"
-  when: openbao_active_health.status | default(0) != 200
+  when:
+    - openbao_active_health.status | default(0) != 200
+    - >-
+      lookup('ansible.builtin.pipe', 'date +%s') | int
+      < openbao_discovery_deadline_epoch | int
   tags: [openbao, bootstrap, authentik-token]
 
 - name: Require a healthy active OpenBao endpoint
@@ -239,8 +253,9 @@
       - openbao_active_health.status | default(0) == 200
     fail_msg: >-
       No serving, non-terminating OpenBao endpoint returned HTTP 200 after
-      {{ openbao_endpoint_discovery_retries }} discovery attempts. Each attempt
-      refreshed the active Service's EndpointSlices before probing candidates.
+      the shared {{ openbao_endpoint_discovery_timeout }}-second discovery window.
+      Each attempt refreshed the active Service's EndpointSlices before probing
+      candidates.
   tags: [openbao, bootstrap, authentik-token]
 
 - name: Read enabled OpenBao secret engines

@@ -9,8 +9,9 @@ openbao_kubernetes_auth_role: external-secrets
 openbao_external_secrets_service_account: external-secrets-openbao
 openbao_external_secrets_namespace: external-secrets
 openbao_external_secrets_audience: vault
-openbao_endpoint_discovery_retries: 30
+openbao_endpoint_discovery_timeout: 600
 openbao_endpoint_discovery_delay: 5
+openbao_endpoint_probe_timeout: 3
 grafana_admin_user: admin
 grafana_admin_password: "{{ lookup('ansible.builtin.env', 'GRAFANA_ADMIN_PASSWORD') | default('', true) }}"
 authentik_admin_token: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_ADMIN_TOKEN') | default('', true) }}"

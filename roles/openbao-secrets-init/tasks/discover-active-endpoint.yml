@@ -43,6 +43,7 @@
     url: "https://{{ item.addresses[0] }}:8200/v1/sys/health"
     method: GET
     validate_certs: false
+    timeout: "{{ openbao_endpoint_probe_timeout }}"
     status_code: 200
     return_content: true
   loop: "{{ openbao_active_candidates }}"
@@ -76,4 +77,6 @@
     seconds: "{{ openbao_endpoint_discovery_delay }}"
   when:
     - openbao_selected_active_probe.status is not defined
-    - openbao_active_discovery_attempt + 1 < openbao_endpoint_discovery_retries | int
+    - >-
+      lookup('ansible.builtin.pipe', 'date +%s') | int
+      < openbao_discovery_deadline_epoch | int
