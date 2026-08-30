@@ -27,7 +27,7 @@ playbook.yml
   │    kata-containers
   │    QEMU/KVM runtime on high-memory workers only
   │
-  └─ play 5  hosts: groups['masters'][0]
+  ├─ play 5  hosts: groups['masters'][0]
        k3s-node-labeling → argocd-setup → argocd-bootstrap
        → openbao-secrets-init
             │
@@ -42,6 +42,10 @@ playbook.yml
             │
             ▼
        KV secrets + kubernetes auth + External Secrets policy
+  │
+  └─ play 6  hosts: groups['masters'][0]
+       local-k9s-setup
+       fetch kubeconfig, configure local k9s
 ```
 
 Post-play debug prints public URLs. Passwords stay commented out.
@@ -50,8 +54,7 @@ Post-play debug prints public URLs. Passwords stay commented out.
 
 | Part | Job |
 |---|---|
-| `playbook.yml` | Five plays. Order is the contract. |
-| `local-setup.yml` | Access cluster from local computer. |
+| `playbook.yml` | Six plays. Order is the contract. |
 | `ssh-config.yml` | Nonprod SSH config. |
 | `thermal-check.yml` | Check node temps. |
 | `inventory.ini` | Host groups. `masters[0]` is primary. Memory groups drive labels/taints. |
@@ -76,6 +79,7 @@ Post-play debug prints public URLs. Passwords stay commented out.
 | `argocd-bootstrap` | 5 | Wait `applications.argoproj.io` CRD. Render `root-app.yaml.j2`. Apply. Watches `k3s-manifests` `infrastructure/` and `applications/`. prune + selfHeal. |
 | `openbao-secrets-init` | 5 | Wait OpenBao Service. Health must be 200 or 429. Need `OPENBAO_BOOTSTRAP_TOKEN`. Enable KV v2, file audit, Kubernetes auth. Policy `external-secrets-read`. Bind SA `external-secrets-openbao`. Assert all seeded secrets are non-empty and meet length/PEM requirements. Seed paths (`tags: openbao, bootstrap`). On first run, skips `authentik_admin_token` and prints a reminder. Run 2 (`--tags authentik-token`) PATCHes only `admin-token` into `secret/authentik` once the Authentik bootstrap admin exists. `end_role` if not ready. |
 | `k9s-setup` | 5 | Install k9s. |
+| `local-k9s-setup` | 6 | Fetch kubeconfig and configure k9s on the control node. |
 
 ## Part Talk to Part How
 
