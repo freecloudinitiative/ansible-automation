@@ -241,6 +241,9 @@
     - kata
 
 # --- k3s containerd ---
+# k3s prefers config-v3.toml.tmpl over config.toml.tmpl. Creating a v3 tmpl on a
+# node whose live config is version 2 (containerd 1.7) forces an unsupported
+# schema and takes k3s-agent down. Write only the generation already in use.
 
 - name: Ensure k3s containerd config directory exists
   ansible.builtin.file:
@@ -251,6 +254,75 @@
   tags:
     - kata
 
+- name: Check for generated containerd config
+  ansible.builtin.stat:
+    path: "{{ kata_containerd_dir }}/config.toml"
+  register: kata_containerd_config_file
+  tags:
+    - kata
+
+- name: Assert k3s has generated containerd config
+  ansible.builtin.assert:
+    that:
+      - kata_containerd_config_file.stat.exists
+    fail_msg: >-
+      {{ kata_containerd_dir }}/config.toml is missing. Start k3s-agent once
+      so k3s writes the live containerd config before Kata patches it.
+  tags:
+    - kata
+
+- name: Read generated containerd config
+  ansible.builtin.slurp:
+    src: "{{ kata_containerd_dir }}/config.toml"
+  register: kata_containerd_config
+  when: kata_containerd_config_file.stat.exists
+  tags:
+    - kata
+
+- name: Detect containerd config generation
+  ansible.builtin.set_fact:
+    kata_containerd_config_version: "{{ kata_detected_config_version | default('3', true) }}"
+  vars:
+    kata_detected_config_version: >-
+      {{
+        kata_containerd_config.content
+        | default('')
+        | b64decode
+        | regex_search('(?m)^version\s*=\s*(\d+)', '\\1')
+      }}
+  tags:
+    - kata
+
+- name: Check for existing v3 containerd template
+  ansible.builtin.stat:
+    path: "{{ kata_containerd_v3_tmpl }}"
+  register: kata_v3_tmpl
+  tags:
+    - kata
+
+- name: Read existing v3 containerd template
+  ansible.builtin.slurp:
+    src: "{{ kata_containerd_v3_tmpl }}"
+  register: kata_v3_tmpl_content
+  when:
+    - kata_containerd_config_version | int < 3
+    - kata_v3_tmpl.stat.exists
+  tags:
+    - kata
+
+- name: Remove role-created v3 template on containerd 1.7 nodes
+  ansible.builtin.file:
+    path: "{{ kata_containerd_v3_tmpl }}"
+    state: absent
+  become: true
+  notify: Restart k3s for Kata
+  when:
+    - kata_containerd_config_version | int < 3
+    - kata_v3_tmpl.stat.exists
+    - "'ANSIBLE MANAGED BLOCK — kata-containers' in (kata_v3_tmpl_content.content | default('') | b64decode)"
+  tags:
+    - kata
+
 - name: Create containerd v3 template with k3s base if missing
   ansible.builtin.template:
     src: containerd-base.tmpl.j2
@@ -258,6 +330,7 @@
     force: false
     mode: "0644"
   become: true
+  when: kata_containerd_config_version | int >= 3
   tags:
     - kata
 
@@ -268,6 +341,7 @@
     force: false
     mode: "0644"
   become: true
+  when: kata_containerd_config_version | int < 3
   tags:
     - kata
 
@@ -284,6 +358,7 @@
           ConfigPath = "{{ kata_config_path }}"
   become: true
   notify: Restart k3s for Kata
+  when: kata_containerd_config_version | int >= 3
   tags:
     - kata
 
@@ -299,6 +374,7 @@
           ConfigPath = "{{ kata_config_path }}"
   become: true
   notify: Restart k3s for Kata
+  when: kata_containerd_config_version | int < 3
   tags:
     - kata
 

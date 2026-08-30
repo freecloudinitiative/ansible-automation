@@ -10,7 +10,7 @@ Each pod with `runtimeClassName: kata` boots a QEMU/KVM microVM. Do not run this
 - Installs the official static tarball into `/opt/kata` (pinned QEMU, guest kernel, guest image, shim).
 - Symlinks `kata-runtime` and `containerd-shim-kata-v2` onto `PATH`.
 - Copies QEMU config to `/etc/kata-containers/configuration.toml`.
-- Extends k3s containerd via `config-v3.toml.tmpl` (containerd 2) and `config.toml.tmpl` (containerd 1.7).
+- Extends k3s containerd with only the matching template: `config-v3.toml.tmpl` when live `config.toml` is version 3 (containerd 2), `config.toml.tmpl` when version 2 (containerd 1.7). Does not create a v3 tmpl on a v2 node — k3s would prefer it and take the agent down.
 - Restarts `k3s-agent` (or `k3s`) only when the containerd template or install changes.
 - Applies RuntimeClass `kata` with `nodeSelector: node-tier=high-memory`.
 - Labels the node `katacontainers.io/kata-runtime=true`.
