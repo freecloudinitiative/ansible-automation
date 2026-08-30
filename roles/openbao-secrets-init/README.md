@@ -7,6 +7,21 @@ and the initial Grafana, Authentik, PostgreSQL, and Valkey secrets.
 The role never writes an OpenBao token into Kubernetes. External Secrets uses a
 short-lived Kubernetes ServiceAccount token to authenticate to OpenBao.
 
+Bootstrap API calls are made directly to the selected OpenBao EndpointSlice
+address and delegated to the Ansible inventory host that owns that endpoint.
+K3s sets each Kubernetes node name from `inventory_hostname`, so the request
+originates on the OpenBao pod's local node. This preserves the restrictive
+OpenBao NetworkPolicy without granting every cluster node or a public ingress
+bootstrap access. The role also waits for a serving, non-terminating
+`openbao-active` endpoint before performing authenticated writes, rather than
+treating creation of the Service object—or a stale EndpointSlice entry—as proof
+that an active server is reachable. Health and active-endpoint retries refresh
+EndpointSlices and probe every eligible candidate on each attempt, so a replaced
+Pod does not leave the bootstrap loop pinned to an obsolete Pod IP. Both gates
+share one 600-second discovery deadline; individual Pod probes have a three-second
+socket timeout, so blackholed Pod IPs cannot silently expand the total wait by
+many minutes.
+
 After OpenBao has been initialized and unsealed, rerun the playbook with a
 short-lived administrative bootstrap token supplied only through the process
 environment:

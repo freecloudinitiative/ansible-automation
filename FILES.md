@@ -143,7 +143,10 @@ Installs Kata Containers on `high_memory` workers. Needs `/dev/kvm`.
 
 | File | What |
 |---|---|
-| `roles/openbao-secrets-init/tasks/main.yml` | Health gate, token gate, KV/auth/policy/audit, seed `openbao_secrets`. |
+| `roles/openbao-secrets-init/tasks/main.yml` | Endpoint-local health/active gates, token gate, KV/auth/policy/audit, seed `openbao_secrets`. |
+| `roles/openbao-secrets-init/tasks/discover-health-endpoint.yml` | Refresh health EndpointSlices, probe non-terminating candidates, prefer ready responses. |
+| `roles/openbao-secrets-init/tasks/discover-active-endpoint.yml` | Refresh active EndpointSlices until a serving, non-terminating candidate returns 200. |
+| `roles/openbao-secrets-init/tasks/authentik-token.yml` | PATCH only the second-run Authentik admin token. |
 | `roles/openbao-secrets-init/defaults/main.yml` | Env lookups, namespace names, secret path list. |
 | `roles/openbao-secrets-init/README.md` | Second-run env vars. Revoke token after. |
 

@@ -77,7 +77,7 @@ Post-play debug prints public URLs. Passwords stay commented out.
 | `k3s-node-labeling` | 5 | `node-tier=high-memory\|mid-memory\|low-memory`. Taint low-memory `memory=limited:NoSchedule`. Taint masters `node-role.kubernetes.io/master=:NoSchedule`. |
 | `argocd-setup` | 5 | Official install.yaml into `argocd`. Pin Deployments/StatefulSet to `node-tier=high-memory`. Wait ready. Read initial admin secret. |
 | `argocd-bootstrap` | 5 | Wait `applications.argoproj.io` CRD. Render `root-app.yaml.j2`. Apply. Watches `k3s-manifests` `infrastructure/` and `applications/`. prune + selfHeal. |
-| `openbao-secrets-init` | 5 | Wait OpenBao Service. Health must be 200 or 429. Need `OPENBAO_BOOTSTRAP_TOKEN`. Enable KV v2, file audit, Kubernetes auth. Policy `external-secrets-read`. Bind SA `external-secrets-openbao`. Assert all seeded secrets are non-empty and meet length/PEM requirements. Seed paths (`tags: openbao, bootstrap`). On first run, skips `authentik_admin_token` and prints a reminder. Run 2 (`--tags authentik-token`) PATCHes only `admin-token` into `secret/authentik` once the Authentik bootstrap admin exists. `end_role` if not ready. |
+| `openbao-secrets-init` | 5 | Refresh OpenBao EndpointSlices and probe every non-terminating health candidate from its local inventory node, preferring health 200/429 over sealed or uninitialized responses. Health and active discovery share one 600-second deadline; Pod probes time out after three seconds. Need `OPENBAO_BOOTSTRAP_TOKEN`. Re-discover until a serving, non-terminating active endpoint returns 200 before enabling KV v2, file audit, Kubernetes auth, and policy `external-secrets-read`. Bind SA `external-secrets-openbao`. Assert all seeded secrets are non-empty and meet length/PEM requirements. Seed paths (`tags: openbao, bootstrap`). On first run, skips `authentik_admin_token` and prints a reminder. Run 2 (`--tags authentik-token`) PATCHes only `admin-token` into `secret/authentik` once the Authentik bootstrap admin exists. `end_role` if not ready. |
 | `k9s-setup` | 5 | Install k9s. |
 | `local-k9s-setup` | 6 | Fetch kubeconfig and configure k9s on the control node. |
 
@@ -91,7 +91,7 @@ Post-play debug prints public URLs. Passwords stay commented out.
 | Play 5 → cluster | kubeconfig | `/etc/rancher/k3s/k3s.yaml` via `kubernetes.core.k8s`. |
 | `argocd-bootstrap` → Git | HTTPS | `https://github.com/freecloudinitiative/k3s-manifests.git` @ `HEAD`. |
 | GitOps → OpenBao | cluster | Chart in `k3s-manifests`. Playbook does not install OpenBao. |
-| `openbao-secrets-init` → OpenBao | HTTPS to ClusterIP `:8200` | `X-Vault-Token` from env. `validate_certs: false` (private CA). |
+| `openbao-secrets-init` → OpenBao | HTTPS to the selected EndpointSlice Pod IP `:8200`, delegated to that Pod's inventory node | `X-Vault-Token` from env. `validate_certs: false` because dynamic Pod IPs are not certificate SANs. |
 | External Secrets → OpenBao | later | Kubernetes auth. Role `external-secrets`. Audience `vault`. Token TTL 10m / max 30m. Playbook never stores bootstrap token in-cluster. |
 
 ## Why Build This Way
@@ -127,5 +127,5 @@ Post-play debug prints public URLs. Passwords stay commented out.
 - **Control node**: this repo. `ansible-playbook` from here. Needs Python 3, collections from `collections/requirements.yml`.
 - **Masters / workers**: remote over SSH. `become: true`. k3s at `/usr/local/bin/k3s`. State under `/var/lib/rancher/k3s`. Kubeconfig `/etc/rancher/k3s/k3s.yaml` and `~/.kube/config`.
 - **Argo CD**: namespace `argocd`. Manifest cached at `~/k3s-stack/argocd/install.yaml`. `root-app.yaml` rendered to `~/k3s-stack/argocd/root-app.yaml`.
-- **OpenBao**: namespace `openbao` (GitOps). Seed talks to ClusterIP. Secrets under `secret/data/<path>`.
+- **OpenBao**: namespace `openbao` (GitOps). Seed discovers EndpointSlices and delegates each API call to the inventory node hosting that endpoint, preserving the namespace-only NetworkPolicy. Secrets under `secret/data/<path>`.
 - **External Secrets**: namespace `external-secrets`. SA `external-secrets-openbao`. Role `external-secrets`.
