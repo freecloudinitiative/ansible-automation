@@ -1,82 +1,87 @@
 ---
-- name: Refresh active OpenBao EndpointSlices
-  kubernetes.core.k8s_info:
-    api_version: discovery.k8s.io/v1
-    kind: EndpointSlice
-    namespace: "{{ openbao_namespace }}"
-    label_selectors:
-      - "kubernetes.io/service-name={{ openbao_service_name }}"
-    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
-  register: openbao_active_endpoint_slices
-
-- name: Collect serving, non-terminating active OpenBao candidates
-  ansible.builtin.set_fact:
-    openbao_active_candidates: >-
-      {%- set ns = namespace(endpoints=[]) -%}
-      {%- for slice in openbao_active_endpoint_slices.resources | default([], true) -%}
-        {%- for endpoint in slice.endpoints | default([], true) -%}
-          {%- if endpoint.addresses | default([], true) | length > 0
-                and endpoint.nodeName is defined
-                and (endpoint.conditions | default({}, true)).serving | default(true) | bool
-                and not ((endpoint.conditions | default({}, true)).terminating | default(false) | bool) -%}
-            {%- set ns.endpoints = ns.endpoints + [endpoint] -%}
-          {%- endif -%}
-        {%- endfor -%}
-      {%- endfor -%}
-      {{ ns.endpoints }}
-
-- name: Verify active OpenBao candidate nodes are managed by Ansible
-  ansible.builtin.assert:
-    that:
-      - item.nodeName in groups['all']
-    fail_msg: >-
-      Active OpenBao endpoint {{ item.addresses }} is on Kubernetes node
-      {{ item.nodeName }}, but that node is not present in the Ansible inventory.
-      K3s node names must match inventory host names so bootstrap requests can run
-      on endpoint-local nodes without widening the OpenBao NetworkPolicy.
-  loop: "{{ openbao_active_candidates }}"
-  loop_control:
-    label: "{{ item.nodeName }} {{ item.addresses[0] }}"
-
-- name: Probe current active OpenBao candidates
-  ansible.builtin.uri:
-    url: "https://{{ item.addresses[0] }}:8200/v1/sys/health"
-    method: GET
-    validate_certs: false
-    timeout: "{{ openbao_endpoint_probe_timeout }}"
-    status_code: 200
-    return_content: true
-  loop: "{{ openbao_active_candidates }}"
-  loop_control:
-    label: "{{ item.nodeName }} {{ item.addresses[0] }}"
-  register: openbao_active_probes
-  failed_when: false
-  delegate_to: "{{ item.nodeName }}"
-
-- name: Select a healthy active OpenBao probe
-  ansible.builtin.set_fact:
-    openbao_selected_active_probe: >-
-      {%- set ns = namespace(healthy=[]) -%}
-      {%- for probe in openbao_active_probes.results | default([], true) -%}
-        {%- if probe.status | default(0) == 200 -%}
-          {%- set ns.healthy = ns.healthy + [probe] -%}
-        {%- endif -%}
-      {%- endfor -%}
-      {{ ns.healthy | first | default({}) }}
-
-- name: Use the selected active OpenBao endpoint
-  ansible.builtin.set_fact:
-    openbao_active_health: "{{ openbao_selected_active_probe }}"
-    openbao_active_endpoint: "{{ openbao_selected_active_probe.item }}"
-    openbao_url: "https://{{ openbao_selected_active_probe.item.addresses[0] }}:8200"
-    openbao_api_delegate: "{{ openbao_selected_active_probe.item.nodeName }}"
-  when: openbao_selected_active_probe.status is defined
-
-- name: Wait before refreshing active OpenBao endpoints
-  ansible.builtin.pause:
-    seconds: "{{ openbao_endpoint_discovery_delay }}"
+- name: OpenBao active discovery block
   when:
-    - openbao_selected_active_probe.status is not defined
-    - >-
-      lookup('ansible.builtin.pipe', 'date +%s') | int
-      < openbao_discovery_deadline_epoch | int
+    - (openbao_active_health.status | default(0) | int) != 200
+  block:
+    - name: Refresh OpenBao active EndpointSlices
+      kubernetes.core.k8s_info:
+        api_version: discovery.k8s.io/v1
+        kind: EndpointSlice
+        namespace: "{{ openbao_namespace }}"
+        label_selectors:
+          - "kubernetes.io/service-name={{ openbao_service_name }}"
+        kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+      register: openbao_active_endpoint_slices
+
+    - name: Collect non-terminating OpenBao active candidates
+      ansible.builtin.set_fact:
+        openbao_active_candidates: >-
+          {%- set ns = namespace(endpoints=[]) -%}
+          {%- for slice in openbao_active_endpoint_slices.resources | default([], true) -%}
+            {%- for endpoint in slice.endpoints | default([], true) -%}
+              {%- if endpoint.addresses | default([], true) | length > 0
+                    and endpoint.nodeName is defined
+                    and not ((endpoint.conditions | default({}, true)).terminating | default(false) | bool) -%}
+                {%- set ns.endpoints = ns.endpoints + [endpoint] -%}
+              {%- endif -%}
+            {%- endfor -%}
+          {%- endfor -%}
+          {{ ns.endpoints }}
+
+    - name: Verify OpenBao active candidate nodes are managed by Ansible
+      ansible.builtin.assert:
+        that:
+          - item.nodeName in groups['all']
+        fail_msg: >-
+          OpenBao endpoint {{ item.addresses }} is on Kubernetes node
+          {{ item.nodeName }}, but that node is not present in the Ansible inventory.
+          K3s node names must match inventory host names so health probes can run on
+          endpoint-local nodes without widening the OpenBao NetworkPolicy.
+      loop: "{{ openbao_active_candidates }}"
+      loop_control:
+        label: "{{ item.nodeName }} {{ item.addresses[0] }}"
+
+    - name: Probe current active OpenBao candidates
+      ansible.builtin.uri:
+        url: "https://{{ item.addresses[0] }}:8200/v1/sys/health"
+        method: GET
+        validate_certs: false
+        timeout: "{{ openbao_endpoint_probe_timeout }}"
+        status_code: 200
+        return_content: true
+      loop: "{{ openbao_active_candidates }}"
+      loop_control:
+        label: "{{ item.nodeName }} {{ item.addresses[0] }}"
+      register: openbao_active_probes
+      failed_when: false
+      delegate_to: "{{ item.nodeName }}"
+
+    - name: Select a healthy active OpenBao response
+      ansible.builtin.set_fact:
+        openbao_selected_active_probe: "{{ _probe_json | from_json }}"
+      vars:
+        _probe_json: >-
+          {%- set ns = namespace(ready=[]) -%}
+          {%- for probe in openbao_active_probes.results | default([], true) -%}
+            {%- if probe.status | default(0) == 200 -%}
+              {%- set ns.ready = ns.ready + [probe] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ (ns.ready | first if ns.ready else {}) | to_json }}
+
+    - name: Use the selected active OpenBao endpoint
+      ansible.builtin.set_fact:
+        openbao_active_health: "{{ openbao_selected_active_probe }}"
+        openbao_active_endpoint: "{{ openbao_selected_active_probe.item }}"
+        openbao_url: "https://{{ openbao_selected_active_probe.item.addresses[0] }}:8200"
+        openbao_api_delegate: "{{ openbao_selected_active_probe.item.nodeName }}"
+      when: openbao_selected_active_probe.status is defined
+
+    - name: Wait before refreshing active OpenBao endpoints
+      ansible.builtin.pause:
+        seconds: "{{ openbao_endpoint_discovery_delay }}"
+      when:
+        - (openbao_selected_active_probe.status | default(0) | int) != 200
+        - >-
+          lookup('ansible.builtin.pipe', 'date +%s') | int
+          < openbao_discovery_deadline_epoch | int

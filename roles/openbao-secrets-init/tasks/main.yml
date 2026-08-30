@@ -56,6 +56,23 @@
   when: (openbao_health.status | default(0) | int) in [501, 503]
   tags: [openbao, bootstrap, authentik-token]
 
+- name: Ensure OpenBao credentials are loaded
+  block:
+    - name: Read OpenBao keys from master-1
+      ansible.builtin.slurp:
+        src: /root/openbao-cluster-keys.json
+      register: openbao_keys_file
+      delegate_to: master-1
+      no_log: true
+
+    - name: Set keys facts
+      ansible.builtin.set_fact:
+        openbao_bootstrap_token: "{{ (openbao_keys_file.content | b64decode | from_json).root_token }}"
+        openbao_unseal_keys: "{{ (openbao_keys_file.content | b64decode | from_json).keys_base64 }}"
+      no_log: true
+  when: openbao_bootstrap_token | length == 0
+  tags: [openbao, bootstrap, authentik-token]
+
 # openbao_secrets references cluster_ca_cert, so the fact must exist before any task templates it.
 - name: Fetch selfsigned-ca-secret from Kubernetes
   kubernetes.core.k8s_info:
@@ -433,37 +450,6 @@
   delegate_to: "{{ openbao_api_delegate }}"
   tags: [openbao, bootstrap]
 
-- name: Read enabled OpenBao audit devices
-  ansible.builtin.uri:
-    url: "{{ openbao_url }}/v1/sys/audit"
-    method: GET
-    validate_certs: false
-    headers:
-      X-Vault-Token: "{{ openbao_bootstrap_token }}"
-    status_code: 200
-    return_content: true
-  register: openbao_audit_devices
-  no_log: true
-  delegate_to: "{{ openbao_api_delegate }}"
-  tags: [openbao, bootstrap]
-
-- name: Enable persistent OpenBao file audit logging
-  ansible.builtin.uri:
-    url: "{{ openbao_url }}/v1/sys/audit/file"
-    method: PUT
-    validate_certs: false
-    headers:
-      X-Vault-Token: "{{ openbao_bootstrap_token }}"
-    body_format: json
-    body:
-      type: file
-      options:
-        file_path: /openbao/audit/audit.log
-    status_code: [200, 204]
-  when: "'file/' not in openbao_audit_devices.json"
-  no_log: true
-  delegate_to: "{{ openbao_api_delegate }}"
-  tags: [openbao, bootstrap]
 
 - name: Seed application secrets in OpenBao
   ansible.builtin.uri:
