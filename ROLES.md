@@ -23,7 +23,11 @@ playbook.yml
   │    k3s-worker-setup
   │    token from hostvars[groups['masters'][0]]
   │
-  └─ play 4  hosts: groups['masters'][0]
+  ├─ play 4  hosts: high_memory
+  │    kata-containers
+  │    QEMU/KVM runtime on high-memory workers only
+  │
+  └─ play 5  hosts: groups['masters'][0]
        k3s-node-labeling → argocd-setup → argocd-bootstrap
        → openbao-secrets-init
             │
@@ -46,7 +50,7 @@ Post-play debug prints public URLs. Passwords stay commented out.
 
 | Part | Job |
 |---|---|
-| `playbook.yml` | Four plays. Order is the contract. |
+| `playbook.yml` | Five plays. Order is the contract. |
 | `local-setup.yml` | Access cluster from local computer. |
 | `ssh-config.yml` | Nonprod SSH config. |
 | `thermal-check.yml` | Check node temps. |
@@ -66,11 +70,12 @@ Post-play debug prints public URLs. Passwords stay commented out.
 | `k3s-master-setup` | 2 | `get.k3s.io` server. `--disable traefik`, `--disable servicelb`, `--embedded-registry`. Readyz wait. Helm + CLI tools. |
 | `k3s-fact-gathering` | 2 | Slurp node-token on `masters[0]`. Set `kubeconfig_path`. |
 | `k3s-worker-setup` | 3 | `get.k3s.io` agent. `--server` + `--token`. `--node-name` from `worker_label`. |
-| `k3s-node-labeling` | 4 | `node-tier=high-memory\|mid-memory\|low-memory`. Taint low-memory `memory=limited:NoSchedule`. Taint masters `node-role.kubernetes.io/master=:NoSchedule`. |
-| `argocd-setup` | 4 | Official install.yaml into `argocd`. Pin Deployments/StatefulSet to `node-tier=high-memory`. Wait ready. Read initial admin secret. |
-| `argocd-bootstrap` | 4 | Wait `applications.argoproj.io` CRD. Render `root-app.yaml.j2`. Apply. Watches `k3s-manifests` `infrastructure/` and `applications/`. prune + selfHeal. |
-| `openbao-secrets-init` | 4 | Wait OpenBao Service. Health must be 200 or 429. Need `OPENBAO_BOOTSTRAP_TOKEN`. Enable KV v2, file audit, Kubernetes auth. Policy `external-secrets-read`. Bind SA `external-secrets-openbao`. Assert all seeded secrets are non-empty and meet length/PEM requirements. Seed paths (`tags: openbao, bootstrap`). On first run, skips `authentik_admin_token` and prints a reminder. Run 2 (`--tags authentik-token`) PATCHes only `admin-token` into `secret/authentik` once the Authentik bootstrap admin exists. `end_role` if not ready. |
-| `k9s-setup` | 4 | Install k9s. |
+| `kata-containers` | 4 | Static tarball → `/opt/kata`. KVM modules. k3s containerd handler `kata`. RuntimeClass `kata` with `node-tier=high-memory`. Needs `/dev/kvm` (nested virt if the worker is a VM). |
+| `k3s-node-labeling` | 5 | `node-tier=high-memory\|mid-memory\|low-memory`. Taint low-memory `memory=limited:NoSchedule`. Taint masters `node-role.kubernetes.io/master=:NoSchedule`. |
+| `argocd-setup` | 5 | Official install.yaml into `argocd`. Pin Deployments/StatefulSet to `node-tier=high-memory`. Wait ready. Read initial admin secret. |
+| `argocd-bootstrap` | 5 | Wait `applications.argoproj.io` CRD. Render `root-app.yaml.j2`. Apply. Watches `k3s-manifests` `infrastructure/` and `applications/`. prune + selfHeal. |
+| `openbao-secrets-init` | 5 | Wait OpenBao Service. Health must be 200 or 429. Need `OPENBAO_BOOTSTRAP_TOKEN`. Enable KV v2, file audit, Kubernetes auth. Policy `external-secrets-read`. Bind SA `external-secrets-openbao`. Assert all seeded secrets are non-empty and meet length/PEM requirements. Seed paths (`tags: openbao, bootstrap`). On first run, skips `authentik_admin_token` and prints a reminder. Run 2 (`--tags authentik-token`) PATCHes only `admin-token` into `secret/authentik` once the Authentik bootstrap admin exists. `end_role` if not ready. |
+| `k9s-setup` | 5 | Install k9s. |
 
 ## Part Talk to Part How
 
@@ -78,7 +83,8 @@ Post-play debug prints public URLs. Passwords stay commented out.
 |---|---|---|
 | Play 1 → play 2 | node-token | `hostvars[groups['masters'][0]]['k3s_node_token']['content']` base64-decoded. Workers never read the file. |
 | Master → workers | API | `https://{{ k3s_master1_public_ip }}:6443`. Must be set. |
-| Play 4 → cluster | kubeconfig | `/etc/rancher/k3s/k3s.yaml` via `kubernetes.core.k8s`. |
+| Play 4 → worker | Kata | `/opt/kata` + k3s containerd tmpl. RuntimeClass via `masters[0]` kubeconfig. |
+| Play 5 → cluster | kubeconfig | `/etc/rancher/k3s/k3s.yaml` via `kubernetes.core.k8s`. |
 | `argocd-bootstrap` → Git | HTTPS | `https://github.com/freecloudinitiative/k3s-manifests.git` @ `HEAD`. |
 | GitOps → OpenBao | cluster | Chart in `k3s-manifests`. Playbook does not install OpenBao. |
 | `openbao-secrets-init` → OpenBao | HTTPS to ClusterIP `:8200` | `X-Vault-Token` from env. `validate_certs: false` (private CA). |
@@ -95,6 +101,8 @@ Post-play debug prints public URLs. Passwords stay commented out.
 **OpenBao seed is a two-run operation.** No dev root token. Operator init/unseal out of band. Env token, then revoke. Fail closed: no token → `end_role`, cluster still up. Run 1 (`ansible-playbook playbook.yml`) seeds everything except `authentik_admin_token`, which does not exist until Authentik bootstraps at sync-wave 5. Run 2 (`--tags authentik-token`) PATCHes only that field once the token is created; no other secrets are overwritten. Until run 2 completes, iam-service starts normally but Authentik user sync fails silently.
 
 **Labels and taints before Argo CD.** Argo CD pinned to `high-memory`. Masters and low-memory nodes do not take that load.
+
+**Kata only on `high_memory`.** Needs KVM. RuntimeClass `kata` selects `node-tier=high-memory` so mid/low workers never get those pods. Restart `k3s-agent` happens before Argo CD is scheduled onto that node.
 
 **No OpenBao token in Kubernetes.** External Secrets uses a ServiceAccount. Blast radius stays a 10-minute Vault token.
 

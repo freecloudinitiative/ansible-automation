@@ -1,0 +1,359 @@
+---
+- name: Resolve Kata architecture
+  ansible.builtin.set_fact:
+    kata_arch: "{{ 'arm64' if ansible_facts.architecture in ['aarch64', 'arm64'] else 'amd64' }}"
+  tags:
+    - kata
+
+- name: Set Kata tarball name
+  ansible.builtin.set_fact:
+    kata_tarball_name: "{{ kata_release_artifact }}-{{ kata_version }}-{{ kata_arch }}.tar.zst"
+  tags:
+    - kata
+
+- name: Set Kata download URL and dest
+  ansible.builtin.set_fact:
+    kata_tarball_url: "https://github.com/kata-containers/kata-containers/releases/download/{{ kata_version }}/{{ kata_tarball_name }}"
+    kata_tarball_dest: "{{ kata_download_dir }}/{{ kata_tarball_name }}"
+  tags:
+    - kata
+
+- name: Gather service facts
+  ansible.builtin.service_facts:
+  tags:
+    - kata
+
+- name: Set k3s unit name
+  ansible.builtin.set_fact:
+    kata_k3s_service: "{{ 'k3s-agent' if 'k3s-agent.service' in ansible_facts.services else 'k3s' }}"
+  tags:
+    - kata
+
+- name: Assert k3s is installed
+  ansible.builtin.assert:
+    that:
+      - kata_k3s_service in ['k3s-agent', 'k3s']
+      - (kata_k3s_service ~ '.service') in ansible_facts.services
+    fail_msg: >-
+      k3s is not installed on {{ inventory_hostname }}. Run k3s-worker-setup
+      before kata-containers.
+  tags:
+    - kata
+
+# --- KVM ---
+
+- name: Read CPU flags
+  ansible.builtin.slurp:
+    src: /proc/cpuinfo
+  register: kata_cpuinfo
+  tags:
+    - kata
+
+- name: Set CPU virtualization flag
+  ansible.builtin.set_fact:
+    kata_cpu_virt_flag: "{{ 'vmx' if 'vmx' in (kata_cpuinfo.content | b64decode) else ('svm' if 'svm' in (kata_cpuinfo.content | b64decode) else '') }}"
+  tags:
+    - kata
+
+- name: Assert hardware virtualization is available
+  ansible.builtin.assert:
+    that:
+      - kata_cpu_virt_flag in ['vmx', 'svm']
+    fail_msg: >-
+      No vmx/svm CPU flag on {{ inventory_hostname }}. Kata needs Intel VT-x
+      or AMD-V. If this host is a VM, enable nested virtualization.
+  when: kata_require_kvm | bool
+  tags:
+    - kata
+
+- name: Set KVM vendor module
+  ansible.builtin.set_fact:
+    kata_kvm_module: "{{ 'kvm_intel' if kata_cpu_virt_flag == 'vmx' else 'kvm_amd' }}"
+  tags:
+    - kata
+
+- name: Persist KVM modules
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/kata-kvm.conf
+    content: |
+      kvm
+      {{ kata_kvm_module }}
+    mode: "0644"
+  become: true
+  tags:
+    - kata
+
+- name: Load KVM modules
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  become: true
+  loop:
+    - kvm
+    - "{{ kata_kvm_module }}"
+  tags:
+    - kata
+
+- name: Check /dev/kvm
+  ansible.builtin.stat:
+    path: /dev/kvm
+  register: kata_kvm_dev
+  tags:
+    - kata
+
+- name: Assert /dev/kvm exists
+  ansible.builtin.assert:
+    that:
+      - kata_kvm_dev.stat.exists
+    fail_msg: >-
+      /dev/kvm is missing on {{ inventory_hostname }} after loading
+      {{ kata_kvm_module }}. Enable nested KVM or run Kata on bare metal.
+  when: kata_require_kvm | bool
+  tags:
+    - kata
+
+# --- Install ---
+
+- name: Install Kata extract dependencies
+  ansible.builtin.apt:
+    name: "{{ kata_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  become: true
+  tags:
+    - kata
+
+- name: Check for existing Kata install
+  ansible.builtin.stat:
+    path: "{{ kata_install_root }}/VERSION"
+  register: kata_version_file
+  tags:
+    - kata
+
+- name: Read installed Kata version
+  ansible.builtin.slurp:
+    src: "{{ kata_install_root }}/VERSION"
+  register: kata_version_slurp
+  when: kata_version_file.stat.exists
+  tags:
+    - kata
+
+- name: Set Kata install facts
+  ansible.builtin.set_fact:
+    kata_installed_version: "{{ kata_version_slurp.content | b64decode | trim if kata_version_file.stat.exists else '' }}"
+  tags:
+    - kata
+
+- name: Download Kata static tarball
+  ansible.builtin.get_url:
+    url: "{{ kata_tarball_url }}"
+    dest: "{{ kata_tarball_dest }}"
+    mode: "0644"
+    timeout: 600
+  become: true
+  when: kata_installed_version != kata_version
+  tags:
+    - kata
+
+- name: Extract Kata static tarball
+  ansible.builtin.unarchive:
+    src: "{{ kata_tarball_dest }}"
+    dest: /
+    remote_src: true
+  become: true
+  when: kata_installed_version != kata_version
+  notify: Restart k3s for Kata
+  tags:
+    - kata
+
+- name: Remove Kata tarball after install
+  ansible.builtin.file:
+    path: "{{ kata_tarball_dest }}"
+    state: absent
+  become: true
+  when: kata_cleanup_tarball | bool
+  tags:
+    - kata
+
+- name: Symlink Kata binaries onto PATH
+  ansible.builtin.file:
+    src: "{{ kata_install_root }}/bin/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    state: link
+    force: true
+  become: true
+  loop:
+    - "{{ kata_runtime_bin }}"
+    - "{{ kata_shim_name }}"
+  tags:
+    - kata
+
+- name: Ensure Kata config directory exists
+  ansible.builtin.file:
+    path: "{{ kata_config_dir }}"
+    state: directory
+    mode: "0755"
+  become: true
+  tags:
+    - kata
+
+- name: Install Kata QEMU configuration
+  ansible.builtin.copy:
+    src: "{{ kata_source_config }}"
+    dest: "{{ kata_config_path }}"
+    remote_src: true
+    mode: "0640"
+    force: false
+  become: true
+  tags:
+    - kata
+
+- name: Set Kata default guest memory
+  ansible.builtin.replace:
+    path: "{{ kata_config_path }}"
+    regexp: '^(\s*)default_memory\s*=\s*\d+'
+    replace: '\1default_memory = {{ kata_default_memory_mb }}'
+  become: true
+  notify: Restart k3s for Kata
+  tags:
+    - kata
+
+- name: Set Kata default guest vCPUs
+  ansible.builtin.replace:
+    path: "{{ kata_config_path }}"
+    regexp: '^(\s*)default_vcpus\s*=\s*[\d.]+'
+    replace: '\1default_vcpus = {{ kata_default_vcpus }}'
+  become: true
+  notify: Restart k3s for Kata
+  tags:
+    - kata
+
+- name: Verify host can run Kata Containers
+  ansible.builtin.command:
+    argv:
+      - "{{ kata_runtime_path }}"
+      - check
+  register: kata_runtime_check
+  changed_when: false
+  failed_when: kata_runtime_check.rc != 0
+  tags:
+    - kata
+
+# --- k3s containerd ---
+
+- name: Ensure k3s containerd config directory exists
+  ansible.builtin.file:
+    path: "{{ kata_containerd_dir }}"
+    state: directory
+    mode: "0755"
+  become: true
+  tags:
+    - kata
+
+- name: Create containerd v3 template with k3s base if missing
+  ansible.builtin.template:
+    src: containerd-base.tmpl.j2
+    dest: "{{ kata_containerd_v3_tmpl }}"
+    force: false
+    mode: "0644"
+  become: true
+  tags:
+    - kata
+
+- name: Create containerd v2 template with k3s base if missing
+  ansible.builtin.template:
+    src: containerd-base.tmpl.j2
+    dest: "{{ kata_containerd_v2_tmpl }}"
+    force: false
+    mode: "0644"
+  become: true
+  tags:
+    - kata
+
+- name: Register Kata runtime in containerd v3 template
+  ansible.builtin.blockinfile:
+    path: "{{ kata_containerd_v3_tmpl }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK — kata-containers"
+    block: |
+      [plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.{{ kata_runtime_handler }}]
+        runtime_type = "io.containerd.kata.v2"
+        runtime_path = "{{ kata_shim_path }}"
+        privileged_without_host_devices = true
+        [plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.{{ kata_runtime_handler }}.options]
+          ConfigPath = "{{ kata_config_path }}"
+  become: true
+  notify: Restart k3s for Kata
+  tags:
+    - kata
+
+- name: Register Kata runtime in containerd v2 template
+  ansible.builtin.blockinfile:
+    path: "{{ kata_containerd_v2_tmpl }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK — kata-containers"
+    block: |
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.{{ kata_runtime_handler }}]
+        runtime_type = "io.containerd.kata.v2"
+        privileged_without_host_devices = true
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.{{ kata_runtime_handler }}.options]
+          ConfigPath = "{{ kata_config_path }}"
+  become: true
+  notify: Restart k3s for Kata
+  tags:
+    - kata
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+  tags:
+    - kata
+
+- name: Wait for k3s service after Kata config
+  ansible.builtin.systemd:
+    name: "{{ kata_k3s_service }}"
+    state: started
+  register: kata_k3s_unit
+  until: kata_k3s_unit.status.ActiveState | default('') == 'active'
+  retries: 12
+  delay: 5
+  tags:
+    - kata
+
+# --- Cluster objects (primary master) ---
+
+- name: Apply Kata RuntimeClass
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig_path }}"
+    definition:
+      apiVersion: node.k8s.io/v1
+      kind: RuntimeClass
+      metadata:
+        name: "{{ kata_runtimeclass_name }}"
+      handler: "{{ kata_runtime_handler }}"
+      scheduling:
+        nodeSelector: "{{ kata_runtimeclass_node_selector }}"
+  delegate_to: "{{ groups['masters'][0] }}"
+  run_once: true
+  when: kata_apply_runtimeclass | bool
+  tags:
+    - kata
+
+- name: Label Kata-capable nodes
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - --kubeconfig
+      - "{{ kubeconfig_path }}"
+      - label
+      - node
+      - "{{ worker_label | default(inventory_hostname) }}"
+      - "{{ kata_node_label_key }}={{ kata_node_label_value }}"
+      - --overwrite
+  delegate_to: "{{ groups['masters'][0] }}"
+  register: kata_node_label
+  changed_when: >-
+    'labeled' in kata_node_label.stdout
+    and 'not labeled' not in kata_node_label.stdout
+  tags:
+    - kata

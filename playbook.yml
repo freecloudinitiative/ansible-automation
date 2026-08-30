@@ -25,6 +25,15 @@
   roles:
     - k3s-worker-setup
 
+# - name: Install Kata Containers on high-memory workers
+#   hosts: high_memory
+#   become: true
+#   gather_facts: true
+#   tags:
+#     - kata
+#   roles:
+#     - kata-containers
+
 - name: Install K3S Components
   hosts: "{{ groups['masters'][0] }}"
   become: true

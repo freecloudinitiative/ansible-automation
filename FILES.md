@@ -10,7 +10,7 @@ IGNORE `.github/` and `pi-boot.yml`.
 
 | File | What |
 |---|---|
-| `playbook.yml` | Four plays: all hosts pre-setup, masters, workers, first-master components. |
+| `playbook.yml` | Five plays: all hosts pre-setup, masters, workers, high_memory Kata, first-master components. |
 | `local-setup.yml` | Access cluster from local computer. |
 | `ssh-config.yml` | Nonprod SSH config. |
 | `thermal-check.yml` | Check node temps. |
@@ -87,6 +87,21 @@ Runs on every master and worker before k3s.
 | `roles/k3s-worker-setup/defaults/main.yml` | `k3s_embedded_registry: true`. |
 | `roles/k3s-worker-setup/meta/main.yml` | Galaxy metadata. |
 | `roles/k3s-worker-setup/README.md` | Role notes. |
+
+---
+
+## roles/kata-containers/
+
+Installs Kata Containers on `high_memory` workers. Needs `/dev/kvm`.
+
+| File | What |
+|---|---|
+| `roles/kata-containers/tasks/main.yml` | KVM, static tarball → `/opt/kata`, k3s containerd handler, RuntimeClass `kata`. |
+| `roles/kata-containers/defaults/main.yml` | `kata_version` `4.1.0`, guest memory/vCPU, RuntimeClass selector. |
+| `roles/kata-containers/handlers/main.yml` | Restart `k3s-agent` or `k3s`. |
+| `roles/kata-containers/templates/containerd-base.tmpl.j2` | k3s `{{ template "base" . }}` seed for missing containerd tmpls. |
+| `roles/kata-containers/meta/main.yml` | Galaxy metadata. Needs `kubernetes.core`. |
+| `roles/kata-containers/README.md` | Role notes. |
 
 ---
 

@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  role_name: kata_containers
+  author: freecloudinitiative
+  description: Installs Kata Containers on high_memory K3s workers and registers a RuntimeClass pinned to node-tier=high-memory
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+  galaxy_tags:
+    - kubernetes
+    - k3s
+    - kata
+    - containerd
+    - qemu
+
+collections:
+  - kubernetes.core
+  - community.general
