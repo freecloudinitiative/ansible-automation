@@ -8,25 +8,60 @@
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
   tags: [openbao, bootstrap]
 
-- name: Discover the OpenBao health service
+- name: Discover an OpenBao health endpoint
   kubernetes.core.k8s_info:
-    api_version: v1
-    kind: Service
-    name: "{{ openbao_health_service_name }}"
+    api_version: discovery.k8s.io/v1
+    kind: EndpointSlice
     namespace: "{{ openbao_namespace }}"
+    label_selectors:
+      - "kubernetes.io/service-name={{ openbao_health_service_name }}"
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
-  register: openbao_health_service
-  until: openbao_health_service.resources | length == 1
+  register: openbao_health_endpoint_slices
+  until:
+    - openbao_health_endpoint_slices.resources | length > 0
+    - >-
+      openbao_health_endpoint_slices.resources
+      | map(attribute='endpoints')
+      | flatten
+      | selectattr('addresses', 'defined')
+      | selectattr('nodeName', 'defined')
+      | list
+      | length > 0
   retries: 30
   delay: 5
   tags: [openbao, bootstrap, authentik-token]
 
-- name: Set the private OpenBao health address
+- name: Select the endpoint-local node for OpenBao health checks
   ansible.builtin.set_fact:
-    openbao_url: "https://{{ openbao_health_service.resources[0].spec.clusterIP }}:8200"
+    openbao_health_endpoint: >-
+      {{ openbao_health_endpoint_slices.resources
+         | map(attribute='endpoints')
+         | flatten
+         | selectattr('addresses', 'defined')
+         | selectattr('nodeName', 'defined')
+         | first }}
   tags: [openbao, bootstrap, authentik-token]
 
-- name: Wait for initialized and unsealed OpenBao
+- name: Verify the OpenBao endpoint node is managed by Ansible
+  ansible.builtin.assert:
+    that:
+      - openbao_health_endpoint.addresses | length > 0
+      - openbao_health_endpoint.nodeName in groups['all']
+    fail_msg: >-
+      OpenBao endpoint {{ openbao_health_endpoint.addresses | default([]) }} is on
+      Kubernetes node {{ openbao_health_endpoint.nodeName | default('unknown') }},
+      but that node is not present in the Ansible inventory. K3s node names must
+      match inventory host names so the bootstrap request can run on the endpoint's
+      local node without widening the OpenBao NetworkPolicy.
+  tags: [openbao, bootstrap, authentik-token]
+
+- name: Set the private OpenBao health address
+  ansible.builtin.set_fact:
+    openbao_url: "https://{{ openbao_health_endpoint.addresses[0] }}:8200"
+    openbao_api_delegate: "{{ openbao_health_endpoint.nodeName }}"
+  tags: [openbao, bootstrap, authentik-token]
+
+- name: Wait for an OpenBao API health response
   ansible.builtin.uri:
     url: "{{ openbao_url }}/v1/sys/health"
     method: GET
@@ -37,6 +72,7 @@
   until: openbao_health.status is defined and openbao_health.status in [200, 429, 501, 503]
   retries: 30
   delay: 5
+  delegate_to: "{{ openbao_api_delegate }}"
   tags: [openbao, bootstrap, authentik-token]
 
 - name: Explain the required OpenBao initialization ceremony
@@ -219,22 +255,71 @@
   no_log: true
   tags: [openbao, bootstrap]
 
-- name: Discover the active OpenBao service
+- name: Discover the active OpenBao endpoint
   kubernetes.core.k8s_info:
-    api_version: v1
-    kind: Service
-    name: "{{ openbao_service_name }}"
+    api_version: discovery.k8s.io/v1
+    kind: EndpointSlice
     namespace: "{{ openbao_namespace }}"
+    label_selectors:
+      - "kubernetes.io/service-name={{ openbao_service_name }}"
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
-  register: openbao_active_service
-  until: openbao_active_service.resources | length == 1
+  register: openbao_active_endpoint_slices
+  until:
+    - openbao_active_endpoint_slices.resources | length > 0
+    - >-
+      openbao_active_endpoint_slices.resources
+      | map(attribute='endpoints')
+      | flatten
+      | selectattr('addresses', 'defined')
+      | selectattr('nodeName', 'defined')
+      | list
+      | length > 0
   retries: 30
   delay: 5
   tags: [openbao, bootstrap, authentik-token]
 
+- name: Select the endpoint-local node for OpenBao bootstrap writes
+  ansible.builtin.set_fact:
+    openbao_active_endpoint: >-
+      {{ openbao_active_endpoint_slices.resources
+         | map(attribute='endpoints')
+         | flatten
+         | selectattr('addresses', 'defined')
+         | selectattr('nodeName', 'defined')
+         | first }}
+  tags: [openbao, bootstrap, authentik-token]
+
+- name: Verify the active OpenBao endpoint node is managed by Ansible
+  ansible.builtin.assert:
+    that:
+      - openbao_active_endpoint.addresses | length > 0
+      - openbao_active_endpoint.nodeName in groups['all']
+    fail_msg: >-
+      Active OpenBao endpoint {{ openbao_active_endpoint.addresses | default([]) }}
+      is on Kubernetes node {{ openbao_active_endpoint.nodeName | default('unknown') }},
+      but that node is not present in the Ansible inventory. K3s node names must
+      match inventory host names so bootstrap writes can run on the endpoint's
+      local node without widening the OpenBao NetworkPolicy.
+  tags: [openbao, bootstrap, authentik-token]
+
 - name: Use the active OpenBao API endpoint for bootstrap writes
   ansible.builtin.set_fact:
-    openbao_url: "https://{{ openbao_active_service.resources[0].spec.clusterIP }}:8200"
+    openbao_url: "https://{{ openbao_active_endpoint.addresses[0] }}:8200"
+    openbao_api_delegate: "{{ openbao_active_endpoint.nodeName }}"
+  tags: [openbao, bootstrap, authentik-token]
+
+- name: Verify the selected OpenBao endpoint is active and healthy
+  ansible.builtin.uri:
+    url: "{{ openbao_url }}/v1/sys/health"
+    method: GET
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: openbao_active_health
+  until: openbao_active_health.status is defined and openbao_active_health.status == 200
+  retries: 30
+  delay: 5
+  delegate_to: "{{ openbao_api_delegate }}"
   tags: [openbao, bootstrap, authentik-token]
 
 - name: Read enabled OpenBao secret engines
@@ -248,6 +333,7 @@
     return_content: true
   register: openbao_mounts
   no_log: true
+  delegate_to: "{{ openbao_api_delegate }}"
   tags: [openbao, bootstrap]
 
 - name: Enable the versioned KV secret engine
@@ -265,6 +351,7 @@
     status_code: [200, 204]
   when: "'secret/' not in openbao_mounts.json"
   no_log: true
+  delegate_to: "{{ openbao_api_delegate }}"
   tags: [openbao, bootstrap]
 
 - name: Install least-privilege External Secrets policy
@@ -357,6 +444,7 @@
         }
     status_code: [200, 204]
   no_log: true
+  delegate_to: "{{ openbao_api_delegate }}"
   tags: [openbao, bootstrap]
 
 - name: Read enabled OpenBao auth methods
@@ -370,6 +458,7 @@
     return_content: true
   register: openbao_auth_methods
   no_log: true
+  delegate_to: "{{ openbao_api_delegate }}"
   tags: [openbao, bootstrap]
 
 - name: Enable OpenBao Kubernetes authentication
@@ -385,6 +474,7 @@
     status_code: [200, 204]
   when: "'kubernetes/' not in openbao_auth_methods.json"
   no_log: true
+  delegate_to: "{{ openbao_api_delegate }}"
   tags: [openbao, bootstrap]
 
 - name: Configure OpenBao Kubernetes authentication
@@ -399,6 +489,7 @@
       kubernetes_host: https://kubernetes.default.svc:443
     status_code: [200, 204]
   no_log: true
+  delegate_to: "{{ openbao_api_delegate }}"
   tags: [openbao, bootstrap]
 
 - name: Bind External Secrets service account to the read policy
@@ -421,6 +512,7 @@
       token_max_ttl: 30m
     status_code: [200, 204]
   no_log: true
+  delegate_to: "{{ openbao_api_delegate }}"
   tags: [openbao, bootstrap]
 
 - name: Read enabled OpenBao audit devices
@@ -434,6 +526,7 @@
     return_content: true
   register: openbao_audit_devices
   no_log: true
+  delegate_to: "{{ openbao_api_delegate }}"
   tags: [openbao, bootstrap]
 
 - name: Enable persistent OpenBao file audit logging
@@ -451,6 +544,7 @@
     status_code: [200, 204]
   when: "'file/' not in openbao_audit_devices.json"
   no_log: true
+  delegate_to: "{{ openbao_api_delegate }}"
   tags: [openbao, bootstrap]
 
 - name: Seed application secrets in OpenBao
@@ -468,6 +562,7 @@
   loop_control:
     label: "{{ item.path }}"
   no_log: true
+  delegate_to: "{{ openbao_api_delegate }}"
   tags: [openbao, bootstrap]
 
 # Authentik admin token — seeded in a separate second run once the Authentik

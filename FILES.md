@@ -143,7 +143,7 @@ Installs Kata Containers on `high_memory` workers. Needs `/dev/kvm`.
 
 | File | What |
 |---|---|
-| `roles/openbao-secrets-init/tasks/main.yml` | Health gate, token gate, KV/auth/policy/audit, seed `openbao_secrets`. |
+| `roles/openbao-secrets-init/tasks/main.yml` | Endpoint-local health/active gates, token gate, KV/auth/policy/audit, seed `openbao_secrets`. |
 | `roles/openbao-secrets-init/defaults/main.yml` | Env lookups, namespace names, secret path list. |
 | `roles/openbao-secrets-init/README.md` | Second-run env vars. Revoke token after. |
 
