@@ -10,3 +10,4 @@
     status_code: 200
   loop: "{{ openbao_unseal_keys[:3] }}"
   delegate_to: "{{ unseal_node.nodeName }}"
+  no_log: true

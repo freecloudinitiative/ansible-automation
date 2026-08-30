@@ -21,6 +21,7 @@
   register: openbao_init_result
   delegate_to: "{{ openbao_api_delegate }}"
   when: not openbao_init_status.json.initialized | bool
+  no_log: true
 
 - name: Store OpenBao keys on master-1 securely
   ansible.builtin.copy:
@@ -31,14 +32,30 @@
     group: root
   delegate_to: master-1
   when: openbao_init_result.changed
+  no_log: true
+
+- name: Stat OpenBao keys on master-1
+  ansible.builtin.stat:
+    path: /root/openbao-cluster-keys.json
+  register: openbao_keys_stat
+  delegate_to: master-1
+
+- name: Abort if OpenBao is sealed but keys are missing
+  ansible.builtin.fail:
+    msg: "OpenBao is sealed (HTTP 503) but /root/openbao-cluster-keys.json is missing on master-1. You must unseal manually or restore the keys."
+  when: 
+    - (openbao_health.status | default(0) | int) == 503
+    - not openbao_keys_stat.stat.exists
 
 - name: Read OpenBao keys from master-1
   ansible.builtin.slurp:
     src: /root/openbao-cluster-keys.json
   register: openbao_keys_file
   delegate_to: master-1
+  no_log: true
 
 - name: Set keys facts
   ansible.builtin.set_fact:
     openbao_bootstrap_token: "{{ (openbao_keys_file.content | b64decode | from_json).root_token }}"
     openbao_unseal_keys: "{{ (openbao_keys_file.content | b64decode | from_json).keys_b64 }}"
+  no_log: true
