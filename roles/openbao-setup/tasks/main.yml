@@ -179,7 +179,7 @@
 - name: Download and install the OpenBao CLI binary
   ansible.builtin.unarchive:
     src: >-
-      https://github.com/openbao/openbao/releases/download/v{{ openbao_cli_version }}/bao_{{ openbao_cli_version }}_linux_{{
+      https://github.com/openbao/openbao/releases/download/v{{ openbao_cli_version }}/openbao_{{ openbao_cli_version }}_linux_{{
       openbao_arch_map[ansible_facts.architecture] | default('amd64') }}.tar.gz
     dest: "{{ openbao_cli_install_dir }}"
     remote_src: true
