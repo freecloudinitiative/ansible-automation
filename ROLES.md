@@ -11,7 +11,7 @@ playbook.yml
   │
   ├─ play 1  hosts: all
   │    inventory-validation (fail-fast, localhost only)
-  │    raspberry-pi-cgroups → k3s-pre-setup
+  │    k3s-pre-setup
   │
   ├─ play 2  hosts: masters
   │    k3s-master-setup → k3s-fact-gathering
@@ -75,7 +75,6 @@ Post-play debug prints public URLs. Passwords stay commented out.
 | Role | Play | Job |
 |---|---|---|
 | `inventory-validation` | 1 | Validate required inventory variables (`k3s_master1_public_ip`, `masters`, `workers`) before modifying any nodes. Gated HA check when multiple masters exist. |
-| `raspberry-pi-cgroups` | 1 | Memory cgroups enabled and asserted (`cgroup_memory=1 cgroup_enable=memory` in `cmdline.txt`; no-op on Ubuntu where already active). Fails play if controller still off after reboot. |
 | `k3s-pre-setup` | 1 | Swap off. `dphys-swapfile` stopped. APT packages: wireguard, iscsi, nfs, containerd, python k8s libs. |
 | `k3s-master-setup` | 2 | `get.k3s.io` server. `--disable traefik`, `--disable servicelb`, `--embedded-registry`. Readyz wait. Helm + CLI tools. |
 | `k3s-fact-gathering` | 2 | Slurp node-token on `masters[0]`. Set `kubeconfig_path`. |
