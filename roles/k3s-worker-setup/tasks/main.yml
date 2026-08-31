@@ -24,7 +24,7 @@
     argv:
       - /tmp/k3s-install.sh
       - agent
-      - "--server=https://{{ k3s_master1_public_ip }}:6443"
+      - "--server=https://{{ hostvars[groups['masters'][0]]['k3s_master1_public_ip'] }}:6443"
       - "--token={{ k3s_node_token }}"
       - "--node-name={{ worker_label | default(inventory_hostname) }}"
       - "--node-ip={{ ansible_facts.default_ipv4.address }}"

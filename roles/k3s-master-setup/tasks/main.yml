@@ -1,4 +1,18 @@
 ---
+# k3s_master1_public_ip is the join URL every other node dials
+# (--server=https://<this>:6443). Named "public" from the cloud-only days;
+# for an all-local fleet there's no public IP to give, so an explicit,
+# non-empty value still wins (cloud/mixed setups keep working unchanged),
+# but an unset/blank one now falls back to master-1's own LAN address --
+# gathered a few lines below by this same play's gather_facts: true,
+# so no separate discovery step is needed.
+- name: Resolve k3s_master1_public_ip from master-1's LAN address when unset
+  ansible.builtin.set_fact:
+    k3s_master1_public_ip: "{{ ansible_facts.default_ipv4.address }}"
+  when:
+    - inventory_hostname == groups['masters'][0]
+    - k3s_master1_public_ip | default('', true) | trim | length == 0
+
 - name: Download k3s install script
   ansible.builtin.get_url:
     url: https://get.k3s.io
@@ -39,7 +53,7 @@
     argv:
       - /tmp/k3s-install.sh
       - server
-      - "--server=https://{{ k3s_master1_public_ip }}:6443"
+      - "--server=https://{{ hostvars[groups['masters'][0]]['k3s_master1_public_ip'] }}:6443"
       - "--token={{ k3s_node_token }}"
       - --disable
       - traefik
