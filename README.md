@@ -84,6 +84,7 @@ Minimum lengths and format requirements enforced by the assert task before any w
 | `AUTHENTIK_POSTGRESQL_PASSWORD`, `PLATFORM_POSTGRESQL_PASSWORD`, `VALKEY_PASSWORD` | >= 24 chars |
 | `IAM_POSTGRESQL_PASSWORD`, `COMPUTE_POSTGRESQL_PASSWORD`, `DATABASE_POSTGRESQL_PASSWORD`, `STORAGE_POSTGRESQL_PASSWORD` | >= 24 chars |
 | `AUTHENTIK_BOOTSTRAP_PASSWORD`, `AUTHENTIK_GRAFANA_OIDC_SECRET`, `AUTHENTIK_ARGOCD_OIDC_SECRET`, `GRAFANA_ADMIN_PASSWORD` | >= 16 chars |
+| `AUTHENTIK_ADMIN_TOKEN` | >= 32 chars |
 | `*_INTERNAL_PUBLIC_KEY` (5 keys) | valid PEM `BEGIN PUBLIC KEY`, distinct across all issuers |
 | `*_INTERNAL_SIGNING_KEY` (5 keys) | valid PEM `BEGIN PRIVATE KEY` |
 | `GARAGE_STORAGE_SERVICE_ACCESS_KEY`, `GARAGE_STORAGE_SERVICE_SECRET_KEY` | >= 16 chars |
@@ -95,33 +96,22 @@ Minimum lengths and format requirements enforced by the assert task before any w
 
 `ansible.cfg` sets `inventory = inventory.ini` and `ask_vault_pass = true`. Revoke bootstrap token after seed.
 
-## Two-run bootstrap
+## Single-run bootstrap
 
-`AUTHENTIK_ADMIN_TOKEN` cannot be supplied on run 1 — Authentik does not exist
-until `k3s-manifests` syncs it at sync-wave 5, which happens after
-`openbao-secrets-init` has already run. The token is therefore seeded in a
-separate, narrowly tagged second run.
-
-**Run 1** — everything except the Authentik admin token:
-
-```bash
-OPENBAO_BOOTSTRAP_TOKEN='hvs....' ansible-playbook playbook.yml --ask-vault-pass
-```
-
-The playbook prints a reminder at the end that the second run is still pending.
-
-**Run 2** — after Argo CD syncs Authentik (sync-wave 5) and the bootstrap admin
-exists. Create an API token for a service account with user and group write
-scope in the Authentik admin UI, then:
+`AUTHENTIK_ADMIN_TOKEN` is a value **you pick** — a random string, generated
+the same way as every other secret — not a token pulled out of Authentik. It
+is seeded into OpenBao like everything else, and also passed through to
+Authentik itself as `AUTHENTIK_BOOTSTRAP_TOKEN`
+(`k3s-manifests/infrastructure/external-secrets/external-secret-authentik.yaml`),
+which makes Authentik create the akadmin API token with that exact value at
+boot (sync-wave 5). Both sides converge on the same value without a manual
+UI step or a second `ansible-playbook` run:
 
 ```bash
-AUTHENTIK_ADMIN_TOKEN='...' OPENBAO_BOOTSTRAP_TOKEN='hvs....' \
-  ansible-playbook playbook.yml --tags authentik-token --ask-vault-pass
+AUTHENTIK_ADMIN_TOKEN='at-least-32-random-characters' \
+OPENBAO_BOOTSTRAP_TOKEN='hvs....' \
+  ansible-playbook playbook.yml --ask-vault-pass
 ```
-
-This PATCHes only the `admin-token` field into the existing `secret/authentik`
-entry, leaving the other seven keys (`bootstrap-email`, `bootstrap-password`,
-`postgresql-password`, `secret-key`, and the three OIDC secrets) unchanged.
 
 External Secrets refreshes `iam-service-authentik-token` within `refreshInterval`
 (1 h by default); force it sooner:
@@ -133,9 +123,6 @@ kubectl -n backend annotate externalsecret iam-service-authentik-token \
 
 No iam-service restart is needed — the token file is re-read per call, not
 cached at startup.
-
-Until run 2 completes, iam-service starts normally and every Authentik user sync
-fails silently at WARN. Dashboard-created IAM users cannot sign in.
 
 ## Why Need It
 
