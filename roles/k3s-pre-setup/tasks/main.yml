@@ -14,6 +14,13 @@
 - name: Gather service facts
   ansible.builtin.service_facts:
 
+- name: Disable dphys-swapfile service
+  ansible.builtin.service:
+    name: dphys-swapfile
+    enabled: false
+    state: stopped
+  when: "'dphys-swapfile.service' in ansible_facts.services or 'dphys-swapfile' in ansible_facts.services"
+
 - name: Update apt cache
   ansible.builtin.apt:
     update_cache: true
