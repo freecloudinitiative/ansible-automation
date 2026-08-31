@@ -19,11 +19,16 @@
   changed_when: false
   failed_when: false
 
+# Pinned so a compromised or MITM'd response can't get piped into bash as
+# root: the download fails closed on a checksum mismatch instead of silently
+# executing whatever came back. Re-pin when Tailscale updates the script:
+#   curl -fsSL https://tailscale.com/install.sh | shasum -a 256
 - name: Download the Tailscale install script
   ansible.builtin.get_url:
     url: https://tailscale.com/install.sh
     dest: /tmp/tailscale-install.sh
     mode: "0755"
+    checksum: sha256:805e85ed6f6f81a7ea2e70d52d47e7d5290863299e5c922b2787d71aa312f22e
   when: tailscale_which.rc != 0
 
 - name: Run the Tailscale install script
@@ -32,13 +37,16 @@
   when: tailscale_which.rc != 0
   changed_when: true
 
-- name: Check current Tailscale connection state
-  ansible.builtin.command:
-    argv: [tailscale, status, --json]
-  register: tailscale_status
-  changed_when: false
-  failed_when: false
-
+# `tailscale up` is documented as safe to rerun: with an already-authenticated
+# node it re-applies these flags rather than re-authenticating, so there's no
+# need to branch on connection state first. That branch used to inspect
+# `tailscale status --json`'s exit code and raw output length, but a daemon
+# that's running-but-logged-out (NeedsLogin) returns rc=0 with non-empty JSON
+# too -- it looked "already joined" and got skipped, leaving the node outside
+# the tailnet. The same skip also meant an already-connected node with a
+# stale hostname/DNS/SSH setting from an earlier run never picked up a
+# changed one on rerun. Unconditional avoids both.
+#
 # --accept-dns=false: these nodes already resolve names via their existing
 # resolv.conf (see ssh-config-setup / the cluster's own DNS); Tailscale's
 # MagicDNS would otherwise override it.
@@ -53,7 +61,6 @@
       - "--hostname={{ tailscale_hostname }}"
       - --accept-dns=false
       - --ssh
-  when: tailscale_status.rc != 0 or (tailscale_status.stdout | default('') | trim | length == 0)
   no_log: true
   changed_when: true
 
