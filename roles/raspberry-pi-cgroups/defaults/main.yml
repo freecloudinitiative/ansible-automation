@@ -1,18 +1,4 @@
 ---
-# Candidate paths for the kernel command line file.
-# Pi OS moved cmdline.txt between releases; both are checked in order.
-rpi_cgroups_cmdline_candidates:
-  - /boot/firmware/cmdline.txt
-  - /boot/cmdline.txt
-
 # Regex used to detect whether the memory cgroup controller is active
 # in /proc/cgroups (trailing column 1 = enabled).
 rpi_cgroups_proc_pattern: '^memory\s+\d+\s+\d+\s+1'
-
-# Reboot parameters — copied from raspberry-pi-boot-config for consistency.
-rpi_cgroups_reboot_msg: "Rebooting to enable memory cgroups"
-rpi_cgroups_reboot_connect_timeout: 5
-rpi_cgroups_reboot_timeout: 300
-rpi_cgroups_reboot_pre_delay: 0
-rpi_cgroups_reboot_post_delay: 30
-rpi_cgroups_reboot_test_command: uptime
