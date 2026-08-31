@@ -7,6 +7,19 @@
 #     - raspberry-pi-boot-config # This role will be used in the prod setup
 #     - raspberry-pi-cgroups
 
+- name: Join every node to the tailnet for VPN admin access
+  hosts: all
+  become: true
+  gather_facts: false
+  roles:
+    # Gate on the role's own variable, not a re-derived env lookup: an
+    # operator supplying tailscale_auth_key via inventory/group_vars/
+    # extra-vars instead of the TAILSCALE_AUTH_KEY env var would otherwise
+    # have this `when` see an empty env value and skip the role even though
+    # tailscale_auth_key itself resolves non-empty.
+    - role: tailscale-setup
+      when: (tailscale_auth_key | default('', true)) | length > 0
+
 - name: Setup K3s master nodes
   hosts: masters
   become: true

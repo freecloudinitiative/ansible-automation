@@ -1,0 +1,12 @@
+---
+# Reusable, pre-approved auth key from https://login.tailscale.com/admin/settings/keys.
+# One key joins every node in this run, so it must be reusable (not
+# single-use) and should have "Ephemeral" off, or nodes disappear from the
+# tailnet on reboot.
+tailscale_auth_key: "{{ lookup('ansible.builtin.env', 'TAILSCALE_AUTH_KEY') | default('', true) }}"
+
+# Advertised as the node's name in the Tailscale admin console / MagicDNS.
+# Defaults to the inventory name (master-1, worker-1, ...), which is what
+# distinguishes otherwise-identical hosts once they're all reachable over
+# the same tailnet.
+tailscale_hostname: "{{ inventory_hostname }}"

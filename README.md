@@ -94,6 +94,10 @@ Minimum lengths and format requirements enforced by the assert task before any w
 
 `ansible.cfg` sets `inventory = inventory.ini` and `ask_vault_pass = true`. Revoke bootstrap token after seed.
 
+## VPN access to nodes (optional)
+
+`TAILSCALE_AUTH_KEY=tskey-auth-... ansible-playbook playbook.yml` joins every node to a Tailscale tailnet (see `roles/tailscale-setup`), so nodes are reachable over their Tailscale IP for SSH/`kubectl` without a public IP. Skipped entirely when the variable is unset — nothing else in the run depends on it. Use a reusable, non-ephemeral key from <https://login.tailscale.com/admin/settings/keys>.
+
 ## Single-run bootstrap
 
 `AUTHENTIK_ADMIN_TOKEN` is a value **you pick** — a random string, generated
