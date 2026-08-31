@@ -1,8 +1,15 @@
 # Ansible Role: openbao-secrets-init
 
-Performs an idempotent, post-initialization OpenBao bootstrap. It enables KV v2,
-persistent audit logging, Kubernetes authentication, a narrow read-only policy,
-and the initial Grafana, Authentik, PostgreSQL, and Valkey secrets.
+Runs immediately after `openbao-setup` (which installs OpenBao itself), still
+before `argocd-setup`/`argocd-bootstrap`. Performs an idempotent,
+post-initialization OpenBao bootstrap: enables KV v2, persistent audit
+logging, Kubernetes authentication, a narrow read-only policy, and the
+initial Grafana, Authentik, PostgreSQL, and Valkey secrets — every seeded
+path except `valkey`/`garage`/`platform-postgresql`'s `ca-cert` field, which
+needs cert-manager's CA and is seeded later by `openbao-ca-secrets` (see that
+role's README). Doing OpenBao's init/unseal/seed here, before ArgoCD ever
+runs, is what lets `external-secrets-config`'s `ClusterSecretStore` sync
+clean on its very first attempt instead of racing ArgoCD's startup.
 
 The role never writes an OpenBao token into Kubernetes. External Secrets uses a
 short-lived Kubernetes ServiceAccount token to authenticate to OpenBao.
@@ -22,9 +29,11 @@ share one 600-second discovery deadline; individual Pod probes have a three-seco
 socket timeout, so blackholed Pod IPs cannot silently expand the total wait by
 many minutes.
 
-After OpenBao has been initialized and unsealed, rerun the playbook with a
-short-lived administrative bootstrap token supplied only through the process
-environment:
+Supply a short-lived administrative bootstrap token, and every other secret
+below, through the process environment for the single `ansible-playbook` run
+— `openbao-setup` installs OpenBao and `openbao-secrets-init` initializes and
+unseals it within that same run, so there's no separate "after init/unseal"
+step to wait for:
 
 ```sh
 GHCR_REGISTRY_USERNAME='github_username' \

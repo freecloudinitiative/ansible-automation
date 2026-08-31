@@ -1,0 +1,24 @@
+---
+openbao_namespace: openbao
+openbao_helm_repo_url: https://openbao.github.io/openbao-helm
+openbao_helm_chart: openbao
+openbao_version: "0.28.6"
+# Single source of truth for Helm values — kept in k3s-manifests so there is
+# exactly one copy, not two drifting ones.
+openbao_helm_values_url: https://raw.githubusercontent.com/freecloudinitiative/k3s-manifests/main/infrastructure/openbao/values.yaml
+openbao_helm_values_path: /tmp/openbao-helm-values.yaml
+openbao_tls_secret_name: openbao-server-tls
+# Must match infrastructure/openbao/values.yaml's server.ha.raft retry_join
+# hostnames and the old (now-removed) infrastructure/openbao/certificate.yaml.
+openbao_tls_san_dns:
+  - openbao
+  - openbao.openbao
+  - openbao.openbao.svc
+  - openbao.openbao.svc.cluster.local
+  - openbao-active.openbao.svc.cluster.local
+  - "*.openbao-internal.openbao.svc.cluster.local"
+openbao_tls_san_ip:
+  - 127.0.0.1
+openbao_tls_work_dir: /tmp/openbao-tls
+openbao_statefulset_ready_retries: 60
+openbao_statefulset_ready_delay: 5

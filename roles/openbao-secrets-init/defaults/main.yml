@@ -63,11 +63,9 @@ openbao_secrets:
   - path: platform-postgresql
     data:
       password: "{{ platform_postgresql_password }}"
-      ca-cert: "{{ cluster_ca_cert }}"
   - path: valkey
     data:
       password: "{{ valkey_password }}"
-      ca-cert: "{{ cluster_ca_cert }}"
   - path: api-gateway
     data:
       internal-public-key: "{{ api_gateway_internal_public_key }}"
@@ -87,7 +85,6 @@ openbao_secrets:
       internal-signing-key: "{{ database_internal_signing_key }}"
   - path: garage
     data:
-      ca-cert: "{{ cluster_ca_cert }}"
       storage-service-access-key: "{{ garage_storage_service_access_key }}"
       storage-service-secret-key: "{{ garage_storage_service_secret_key }}"
   - path: iam

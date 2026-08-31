@@ -1,0 +1,84 @@
+---
+# Seeds the shared cluster CA (cert-manager's selfsigned-ca-secret) into the
+# three OpenBao paths that need it: valkey, garage, platform-postgresql.
+#
+# This is split out from openbao-secrets-init and runs after argocd-bootstrap
+# on purpose: cert-manager creates selfsigned-ca-secret, cert-manager is still
+# GitOps-managed, and openbao-secrets-init now runs *before* argocd-bootstrap
+# (see openbao-setup's README). By the time this role runs, cert-manager has
+# had a chance to sync. It's still fully automatic within the same single
+# `ansible-playbook` run — not a manual second run.
+#
+# PATCH with application/merge-patch+json targets only the ca-cert field. A
+# POST to secret/data/<path> would replace the whole KV v2 payload and blank
+# every other key openbao-secrets-init already wrote there.
+
+- name: Initialize active OpenBao endpoint discovery state
+  ansible.builtin.set_fact:
+    openbao_active_health: {}
+    openbao_discovery_deadline_epoch: >-
+      {{ (lookup('ansible.builtin.pipe', 'date +%s') | int)
+         + (openbao_endpoint_discovery_timeout | int) }}
+    openbao_endpoint_discovery_attempts: >-
+      {{ ((openbao_endpoint_discovery_timeout | int)
+          // (openbao_endpoint_discovery_delay | int)) + 2 }}
+
+- name: Discover and probe current active OpenBao endpoints
+  ansible.builtin.include_role:
+    name: openbao-secrets-init
+    tasks_from: discover-active-endpoint
+  loop: "{{ range(0, openbao_endpoint_discovery_attempts | int) | list }}"
+  loop_control:
+    loop_var: openbao_active_discovery_attempt
+    label: "attempt {{ openbao_active_discovery_attempt + 1 }}"
+  when:
+    - (openbao_active_health.status | default(0) | int) != 200
+    - >-
+      lookup('ansible.builtin.pipe', 'date +%s') | int
+      < openbao_discovery_deadline_epoch | int
+
+- name: Require a healthy active OpenBao endpoint
+  ansible.builtin.assert:
+    that:
+      - (openbao_active_health.status | default(0) | int) == 200
+    fail_msg: >-
+      No serving, non-terminating OpenBao endpoint returned HTTP 200 after
+      the shared {{ openbao_endpoint_discovery_timeout }}-second discovery
+      window while seeding the cluster CA.
+
+- name: Fetch selfsigned-ca-secret from Kubernetes
+  kubernetes.core.k8s_info:
+    kind: Secret
+    name: selfsigned-ca-secret
+    namespace: cert-manager
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+  register: k8s_ca_secret
+  retries: 30
+  delay: 5
+  until:
+    - k8s_ca_secret.resources is defined
+    - k8s_ca_secret.resources | length > 0
+    - k8s_ca_secret.resources[0].data['ca.crt'] is defined
+  no_log: true
+
+- name: Set cluster_ca_cert fact
+  ansible.builtin.set_fact:
+    cluster_ca_cert: "{{ k8s_ca_secret.resources[0].data['ca.crt'] | b64decode }}"
+  no_log: true
+
+- name: Patch the shared cluster CA into dependent OpenBao secrets
+  ansible.builtin.uri:
+    url: "{{ openbao_url }}/v1/secret/data/{{ item }}"
+    method: PATCH
+    validate_certs: false
+    headers:
+      X-Vault-Token: "{{ openbao_bootstrap_token }}"
+      Content-Type: application/merge-patch+json
+    body_format: json
+    body:
+      data:
+        ca-cert: "{{ cluster_ca_cert }}"
+    status_code: [200, 204]
+  loop: "{{ openbao_ca_dependent_paths }}"
+  no_log: true
+  delegate_to: "{{ openbao_api_delegate }}"
