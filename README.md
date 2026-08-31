@@ -10,10 +10,10 @@ Six plays, in order:
 2. **Masters** — `k3s-master-setup` then `k3s-fact-gathering`. First host in `masters` runs `k3s server --cluster-init`. Traefik and ServiceLB stay off (GitOps owns ingress and LB). Embedded registry on. Kubeconfig copied to `~/.kube/config`. Helm, kubectx, kubens, popeye, stern, kube-ps1 installed. Node token slurped from `/var/lib/rancher/k3s/server/node-token`.
 3. **Workers** — `k3s-worker-setup`. Join `https://{{ k3s_master1_public_ip }}:6443` with that token.
 4. **high_memory workers** — `kata-containers`. Official static tarball into `/opt/kata`. Registers CRI runtime `kata` with k3s containerd. Applies RuntimeClass `kata` (`node-tier=high-memory`). Needs `/dev/kvm` (nested virt if the worker is a VM). ~3 GB disk. Re-run with `--tags kata`.
-5. **First master only** — `k3s-node-labeling`, `argocd-setup`, `argocd-bootstrap`, `openbao-secrets-init`. Labels `node-tier`. Taints `low_memory` and masters. Installs Argo CD from official manifest. Applies `root-app` pointing at `k3s-manifests`. Seeds OpenBao after operator init/unseal.
+5. **First master only** — `k3s-node-labeling`, `openbao-setup`, `openbao-secrets-init`, `argocd-setup`, `argocd-bootstrap`, `openbao-ca-secrets`. Labels `node-tier`. Taints `low_memory` and masters. Installs OpenBao itself (Helm, self-signed TLS) and seeds it — fully ready — *before* installing Argo CD and applying `root-app` pointing at `k3s-manifests`. `openbao-ca-secrets` runs last, once cert-manager has synced, to seed the 3 secrets that need its CA.
 6. **Local k9s** — `local-k9s-setup`. Fetch kubeconfig and configure k9s on the control node.
 
-OpenBao install is **not** in this playbook. `k3s-manifests` deploys it. `openbao-secrets-init` waits, then exits unless OpenBao is initialized **and** `OPENBAO_BOOTSTRAP_TOKEN` is set.
+OpenBao install **is** in this playbook (`openbao-setup`) — deliberately not GitOps-managed. Installing and seeding it before ArgoCD ever runs means `external-secrets-config`'s `ClusterSecretStore` finds a fully configured OpenBao on its very first sync, instead of racing ArgoCD's startup. See [ROLES.md](ROLES.md) for why.
 
 ## Prerequisites
 
@@ -38,13 +38,11 @@ ansible-playbook playbook.yml -e k3s_master1_public_ip=203.0.113.10 --ask-vault-
 The playbook validates this value before modifying any node. An empty or whitespace-only value is rejected at preflight; without this guard an unusable endpoint such as `https://:6443` would only surface as a join failure after k3s was already installed on the masters.
 
 ```bash
-# First run: cluster + Argo CD + root-app. OpenBao seed stops until unsealed.
-ansible-playbook playbook.yml --ask-vault-pass
-
-# After OpenBao init/unseal: seed KV, Kubernetes auth, External Secrets policy.
-# Every variable below is asserted before any OpenBao write; an unset variable
-# would seed an empty string and surface as a CrashLoopBackOff or
-# ImagePullBackOff with no pointer back at this run.
+# Single run: cluster + OpenBao (install, init/unseal, seed) + Argo CD +
+# root-app + the 3 CA-dependent OpenBao secrets. Every variable below is
+# asserted before any OpenBao write; an unset variable would seed an empty
+# string and surface as a CrashLoopBackOff or ImagePullBackOff with no
+# pointer back at this run.
 OPENBAO_BOOTSTRAP_TOKEN='hvs....' \
 GRAFANA_ADMIN_PASSWORD='...' \
 AUTHENTIK_SECRET_KEY='...' \
@@ -124,10 +122,31 @@ kubectl -n backend annotate externalsecret iam-service-authentik-token \
 No iam-service restart is needed — the token file is re-read per call, not
 cached at startup.
 
+## OpenBao runs before ArgoCD
+
+`openbao-setup` and `openbao-secrets-init` install, initialize, unseal, and
+seed OpenBao *before* `argocd-setup`/`argocd-bootstrap` — OpenBao is not a
+GitOps `Application` at all (`k3s-manifests/infrastructure/openbao/` keeps
+only `values.yaml`, fetched directly by `openbao-setup`, and `ingress.yaml`).
+This is deliberate: `external-secrets-config`'s `ClusterSecretStore` needs
+OpenBao's Kubernetes-auth backend configured before it can sync, so when
+OpenBao used to be GitOps-managed, ArgoCD's very first sync raced a
+not-yet-configured OpenBao — `ClusterSecretStore` validation failed, no
+`ExternalSecret` applied, and every pod needing a secret sat in `FailedMount`
+until ArgoCD's automatic retry/selfHeal eventually caught up minutes later.
+Installing OpenBao first makes that race structurally impossible.
+
+One exception: three secrets (`valkey`/`garage`/`platform-postgresql`
+`ca-cert`) need cert-manager's `selfsigned-ca-secret`, and cert-manager stays
+GitOps-managed. `openbao-ca-secrets` seeds just those three fields after
+`argocd-bootstrap`, once cert-manager has had a chance to sync — still fully
+automatic in the same `ansible-playbook` run, not a manual second run. See
+[ROLES.md](ROLES.md) for the full ordering.
+
 ## Why Need It
 
 - K3s on Raspberry Pi nodes has no cloud installer. Swap, packages, server/agent flags, token handoff must be exact.
-- Argo CD is the cutover: this repo stops at `root-app`. `k3s-manifests` owns Traefik, cert-manager, OpenBao, apps.
+- Argo CD is the cutover: this repo stops at `root-app`. `k3s-manifests` owns Traefik, cert-manager, apps — but not OpenBao, which stays Ansible-owned so it's ready before ArgoCD ever syncs (see [ROLES.md](ROLES.md)).
 - Secrets never land in Git as plaintext. Vault file + env vars + OpenBao. External Secrets reads OpenBao with a short-lived ServiceAccount token. Playbook never writes an OpenBao token into Kubernetes.
 
 ## Security

@@ -88,29 +88,6 @@
     label: "openbao-{{ replica_index }}"
   tags: [openbao, bootstrap]
 
-# openbao_secrets references cluster_ca_cert, so the fact must exist before any task templates it.
-- name: Fetch selfsigned-ca-secret from Kubernetes
-  kubernetes.core.k8s_info:
-    kind: Secret
-    name: selfsigned-ca-secret
-    namespace: cert-manager
-    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
-  register: k8s_ca_secret
-  retries: 30
-  delay: 5
-  until:
-    - k8s_ca_secret.resources is defined
-    - k8s_ca_secret.resources | length > 0
-    - k8s_ca_secret.resources[0].data['ca.crt'] is defined
-  no_log: true
-  tags: [openbao, bootstrap]
-
-- name: Set cluster_ca_cert fact
-  ansible.builtin.set_fact:
-    cluster_ca_cert: "{{ k8s_ca_secret.resources[0].data['ca.crt'] | b64decode }}"
-  no_log: true
-  tags: [openbao, bootstrap]
-
 # Backstop: fail fast when any value destined for OpenBao is empty.
 # Every key in openbao_secrets is written unconditionally; an empty string
 # seeds successfully, the ExternalSecret syncs successfully with that empty

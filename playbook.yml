@@ -40,9 +40,11 @@
     k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
   roles:
     - k3s-node-labeling
+    - openbao-setup
+    - openbao-secrets-init
     - argocd-setup
     - argocd-bootstrap
-    - openbao-secrets-init
+    - openbao-ca-secrets
     - k9s-setup
 
   post_tasks:

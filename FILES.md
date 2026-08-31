@@ -139,15 +139,48 @@ Installs Kata Containers on `high_memory` workers. Needs `/dev/kvm`.
 
 ---
 
-## roles/openbao-secrets-init/
+## roles/openbao-setup/
+
+Runs before ArgoCD exists at all — installs OpenBao itself, nothing else.
 
 | File | What |
 |---|---|
-| `roles/openbao-secrets-init/tasks/main.yml` | Endpoint-local health/active gates, token gate, KV/auth/policy/audit, seed `openbao_secrets`. |
+| `roles/openbao-setup/tasks/main.yml` | Namespace, self-signed TLS Secret (own `openssl`, no cert-manager yet), fetch `values.yaml` from `k3s-manifests`, `helm install/upgrade`, wait for pods `Running`. |
+| `roles/openbao-setup/defaults/main.yml` | Chart repo/version, values URL, TLS SANs. |
+| `roles/openbao-setup/README.md` | Why this exists — the ArgoCD-vs-OpenBao race it closes. |
+
+No `templates/`. No `meta/`.
+
+---
+
+## roles/openbao-secrets-init/
+
+Runs right after `openbao-setup`, still before `argocd-bootstrap`.
+
+| File | What |
+|---|---|
+| `roles/openbao-secrets-init/tasks/main.yml` | Endpoint-local health/active gates, token gate, KV/auth/policy/audit, seed `openbao_secrets` — every path except the 3 CA-dependent fields (see `openbao-ca-secrets`). |
 | `roles/openbao-secrets-init/tasks/discover-health-endpoint.yml` | Refresh health EndpointSlices, probe non-terminating candidates, prefer ready responses. |
-| `roles/openbao-secrets-init/tasks/discover-active-endpoint.yml` | Refresh active EndpointSlices until a serving, non-terminating candidate returns 200. |
+| `roles/openbao-secrets-init/tasks/discover-active-endpoint.yml` | Refresh active EndpointSlices until a serving, non-terminating candidate returns 200. Reused by `openbao-ca-secrets` via `include_role`/`tasks_from`. |
 | `roles/openbao-secrets-init/defaults/main.yml` | Env lookups, namespace names, secret path list. |
 | `roles/openbao-secrets-init/README.md` | Single-run bootstrap env vars. Revoke token after. |
+
+No `templates/`. No `meta/`.
+
+---
+
+## roles/openbao-ca-secrets/
+
+Runs after `argocd-bootstrap`, once cert-manager has had a chance to sync — the
+one piece of OpenBao seeding that genuinely can't happen before ArgoCD, since
+it needs cert-manager's CA. Still fully automatic in the same
+`ansible-playbook` run.
+
+| File | What |
+|---|---|
+| `roles/openbao-ca-secrets/tasks/main.yml` | Re-discover the active OpenBao endpoint, fetch `selfsigned-ca-secret` from `cert-manager`, `PATCH` `ca-cert` into `valkey`/`garage`/`platform-postgresql`. |
+| `roles/openbao-ca-secrets/defaults/main.yml` | The 3 CA-dependent paths. |
+| `roles/openbao-ca-secrets/README.md` | Why this is split from `openbao-secrets-init`. |
 
 No `templates/`. No `meta/`.
 

@@ -28,20 +28,27 @@ playbook.yml
   │    QEMU/KVM runtime on high-memory workers only
   │
   ├─ play 5  hosts: groups['masters'][0]
-       k3s-node-labeling → argocd-setup → argocd-bootstrap
-       → openbao-secrets-init
+       k3s-node-labeling
+            │
+            ▼
+       openbao-setup ── Helm install, self-signed TLS (no cert-manager yet)
+            │
+            ▼
+       openbao-secrets-init ── wait, init/unseal, OPENBAO_BOOTSTRAP_TOKEN,
+            │                  KV secrets + kubernetes auth + ES policy
+            │                  (everything except the 3 CA-dependent fields)
+            ▼
+       argocd-setup → argocd-bootstrap
             │
             ▼
        Argo CD Application root-app
             │
             ▼
-       k3s-manifests  (infrastructure/ + applications/)
-            │
+       k3s-manifests  (infrastructure/ + applications/) ── OpenBao is NOT
+            │                                              one of these
             ▼
-       OpenBao (GitOps) ── wait, init/unseal, OPENBAO_BOOTSTRAP_TOKEN
-            │
-            ▼
-       KV secrets + kubernetes auth + External Secrets policy
+       openbao-ca-secrets ── now that cert-manager has synced, patch
+                              valkey/garage/platform-postgresql ca-cert
   │
   └─ play 6  hosts: groups['masters'][0]
        local-k9s-setup
@@ -75,9 +82,11 @@ Post-play debug prints public URLs. Passwords stay commented out.
 | `k3s-worker-setup` | 3 | `get.k3s.io` agent. `--server` + `--token`. `--node-name` from `worker_label`. Waits for `:6443`, raises `k3s-agent` `TimeoutStartSec` to 300s, joins `throttle: 1` — avoids the first-run timeout when every worker hits a fresh master at once. Restarts and re-waits on a failed `systemctl start` before failing. |
 | `kata-containers` | 4 | Static tarball → `/opt/kata`. KVM modules. k3s containerd handler `kata`. RuntimeClass `kata` with `node-tier=high-memory`. Needs `/dev/kvm` (nested virt if the worker is a VM). |
 | `k3s-node-labeling` | 5 | `node-tier=high-memory\|mid-memory\|low-memory`. Taint low-memory `memory=limited:NoSchedule`. Taint masters `node-role.kubernetes.io/master=:NoSchedule`. |
+| `openbao-setup` | 5 | Runs before ArgoCD exists. `helm install/upgrade` the `openbao/openbao` chart (values fetched from `k3s-manifests` `infrastructure/openbao/values.yaml`, the single source of truth). Generates OpenBao's own self-signed TLS Secret (`openbao-server-tls`) with `openssl` — no cert-manager yet. Waits for every `openbao-N` pod to reach `Running` (not `Ready` — that needs unsealing, which is the next role's job). |
+| `openbao-secrets-init` | 5 | Refresh OpenBao EndpointSlices and probe every non-terminating health candidate from its local inventory node, preferring health 200/429 over sealed or uninitialized responses. Health and active discovery share one 600-second deadline; Pod probes time out after three seconds. Need `OPENBAO_BOOTSTRAP_TOKEN`. Re-discover until a serving, non-terminating active endpoint returns 200 before enabling KV v2, file audit, Kubernetes auth, and policy `external-secrets-read`. Bind SA `external-secrets-openbao`. Assert all seeded secrets are non-empty and meet length/PEM requirements, including `authentik_admin_token` (>= 32 chars). Seed all paths except `valkey`/`garage`/`platform-postgresql`'s `ca-cert` field (`tags: openbao, bootstrap`) — that field needs cert-manager's CA, which doesn't exist yet at this point; `openbao-ca-secrets` seeds it later. `end_role` if not ready. |
 | `argocd-setup` | 5 | Official install.yaml into `argocd`. Pin Deployments/StatefulSet to `node-tier=high-memory`. Wait ready. Read initial admin secret. |
-| `argocd-bootstrap` | 5 | Wait `applications.argoproj.io` CRD. Render `root-app.yaml.j2`. Apply. Watches `k3s-manifests` `infrastructure/` and `applications/`. prune + selfHeal. |
-| `openbao-secrets-init` | 5 | Refresh OpenBao EndpointSlices and probe every non-terminating health candidate from its local inventory node, preferring health 200/429 over sealed or uninitialized responses. Health and active discovery share one 600-second deadline; Pod probes time out after three seconds. Need `OPENBAO_BOOTSTRAP_TOKEN`. Re-discover until a serving, non-terminating active endpoint returns 200 before enabling KV v2, file audit, Kubernetes auth, and policy `external-secrets-read`. Bind SA `external-secrets-openbao`. Assert all seeded secrets are non-empty and meet length/PEM requirements, including `authentik_admin_token` (>= 32 chars). Seed all paths, `admin-token` included, in one pass (`tags: openbao, bootstrap`). `end_role` if not ready. |
+| `argocd-bootstrap` | 5 | Wait `applications.argoproj.io` CRD. Render `root-app.yaml.j2`. Apply. Watches `k3s-manifests` `infrastructure/` and `applications/` — OpenBao is not one of them. prune + selfHeal. |
+| `openbao-ca-secrets` | 5 | Runs after `argocd-bootstrap`, once cert-manager has had a chance to sync. Re-discovers OpenBao's active endpoint (reuses `openbao-secrets-init`'s `discover-active-endpoint.yml`), fetches `selfsigned-ca-secret` from `cert-manager`, and `PATCH`es just the `ca-cert` field into `valkey`/`garage`/`platform-postgresql` without touching the rest of those KV entries. |
 | `k9s-setup` | 5 | Install k9s. |
 | `local-k9s-setup` | 6 | Fetch kubeconfig and configure k9s on the control node. |
 
@@ -96,13 +105,13 @@ Post-play debug prints public URLs. Passwords stay commented out.
 
 ## Why Build This Way
 
-**Ansible for nodes, GitOps for apps.** Node OS, k3s flags, join token, first Argo CD install need SSH and once-only ceremony. Everything after `root-app` must live in Git so drift heals.
+**Ansible for nodes, GitOps for apps — except OpenBao.** Node OS, k3s flags, join token, first Argo CD install need SSH and once-only ceremony. Everything after `root-app` must live in Git so drift heals — with one deliberate exception: OpenBao is entirely Ansible-owned (`openbao-setup` + `openbao-secrets-init`), never a GitOps `Application`, and runs *before* `argocd-bootstrap`. Reason: `external-secrets-config`'s `ClusterSecretStore` needs OpenBao's Kubernetes-auth backend configured before it can sync, so if OpenBao's readiness depended on ArgoCD (which is what happened when it was GitOps-managed), the very first sync would race a not-yet-configured OpenBao, fail validation, and every `ExternalSecret` in the cluster would sit unsynced until ArgoCD's automatic retry/selfHeal eventually caught up minutes later. Installing OpenBao first makes that race structurally impossible.
 
 **Disable Traefik and ServiceLB at install.** Stock k3s ingress would fight GitOps Traefik and MetalLB.
 
 **Token via hostvars, not a file on workers.** One slurp on primary. Workers never open `/var/lib/rancher/k3s/server/node-token`.
 
-**OpenBao seed is a single-run operation.** No dev root token. Operator init/unseal out of band. Env token, then revoke. Fail closed: no token → `end_role`, cluster still up. `authentik_admin_token` is not read from Authentik — it is an operator-chosen value seeded into OpenBao like every other secret and also passed to Authentik as `AUTHENTIK_BOOTSTRAP_TOKEN`, so Authentik creates its akadmin API token with that same value at boot (sync-wave 5). Both sides converge without a manual UI step or a second run.
+**OpenBao seed is a single-run operation, split across the boundary it can't avoid.** No dev root token. Operator init/unseal out of band. Env token, then revoke. Fail closed: no token → `end_role`, cluster still up. `authentik_admin_token` is not read from Authentik — it is an operator-chosen value seeded into OpenBao like every other secret and also passed to Authentik as `AUTHENTIK_BOOTSTRAP_TOKEN`, so Authentik creates its akadmin API token with that same value at boot (sync-wave 5). Both sides converge without a manual UI step or a second run. The one thing that genuinely can't happen before `argocd-bootstrap`: three secrets (`valkey`/`garage`/`platform-postgresql` `ca-cert`) need cert-manager's `selfsigned-ca-secret`, and cert-manager is still GitOps-managed. `openbao-ca-secrets` seeds just those three fields after `argocd-bootstrap` — still fully automatic in the same `ansible-playbook` run, not a manual second run.
 
 **Labels and taints before Argo CD.** Argo CD pinned to `high-memory`. Masters and low-memory nodes do not take that load.
 

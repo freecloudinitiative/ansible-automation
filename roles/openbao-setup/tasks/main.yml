@@ -1,0 +1,218 @@
+---
+# Installs OpenBao itself (namespace, TLS, Helm release) and waits for its
+# pods to exist. Does not touch init/unseal/secrets — that is
+# openbao-secrets-init's job, which runs right after this role.
+#
+# This role — and running it before argocd-bootstrap — is what makes OpenBao
+# fully ready before ArgoCD ever starts syncing, so external-secrets-config's
+# ClusterSecretStore validates on its very first attempt instead of racing
+# ArgoCD's own retry/selfHeal loop.
+
+- name: Ensure the openbao namespace exists
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ openbao_namespace }}"
+    state: present
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+    definition:
+      metadata:
+        labels:
+          pod-security.kubernetes.io/enforce: restricted
+          pod-security.kubernetes.io/audit: restricted
+          pod-security.kubernetes.io/warn: restricted
+
+- name: Check for an existing OpenBao TLS secret
+  kubernetes.core.k8s_info:
+    kind: Secret
+    name: "{{ openbao_tls_secret_name }}"
+    namespace: "{{ openbao_namespace }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+  register: openbao_tls_secret_info
+
+# Self-signed: no cert-manager available yet (it's GitOps-managed and hasn't
+# synced at this point in the playbook). One cert acts as both the leaf and
+# its own CA — the raft listener config and the ClusterSecretStore's
+# caProvider both just need a ca.crt that validates tls.crt, not a
+# cluster-wide CA chain.
+- name: Generate OpenBao's self-signed TLS material
+  when: openbao_tls_secret_info.resources | default([]) | length == 0
+  block:
+    - name: Ensure the TLS work directory exists
+      ansible.builtin.file:
+        path: "{{ openbao_tls_work_dir }}"
+        state: directory
+        mode: '0700'
+
+    - name: Generate an ECDSA private key
+      ansible.builtin.command:
+        argv:
+          - openssl
+          - ecparam
+          - -name
+          - prime256v1
+          - -genkey
+          - -noout
+          - -out
+          - "{{ openbao_tls_work_dir }}/tls.key"
+        creates: "{{ openbao_tls_work_dir }}/tls.key"
+
+    - name: Generate the self-signed certificate
+      ansible.builtin.command:
+        argv:
+          - openssl
+          - req
+          - -x509
+          - -new
+          - -key
+          - "{{ openbao_tls_work_dir }}/tls.key"
+          - -out
+          - "{{ openbao_tls_work_dir }}/tls.crt"
+          - -days
+          - "90"
+          - -subj
+          - /CN=openbao
+          - -addext
+          - "subjectAltName={{ (openbao_tls_san_dns | map('regex_replace', '^(.*)$', 'DNS:\\1') | list + openbao_tls_san_ip | map('regex_replace', '^(.*)$', 'IP:\\1') | list) | join(',') }}"
+        creates: "{{ openbao_tls_work_dir }}/tls.crt"
+
+    - name: Read the generated key and certificate
+      ansible.builtin.slurp:
+        src: "{{ openbao_tls_work_dir }}/{{ item }}"
+      loop:
+        - tls.key
+        - tls.crt
+      register: openbao_tls_files
+      no_log: true
+
+    - name: Create the OpenBao TLS secret
+      kubernetes.core.k8s:
+        state: present
+        kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+        definition:
+          apiVersion: v1
+          kind: Secret
+          type: kubernetes.io/tls
+          metadata:
+            name: "{{ openbao_tls_secret_name }}"
+            namespace: "{{ openbao_namespace }}"
+          data:
+            tls.key: "{{ (openbao_tls_files.results | selectattr('item', 'equalto', 'tls.key') | first).content }}"
+            tls.crt: "{{ (openbao_tls_files.results | selectattr('item', 'equalto', 'tls.crt') | first).content }}"
+            ca.crt: "{{ (openbao_tls_files.results | selectattr('item', 'equalto', 'tls.crt') | first).content }}"
+      no_log: true
+
+    - name: Remove the TLS work directory
+      ansible.builtin.file:
+        path: "{{ openbao_tls_work_dir }}"
+        state: absent
+
+- name: Fetch the OpenBao Helm values file
+  ansible.builtin.get_url:
+    url: "{{ openbao_helm_values_url }}"
+    dest: "{{ openbao_helm_values_path }}"
+    mode: '0644'
+    force: true
+
+- name: Install or upgrade the OpenBao Helm release
+  kubernetes.core.helm:
+    name: openbao
+    chart_ref: "{{ openbao_helm_chart }}"
+    chart_repo_url: "{{ openbao_helm_repo_url }}"
+    chart_version: "{{ openbao_version }}"
+    release_namespace: "{{ openbao_namespace }}"
+    create_namespace: false
+    values_files:
+      - "{{ openbao_helm_values_path }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+
+- name: Fetch the OpenBao StatefulSet
+  kubernetes.core.k8s_info:
+    kind: StatefulSet
+    name: openbao
+    namespace: "{{ openbao_namespace }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+  register: openbao_statefulset
+  until:
+    - openbao_statefulset.resources | default([]) | length > 0
+  retries: "{{ openbao_statefulset_ready_retries }}"
+  delay: "{{ openbao_statefulset_ready_delay }}"
+
+# Only wait for openbao-0, not every replica. The chart's StatefulSet uses
+# the default OrderedReady podManagementPolicy: openbao-1 is not even
+# created until openbao-0 reports Ready, and openbao-0 can't be Ready until
+# it's unsealed — which is openbao-secrets-init's job, run right after this
+# role. Waiting here for every replica to exist would deadlock forever.
+# openbao-secrets-init's own per-replica wait (unseal-replica.yml) already
+# handles each pod as OrderedReady creates it, once its predecessor is
+# unsealed.
+- name: Wait for openbao-0 to exist and start running
+  kubernetes.core.k8s_info:
+    kind: Pod
+    name: openbao-0
+    namespace: "{{ openbao_namespace }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+  register: openbao_pod_wait
+  until: >-
+    openbao_pod_wait.resources | length > 0 and
+    openbao_pod_wait.resources[0].status.phase | default('') == 'Running'
+  retries: "{{ openbao_statefulset_ready_retries }}"
+  delay: "{{ openbao_statefulset_ready_delay }}"
+
+# Local `bao` CLI for operator administration via `kubectl port-forward`, not
+# required by any other role — openbao-secrets-init talks to the API
+# directly.
+- name: Ensure OpenBao stack directory exists
+  ansible.builtin.file:
+    path: "{{ openbao_stack_dir }}"
+    state: directory
+    mode: '0755'
+  when: openbao_cli_install | bool
+
+- name: Ensure the architecture fact is available for the OpenBao CLI
+  ansible.builtin.setup:
+    gather_subset: min
+  when:
+    - openbao_cli_install | bool
+    - ansible_facts.architecture is not defined
+
+- name: Download and install the OpenBao CLI binary
+  ansible.builtin.unarchive:
+    src: >-
+      https://github.com/openbao/openbao/releases/download/v{{ openbao_cli_version }}/bao_{{ openbao_cli_version }}_linux_{{
+      openbao_arch_map[ansible_facts.architecture] | default('amd64') }}.tar.gz
+    dest: "{{ openbao_cli_install_dir }}"
+    remote_src: true
+    include:
+      - bao
+    mode: '0755'
+    creates: "{{ openbao_cli_install_dir }}/bao"
+  when: openbao_cli_install | bool
+
+- name: Fetch the OpenBao TLS secret for local CLI administration
+  kubernetes.core.k8s_info:
+    kind: Secret
+    name: "{{ openbao_tls_secret_name }}"
+    namespace: "{{ openbao_namespace }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+  register: openbao_tls_secret_for_cli
+  when: openbao_cli_install | bool
+
+- name: Copy the OpenBao CA certificate for local administration
+  ansible.builtin.copy:
+    content: "{{ openbao_tls_secret_for_cli.resources[0].data['ca.crt'] | b64decode }}"
+    dest: "{{ openbao_stack_dir }}/openbao-ca.crt"
+    mode: '0644'
+  when: openbao_cli_install | bool
+
+- name: Ensure OpenBao CLI environment profile script exists
+  ansible.builtin.copy:
+    dest: /etc/profile.d/openbao.sh
+    content: |
+      # First run: kubectl -n {{ openbao_namespace }} port-forward svc/openbao 8200:8200
+      export VAULT_ADDR="https://127.0.0.1:8200"
+      export BAO_ADDR="https://127.0.0.1:8200"
+      export VAULT_CACERT="{{ openbao_stack_dir }}/openbao-ca.crt"
+      export BAO_CACERT="{{ openbao_stack_dir }}/openbao-ca.crt"
+    mode: '0755'
+  when: openbao_cli_install | bool
