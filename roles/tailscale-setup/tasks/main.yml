@@ -1,0 +1,68 @@
+---
+- name: Validate tailscale_auth_key
+  ansible.builtin.assert:
+    that:
+      - tailscale_auth_key | length > 0
+    fail_msg: >-
+      tailscale_auth_key is empty. Supply it with
+      TAILSCALE_AUTH_KEY=tskey-auth-... ansible-playbook playbook.yml,
+      or set tailscale_auth_key directly. Generate a reusable,
+      non-ephemeral key at
+      https://login.tailscale.com/admin/settings/keys -- one key joins
+      every node in this run.
+  no_log: true
+
+- name: Check whether the Tailscale CLI is already installed
+  ansible.builtin.command:
+    argv: [which, tailscale]
+  register: tailscale_which
+  changed_when: false
+  failed_when: false
+
+- name: Download the Tailscale install script
+  ansible.builtin.get_url:
+    url: https://tailscale.com/install.sh
+    dest: /tmp/tailscale-install.sh
+    mode: "0755"
+  when: tailscale_which.rc != 0
+
+- name: Run the Tailscale install script
+  ansible.builtin.command:
+    argv: [/bin/bash, /tmp/tailscale-install.sh]
+  when: tailscale_which.rc != 0
+  changed_when: true
+
+- name: Check current Tailscale connection state
+  ansible.builtin.command:
+    argv: [tailscale, status, --json]
+  register: tailscale_status
+  changed_when: false
+  failed_when: false
+
+# --accept-dns=false: these nodes already resolve names via their existing
+# resolv.conf (see ssh-config-setup / the cluster's own DNS); Tailscale's
+# MagicDNS would otherwise override it.
+# --ssh: exposes Tailscale SSH as a second access path gated by the
+# tailnet's own ACLs, independent of the SSH keys ssh-config-setup manages.
+- name: Join the tailnet
+  ansible.builtin.command:
+    argv:
+      - tailscale
+      - up
+      - "--authkey={{ tailscale_auth_key }}"
+      - "--hostname={{ tailscale_hostname }}"
+      - --accept-dns=false
+      - --ssh
+  when: tailscale_status.rc != 0 or (tailscale_status.stdout | default('') | trim | length == 0)
+  no_log: true
+  changed_when: true
+
+- name: Get this node's Tailscale IP
+  ansible.builtin.command:
+    argv: [tailscale, ip, -4]
+  register: tailscale_ip
+  changed_when: false
+
+- name: Show this node's Tailscale IP
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }}: {{ tailscale_ip.stdout }}"

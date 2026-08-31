@@ -7,6 +7,14 @@
 #     - raspberry-pi-boot-config # This role will be used in the prod setup
 #     - raspberry-pi-cgroups
 
+- name: Join every node to the tailnet for VPN admin access
+  hosts: all
+  become: true
+  gather_facts: false
+  roles:
+    - role: tailscale-setup
+      when: (lookup('ansible.builtin.env', 'TAILSCALE_AUTH_KEY') | default('', true)) | length > 0
+
 - name: Setup K3s master nodes
   hosts: masters
   become: true
