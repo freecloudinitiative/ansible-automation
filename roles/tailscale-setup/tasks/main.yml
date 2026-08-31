@@ -1,0 +1,75 @@
+---
+- name: Validate tailscale_auth_key
+  ansible.builtin.assert:
+    that:
+      - tailscale_auth_key | length > 0
+    fail_msg: >-
+      tailscale_auth_key is empty. Supply it with
+      TAILSCALE_AUTH_KEY=tskey-auth-... ansible-playbook playbook.yml,
+      or set tailscale_auth_key directly. Generate a reusable,
+      non-ephemeral key at
+      https://login.tailscale.com/admin/settings/keys -- one key joins
+      every node in this run.
+  no_log: true
+
+- name: Check whether the Tailscale CLI is already installed
+  ansible.builtin.command:
+    argv: [which, tailscale]
+  register: tailscale_which
+  changed_when: false
+  failed_when: false
+
+# Pinned so a compromised or MITM'd response can't get piped into bash as
+# root: the download fails closed on a checksum mismatch instead of silently
+# executing whatever came back. Re-pin when Tailscale updates the script:
+#   curl -fsSL https://tailscale.com/install.sh | shasum -a 256
+- name: Download the Tailscale install script
+  ansible.builtin.get_url:
+    url: https://tailscale.com/install.sh
+    dest: /tmp/tailscale-install.sh
+    mode: "0755"
+    checksum: sha256:805e85ed6f6f81a7ea2e70d52d47e7d5290863299e5c922b2787d71aa312f22e
+  when: tailscale_which.rc != 0
+
+- name: Run the Tailscale install script
+  ansible.builtin.command:
+    argv: [/bin/bash, /tmp/tailscale-install.sh]
+  when: tailscale_which.rc != 0
+  changed_when: true
+
+# `tailscale up` is documented as safe to rerun: with an already-authenticated
+# node it re-applies these flags rather than re-authenticating, so there's no
+# need to branch on connection state first. That branch used to inspect
+# `tailscale status --json`'s exit code and raw output length, but a daemon
+# that's running-but-logged-out (NeedsLogin) returns rc=0 with non-empty JSON
+# too -- it looked "already joined" and got skipped, leaving the node outside
+# the tailnet. The same skip also meant an already-connected node with a
+# stale hostname/DNS/SSH setting from an earlier run never picked up a
+# changed one on rerun. Unconditional avoids both.
+#
+# --accept-dns=false: these nodes already resolve names via their existing
+# resolv.conf (see ssh-config-setup / the cluster's own DNS); Tailscale's
+# MagicDNS would otherwise override it.
+# --ssh: exposes Tailscale SSH as a second access path gated by the
+# tailnet's own ACLs, independent of the SSH keys ssh-config-setup manages.
+- name: Join the tailnet
+  ansible.builtin.command:
+    argv:
+      - tailscale
+      - up
+      - "--authkey={{ tailscale_auth_key }}"
+      - "--hostname={{ tailscale_hostname }}"
+      - --accept-dns=false
+      - --ssh
+  no_log: true
+  changed_when: true
+
+- name: Get this node's Tailscale IP
+  ansible.builtin.command:
+    argv: [tailscale, ip, -4]
+  register: tailscale_ip
+  changed_when: false
+
+- name: Show this node's Tailscale IP
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }}: {{ tailscale_ip.stdout }}"
