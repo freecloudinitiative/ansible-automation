@@ -21,6 +21,8 @@ authentik_postgresql_password: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_POST
 authentik_secret_key: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_SECRET_KEY') | default('', true) }}"
 authentik_grafana_oidc_secret: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_GRAFANA_OIDC_SECRET') | default('', true) }}"
 authentik_argocd_oidc_secret: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_ARGOCD_OIDC_SECRET') | default('', true) }}"
+authentik_google_client_id: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_GOOGLE_CLIENT_ID') | default('', true) }}"
+authentik_google_client_secret: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_GOOGLE_CLIENT_SECRET') | default('', true) }}"
 api_gateway_internal_public_key: "{{ lookup('ansible.builtin.env', 'API_GATEWAY_INTERNAL_PUBLIC_KEY') | default('', true) }}"
 api_gateway_internal_signing_key: "{{ lookup('ansible.builtin.env', 'API_GATEWAY_INTERNAL_SIGNING_KEY') | default('', true) }}"
 cloudflared_tunnel_token: "{{ lookup('ansible.builtin.env', 'CLOUDFLARED_TUNNEL_TOKEN') | default('', true) }}"
@@ -52,14 +54,32 @@ openbao_secrets:
       admin-user: "{{ grafana_admin_user }}"
       admin-password: "{{ grafana_admin_password }}"
   - path: authentik
-    data:
-      bootstrap-email: "{{ authentik_bootstrap_email }}"
-      bootstrap-password: "{{ authentik_bootstrap_password }}"
-      postgresql-password: "{{ authentik_postgresql_password }}"
-      secret-key: "{{ authentik_secret_key }}"
-      admin-token: "{{ authentik_admin_token }}"
-      grafana-oidc-secret: "{{ authentik_grafana_oidc_secret }}"
-      argocd-oidc-secret: "{{ authentik_argocd_oidc_secret }}"
+    # google-client-id/secret are the one optional pair here (Google
+    # sign-in isn't a required platform feature the way grafana/argocd
+    # OIDC are). The "fail when any seeded value is empty" backstop below
+    # applies to every key in openbao_secrets unconditionally, so an unset
+    # optional var can't just seed an empty string like the others do --
+    # it has to be left out of the dict entirely, via this conditional
+    # combine(), or bootstrap fails for anyone not using Google login.
+    data: >-
+      {{
+        {
+          'bootstrap-email': authentik_bootstrap_email,
+          'bootstrap-password': authentik_bootstrap_password,
+          'postgresql-password': authentik_postgresql_password,
+          'secret-key': authentik_secret_key,
+          'admin-token': authentik_admin_token,
+          'grafana-oidc-secret': authentik_grafana_oidc_secret,
+          'argocd-oidc-secret': authentik_argocd_oidc_secret,
+        } | combine(
+          {
+            'google-client-id': authentik_google_client_id,
+            'google-client-secret': authentik_google_client_secret,
+          }
+          if (authentik_google_client_id | length > 0 and authentik_google_client_secret | length > 0)
+          else {}
+        )
+      }}
   - path: platform-postgresql
     data:
       password: "{{ platform_postgresql_password }}"
