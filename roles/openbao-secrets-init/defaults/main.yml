@@ -21,6 +21,8 @@ authentik_postgresql_password: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_POST
 authentik_secret_key: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_SECRET_KEY') | default('', true) }}"
 authentik_grafana_oidc_secret: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_GRAFANA_OIDC_SECRET') | default('', true) }}"
 authentik_argocd_oidc_secret: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_ARGOCD_OIDC_SECRET') | default('', true) }}"
+authentik_google_client_id: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_GOOGLE_CLIENT_ID') | default('', true) }}"
+authentik_google_client_secret: "{{ lookup('ansible.builtin.env', 'AUTHENTIK_GOOGLE_CLIENT_SECRET') | default('', true) }}"
 api_gateway_internal_public_key: "{{ lookup('ansible.builtin.env', 'API_GATEWAY_INTERNAL_PUBLIC_KEY') | default('', true) }}"
 api_gateway_internal_signing_key: "{{ lookup('ansible.builtin.env', 'API_GATEWAY_INTERNAL_SIGNING_KEY') | default('', true) }}"
 cloudflared_tunnel_token: "{{ lookup('ansible.builtin.env', 'CLOUDFLARED_TUNNEL_TOKEN') | default('', true) }}"
@@ -60,6 +62,8 @@ openbao_secrets:
       admin-token: "{{ authentik_admin_token }}"
       grafana-oidc-secret: "{{ authentik_grafana_oidc_secret }}"
       argocd-oidc-secret: "{{ authentik_argocd_oidc_secret }}"
+      google-client-id: "{{ authentik_google_client_id }}"
+      google-client-secret: "{{ authentik_google_client_secret }}"
   - path: platform-postgresql
     data:
       password: "{{ platform_postgresql_password }}"
