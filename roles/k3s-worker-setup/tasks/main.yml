@@ -12,6 +12,51 @@
     path: /usr/local/bin/k3s
   register: k3s_binary
 
+# The master play's own readyz check only proves the apiserver answers; it
+# says nothing about whether a fresh, low-power node can reach it. All
+# workers hit --server simultaneously in this play, and on Raspberry Pi
+# hardware the TLS bootstrap handshake plus first-boot image pulls can run
+# past systemd's default 90s Type=notify timeout, especially under that
+# concurrent load — systemd then kills the still-starting agent and
+# k3s-install.sh's `systemctl start` returns non-zero, even though a second,
+# uncontended attempt succeeds quickly. Wait for the port and raise the
+# per-unit timeout up front instead of relying on the operator to notice and
+# rerun the playbook.
+- name: Wait for the k3s API server to accept connections
+  ansible.builtin.wait_for:
+    host: "{{ k3s_master1_public_ip }}"
+    port: 6443
+    timeout: 180
+  when: not k3s_binary.stat.exists or k3s_script_download.changed
+
+- name: Ensure the k3s-agent systemd drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/k3s-agent.service.d
+    state: directory
+    mode: '0755'
+  become: true
+  when: not k3s_binary.stat.exists or k3s_script_download.changed
+
+- name: Raise k3s-agent start timeout past first-boot TLS bootstrap and image pulls
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/k3s-agent.service.d/start-timeout.conf
+    mode: '0644'
+    content: |
+      [Service]
+      TimeoutStartSec=300
+  become: true
+  register: k3s_agent_timeout_override
+  when: not k3s_binary.stat.exists or k3s_script_download.changed
+
+- name: Reload systemd units after the drop-in change
+  ansible.builtin.systemd:
+    daemon_reload: true
+  become: true
+  when: k3s_agent_timeout_override is changed
+
+# Workers joining a fresh master concurrently is the load spike that causes
+# the timeout above; installing one worker at a time keeps that spike small
+# without slowing down steady-state reruns, where every host is a no-op.
 - name: Install k3s agent on worker node
   ansible.builtin.command:
     argv:
@@ -25,3 +70,39 @@
   when: not k3s_binary.stat.exists or k3s_script_download.changed
   register: k3s_worker_install
   changed_when: "'k3s' in k3s_worker_install.stdout or k3s_worker_install.rc == 0"
+  failed_when: false
+  throttle: 1
+
+# k3s-install.sh's own `systemctl start` can fail the way described above
+# even with the raised timeout (e.g. a still-slow SD card); retry the
+# service directly rather than re-running the whole installer.
+- name: Retry starting k3s-agent if the installer's start failed
+  ansible.builtin.systemd:
+    name: k3s-agent
+    state: restarted
+  become: true
+  when:
+    - k3s_worker_install is not skipped
+    - k3s_worker_install.rc != 0
+
+- name: Wait for k3s-agent to report active
+  ansible.builtin.command:
+    argv: [systemctl, is-active, k3s-agent]
+  become: true
+  register: k3s_agent_active
+  until: k3s_agent_active.stdout == "active"
+  retries: 24
+  delay: 10
+  changed_when: false
+  failed_when: false
+  when: k3s_worker_install is not skipped
+
+- name: Require k3s-agent to be active before continuing
+  ansible.builtin.assert:
+    that:
+      - k3s_agent_active.stdout is not defined or k3s_agent_active.stdout == "active"
+    fail_msg: >-
+      k3s-agent never reached the active state
+      ({{ k3s_agent_active.stdout | default('unknown') }}). Check
+      `journalctl -xeu k3s-agent` on {{ inventory_hostname }}.
+  when: k3s_worker_install is not skipped

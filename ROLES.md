@@ -72,7 +72,7 @@ Post-play debug prints public URLs. Passwords stay commented out.
 | `k3s-pre-setup` | 1 | Swap off. `dphys-swapfile` stopped. APT packages: wireguard, iscsi, nfs, containerd, python k8s libs. |
 | `k3s-master-setup` | 2 | `get.k3s.io` server. `--disable traefik`, `--disable servicelb`, `--embedded-registry`. Readyz wait. Helm + CLI tools. |
 | `k3s-fact-gathering` | 2 | Slurp node-token on `masters[0]`. Set `kubeconfig_path`. |
-| `k3s-worker-setup` | 3 | `get.k3s.io` agent. `--server` + `--token`. `--node-name` from `worker_label`. |
+| `k3s-worker-setup` | 3 | `get.k3s.io` agent. `--server` + `--token`. `--node-name` from `worker_label`. Waits for `:6443`, raises `k3s-agent` `TimeoutStartSec` to 300s, joins `throttle: 1` — avoids the first-run timeout when every worker hits a fresh master at once. Restarts and re-waits on a failed `systemctl start` before failing. |
 | `kata-containers` | 4 | Static tarball → `/opt/kata`. KVM modules. k3s containerd handler `kata`. RuntimeClass `kata` with `node-tier=high-memory`. Needs `/dev/kvm` (nested virt if the worker is a VM). |
 | `k3s-node-labeling` | 5 | `node-tier=high-memory\|mid-memory\|low-memory`. Taint low-memory `memory=limited:NoSchedule`. Taint masters `node-role.kubernetes.io/master=:NoSchedule`. |
 | `argocd-setup` | 5 | Official install.yaml into `argocd`. Pin Deployments/StatefulSet to `node-tier=high-memory`. Wait ready. Read initial admin secret. |
