@@ -1,20 +1,27 @@
 ---
-- name: Pre-setup
-  hosts: all
-  become: true
-  roles:
-    # - inventory-validation
-    # - raspberry-pi-boot-config # This role will be used in the prod setup
-    # - raspberry-pi-cgroups
-    - k3s-pre-setup
+# - name: Pre-setup
+#   hosts: all
+#   become: true
+#   roles:
+#     - inventory-validation
+#     - raspberry-pi-boot-config # This role will be used in the prod setup
+#     - raspberry-pi-cgroups
 
 - name: Setup K3s master nodes
   hosts: masters
   become: true
   gather_facts: true
   roles:
+    - k3s-pre-setup
     - k3s-master-setup
     - k3s-fact-gathering
+
+# - name: Fetch Kubeconfig and Setup Local K9s
+#   hosts: "{{ groups['masters'][0] }}"
+#   gather_facts: false
+#   become: false
+#   roles:
+#     - local-k9s-setup
 
 - name: Setup K3s worker nodes
   hosts: workers
@@ -23,6 +30,7 @@
   vars:
     k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
   roles:
+    - k3s-pre-setup
     - k3s-worker-setup
 
 # - name: Install Kata Containers on high-memory workers
@@ -63,9 +71,3 @@
           # grafana_password: "{{ grafana_admin_password | default('') }}"
           # openbao_password: "{{ openbao_token | default(openbao_dev_root_token | default('root')) }}"
 
-# - name: Fetch Kubeconfig and Setup Local K9s
-#   hosts: "{{ groups['masters'][0] }}"
-#   gather_facts: false
-#   become: false
-#   roles:
-#     - local-k9s-setup
