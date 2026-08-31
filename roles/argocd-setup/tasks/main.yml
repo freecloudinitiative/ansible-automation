@@ -36,7 +36,7 @@
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
     context: "{{ context if (context | default('') | length > 0) else omit }}"
 
-- name: Patch ArgoCD deployments with nodeSelector
+- name: Patch ArgoCD deployments with nodeSelector and resources
   kubernetes.core.k8s:
     state: patched
     kind: "{{ item.kind }}"
@@ -47,6 +47,9 @@
         template:
           spec:
             nodeSelector: "{{ argocd_node_selector }}"
+            containers:
+              - name: "{{ item.container_name }}"
+                resources: "{{ item.resources }}"
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
     context: "{{ context if (context | default('') | length > 0) else omit }}"
   loop: "{{ argocd_deployments }}"
