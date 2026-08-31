@@ -37,10 +37,20 @@ OpenBao on its very first sync.
    GitHub URL) — kept there as the single source of truth, not duplicated
    here.
 4. `helm install`/`upgrade`s the `openbao/openbao` chart with those values.
-5. Waits for every `openbao-N` pod to reach the `Running` phase (not `Ready`
-   — OpenBao's readiness probe reflects its seal status, so pods can't be
-   `Ready` until `openbao-secrets-init` unseals them; waiting for `Ready`
-   here would deadlock).
+5. Waits for `openbao-0` to reach the `Running` phase (not `Ready` — OpenBao's
+   readiness probe reflects its seal status, so a pod can't be `Ready` until
+   `openbao-secrets-init` unseals it; waiting for `Ready` here would
+   deadlock). Only `openbao-0` — the chart's StatefulSet uses the default
+   `OrderedReady` pod management policy, so `openbao-1`/`openbao-2` aren't
+   even created until `openbao-0` is `Ready`, which only happens once it's
+   unsealed. Waiting here for every replica to exist would deadlock forever;
+   `openbao-secrets-init`'s own per-replica wait handles each pod as
+   `OrderedReady` creates it.
+6. Installs the `bao` CLI and an `/etc/profile.d/openbao.sh` profile script
+   (`VAULT_ADDR`/`VAULT_CACERT` etc.) for operator administration via
+   `kubectl -n openbao port-forward svc/openbao 8200:8200`. Not required by
+   any other role — `openbao-secrets-init` talks to the API directly. Set
+   `openbao_cli_install: false` to skip.
 
 ## Required Variables
 

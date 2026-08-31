@@ -22,3 +22,12 @@ openbao_tls_san_ip:
 openbao_tls_work_dir: /tmp/openbao-tls
 openbao_statefulset_ready_retries: 60
 openbao_statefulset_ready_delay: 5
+
+openbao_cli_install: true
+openbao_cli_version: "2.6.1"
+openbao_cli_install_dir: /usr/local/bin
+openbao_stack_dir: /root/k3s-stack/openbao
+openbao_arch_map:
+  x86_64: amd64
+  aarch64: arm64
+  armv7l: arm

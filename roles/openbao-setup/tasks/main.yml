@@ -138,10 +138,18 @@
   retries: "{{ openbao_statefulset_ready_retries }}"
   delay: "{{ openbao_statefulset_ready_delay }}"
 
-- name: Wait for every OpenBao pod to exist and start running
+# Only wait for openbao-0, not every replica. The chart's StatefulSet uses
+# the default OrderedReady podManagementPolicy: openbao-1 is not even
+# created until openbao-0 reports Ready, and openbao-0 can't be Ready until
+# it's unsealed — which is openbao-secrets-init's job, run right after this
+# role. Waiting here for every replica to exist would deadlock forever.
+# openbao-secrets-init's own per-replica wait (unseal-replica.yml) already
+# handles each pod as OrderedReady creates it, once its predecessor is
+# unsealed.
+- name: Wait for openbao-0 to exist and start running
   kubernetes.core.k8s_info:
     kind: Pod
-    name: "openbao-{{ item }}"
+    name: openbao-0
     namespace: "{{ openbao_namespace }}"
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
   register: openbao_pod_wait
@@ -150,6 +158,61 @@
     openbao_pod_wait.resources[0].status.phase | default('') == 'Running'
   retries: "{{ openbao_statefulset_ready_retries }}"
   delay: "{{ openbao_statefulset_ready_delay }}"
-  loop: "{{ range(0, openbao_statefulset.resources[0].spec.replicas | default(3) | int) | list }}"
-  loop_control:
-    label: "openbao-{{ item }}"
+
+# Local `bao` CLI for operator administration via `kubectl port-forward`, not
+# required by any other role — openbao-secrets-init talks to the API
+# directly.
+- name: Ensure OpenBao stack directory exists
+  ansible.builtin.file:
+    path: "{{ openbao_stack_dir }}"
+    state: directory
+    mode: '0755'
+  when: openbao_cli_install | bool
+
+- name: Ensure the architecture fact is available for the OpenBao CLI
+  ansible.builtin.setup:
+    gather_subset: min
+  when:
+    - openbao_cli_install | bool
+    - ansible_facts.architecture is not defined
+
+- name: Download and install the OpenBao CLI binary
+  ansible.builtin.unarchive:
+    src: >-
+      https://github.com/openbao/openbao/releases/download/v{{ openbao_cli_version }}/bao_{{ openbao_cli_version }}_linux_{{
+      openbao_arch_map[ansible_facts.architecture] | default('amd64') }}.tar.gz
+    dest: "{{ openbao_cli_install_dir }}"
+    remote_src: true
+    include:
+      - bao
+    mode: '0755'
+    creates: "{{ openbao_cli_install_dir }}/bao"
+  when: openbao_cli_install | bool
+
+- name: Fetch the OpenBao TLS secret for local CLI administration
+  kubernetes.core.k8s_info:
+    kind: Secret
+    name: "{{ openbao_tls_secret_name }}"
+    namespace: "{{ openbao_namespace }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+  register: openbao_tls_secret_for_cli
+  when: openbao_cli_install | bool
+
+- name: Copy the OpenBao CA certificate for local administration
+  ansible.builtin.copy:
+    content: "{{ openbao_tls_secret_for_cli.resources[0].data['ca.crt'] | b64decode }}"
+    dest: "{{ openbao_stack_dir }}/openbao-ca.crt"
+    mode: '0644'
+  when: openbao_cli_install | bool
+
+- name: Ensure OpenBao CLI environment profile script exists
+  ansible.builtin.copy:
+    dest: /etc/profile.d/openbao.sh
+    content: |
+      # First run: kubectl -n {{ openbao_namespace }} port-forward svc/openbao 8200:8200
+      export VAULT_ADDR="https://127.0.0.1:8200"
+      export BAO_ADDR="https://127.0.0.1:8200"
+      export VAULT_CACERT="{{ openbao_stack_dir }}/openbao-ca.crt"
+      export BAO_CACERT="{{ openbao_stack_dir }}/openbao-ca.crt"
+    mode: '0755'
+  when: openbao_cli_install | bool
