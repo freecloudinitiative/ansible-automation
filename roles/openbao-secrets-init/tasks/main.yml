@@ -79,16 +79,13 @@
 
 - name: Automate HA OpenBao unsealing (Wait for all replicas)
   ansible.builtin.include_tasks:
-    file: unseal-ha-step.yml
+    file: unseal-replica.yml
     apply:
       tags: [openbao, bootstrap, authentik-token]
-  loop: "{{ range(0, 60) | list }}"
+  loop: "{{ range(0, openbao_sts.resources[0].spec.replicas | default(3) | int) | list }}"
   loop_control:
-    loop_var: unseal_ha_attempt
-    label: "HA Unseal Attempt {{ unseal_ha_attempt + 1 }}"
-  when: >
-    (openbao_sts.resources[0].status.readyReplicas | default(0)) !=
-    (openbao_sts.resources[0].spec.replicas | default(1))
+    loop_var: replica_index
+    label: "openbao-{{ replica_index }}"
   tags: [openbao, bootstrap, authentik-token]
 
 # openbao_secrets references cluster_ca_cert, so the fact must exist before any task templates it.
