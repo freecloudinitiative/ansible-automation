@@ -140,113 +140,114 @@
   changed_when: helm_install.rc == 0
 
 # --- kubectx & kubens ---
-- name: Resolve architecture for kubectx/kubens
-  ansible.builtin.set_fact:
-    _go_arch: "{{ 'arm64' if ansible_facts.architecture in ['aarch64', 'arm64'] else 'amd64' }}"
-
-- name: Check if kubectx is already installed
-  ansible.builtin.stat:
-    path: /usr/local/bin/kubectx
-  register: kubectx_binary
-
-- name: Download kubectx and kubens
-  ansible.builtin.get_url:
-    url: "https://github.com/ahmetb/kubectx/releases/download/{{ kubectx_version }}/{{ item.bin }}_{{ kubectx_version }}_linux_{{ _go_arch }}.tar.gz"
-    dest: "/tmp/{{ item.bin }}.tar.gz"
-    mode: '0644'
-  loop:
-    - { bin: kubectx }
-    - { bin: kubens }
-  when: not kubectx_binary.stat.exists
-
-- name: Install kubectx and kubens
-  ansible.builtin.unarchive:
-    src: "/tmp/{{ item }}.tar.gz"
-    dest: /usr/local/bin
-    remote_src: true
-    include:
-      - "{{ item }}"
-    mode: '0755'
-  become: true
-  loop:
-    - kubectx
-    - kubens
-  when: not kubectx_binary.stat.exists
-
-# --- popeye ---
-- name: Check if popeye is already installed
-  ansible.builtin.stat:
-    path: /usr/local/bin/popeye
-  register: popeye_binary
-
-- name: Download popeye
-  ansible.builtin.get_url:
-    url: "https://github.com/derailed/popeye/releases/download/{{ popeye_version }}/popeye_linux_{{ _go_arch }}.tar.gz"
-    dest: /tmp/popeye.tar.gz
-    mode: '0644'
-  when: not popeye_binary.stat.exists
-
-- name: Install popeye
-  ansible.builtin.unarchive:
-    src: /tmp/popeye.tar.gz
-    dest: /usr/local/bin
-    remote_src: true
-    include:
-      - popeye
-    mode: '0755'
-  become: true
-  when: not popeye_binary.stat.exists
-
-# --- stern ---
-- name: Check if stern is already installed
-  ansible.builtin.stat:
-    path: /usr/local/bin/stern
-  register: stern_binary
-
-- name: Download stern
-  ansible.builtin.get_url:
-    url: "https://github.com/stern/stern/releases/download/{{ stern_version }}/stern_{{ stern_version | regex_replace('^v', '') }}_linux_{{ _go_arch }}.tar.gz"
-    dest: /tmp/stern.tar.gz
-    mode: '0644'
-  when: not stern_binary.stat.exists
-
-- name: Install stern
-  ansible.builtin.unarchive:
-    src: /tmp/stern.tar.gz
-    dest: /usr/local/bin
-    remote_src: true
-    include:
-      - stern
-    mode: '0755'
-  become: true
-  when: not stern_binary.stat.exists
-
-# --- kube-ps1 ---
-- name: Check if kube-ps1 is already installed
-  ansible.builtin.stat:
-    path: /usr/local/share/kube-ps1/kube-ps1.sh
-  register: kube_ps1_script
-
-- name: Ensure kube-ps1 install directory exists
-  ansible.builtin.file:
-    path: /usr/local/share/kube-ps1
-    state: directory
-    mode: '0755'
-  become: true
-  when: not kube_ps1_script.stat.exists
-
-- name: Download kube-ps1 script
-  ansible.builtin.get_url:
-    url: "https://raw.githubusercontent.com/jonmosco/kube-ps1/{{ kube_ps1_version }}/kube-ps1.sh"
-    dest: /usr/local/share/kube-ps1/kube-ps1.sh
-    mode: '0755'
-  become: true
-  when: not kube_ps1_script.stat.exists
-
-- name: Source kube-ps1 in .bashrc
-  ansible.builtin.blockinfile:
-    path: "{{ ansible_facts.env.HOME }}/.bashrc"
-    marker: "# {mark} ANSIBLE MANAGED BLOCK — kube-ps1"
-    block: |
-      source /usr/local/share/kube-ps1/kube-ps1.sh
-      PS1='$(kube_ps1)'$PS1
+# - name: Resolve architecture for kubectx/kubens
+#   ansible.builtin.set_fact:
+#     _go_arch: "{{ 'arm64' if ansible_facts.architecture in ['aarch64', 'arm64'] else 'amd64' }}"
+# 
+# - name: Check if kubectx is already installed
+#   ansible.builtin.stat:
+#     path: /usr/local/bin/kubectx
+#   register: kubectx_binary
+# 
+# - name: Download kubectx and kubens
+#   ansible.builtin.get_url:
+#     url: "https://github.com/ahmetb/kubectx/releases/download/{{ kubectx_version }}/{{ item.bin }}_{{ kubectx_version }}_linux_{{ _go_arch }}.tar.gz"
+#     dest: "/tmp/{{ item.bin }}.tar.gz"
+#     mode: '0644'
+#   loop:
+#     - { bin: kubectx }
+#     - { bin: kubens }
+#   when: not kubectx_binary.stat.exists
+# 
+# - name: Install kubectx and kubens
+#   ansible.builtin.unarchive:
+#     src: "/tmp/{{ item }}.tar.gz"
+#     dest: /usr/local/bin
+#     remote_src: true
+#     include:
+#       - "{{ item }}"
+#     mode: '0755'
+#   become: true
+#   loop:
+#     - kubectx
+#     - kubens
+#   when: not kubectx_binary.stat.exists
+# 
+# # --- popeye ---
+# - name: Check if popeye is already installed
+#   ansible.builtin.stat:
+#     path: /usr/local/bin/popeye
+#   register: popeye_binary
+# 
+# - name: Download popeye
+#   ansible.builtin.get_url:
+#     url: "https://github.com/derailed/popeye/releases/download/{{ popeye_version }}/popeye_linux_{{ _go_arch }}.tar.gz"
+#     dest: /tmp/popeye.tar.gz
+#     mode: '0644'
+#   when: not popeye_binary.stat.exists
+# 
+# - name: Install popeye
+#   ansible.builtin.unarchive:
+#     src: /tmp/popeye.tar.gz
+#     dest: /usr/local/bin
+#     remote_src: true
+#     include:
+#       - popeye
+#     mode: '0755'
+#   become: true
+#   when: not popeye_binary.stat.exists
+# 
+# # --- stern ---
+# - name: Check if stern is already installed
+#   ansible.builtin.stat:
+#     path: /usr/local/bin/stern
+#   register: stern_binary
+# 
+# - name: Download stern
+#   ansible.builtin.get_url:
+#     url: "https://github.com/stern/stern/releases/download/{{ stern_version }}/stern_{{ stern_version | regex_replace('^v', '') }}_linux_{{ _go_arch }}.tar.gz"
+#     dest: /tmp/stern.tar.gz
+#     mode: '0644'
+#   when: not stern_binary.stat.exists
+# 
+# - name: Install stern
+#   ansible.builtin.unarchive:
+#     src: /tmp/stern.tar.gz
+#     dest: /usr/local/bin
+#     remote_src: true
+#     include:
+#       - stern
+#     mode: '0755'
+#   become: true
+#   when: not stern_binary.stat.exists
+# 
+# # --- kube-ps1 ---
+# - name: Check if kube-ps1 is already installed
+#   ansible.builtin.stat:
+#     path: /usr/local/share/kube-ps1/kube-ps1.sh
+#   register: kube_ps1_script
+# 
+# - name: Ensure kube-ps1 install directory exists
+#   ansible.builtin.file:
+#     path: /usr/local/share/kube-ps1
+#     state: directory
+#     mode: '0755'
+#   become: true
+#   when: not kube_ps1_script.stat.exists
+# 
+# - name: Download kube-ps1 script
+#   ansible.builtin.get_url:
+#     url: "https://raw.githubusercontent.com/jonmosco/kube-ps1/{{ kube_ps1_version }}/kube-ps1.sh"
+#     dest: /usr/local/share/kube-ps1/kube-ps1.sh
+#     mode: '0755'
+#   become: true
+#   when: not kube_ps1_script.stat.exists
+# 
+# - name: Source kube-ps1 in .bashrc
+#   ansible.builtin.blockinfile:
+#     path: "{{ ansible_facts.env.HOME }}/.bashrc"
+#     marker: "# {mark} ANSIBLE MANAGED BLOCK — kube-ps1"
+#     block: |
+#       source /usr/local/share/kube-ps1/kube-ps1.sh
+#       PS1='$(kube_ps1)'$PS1
+# 

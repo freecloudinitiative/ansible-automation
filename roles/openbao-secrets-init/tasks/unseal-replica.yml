@@ -1,0 +1,35 @@
+---
+- name: Wait for OpenBao pod {{ replica_index }} to exist and start running
+  kubernetes.core.k8s_info:
+    kind: Pod
+    name: "openbao-{{ replica_index }}"
+    namespace: "{{ openbao_namespace }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+  register: openbao_pod
+  until: >-
+    openbao_pod.resources | length > 0 and
+    openbao_pod.resources[0].status.phase | default('') == 'Running'
+  retries: 60
+  delay: 5
+  tags: [openbao, bootstrap, authentik-token]
+
+- name: Attempt unsealing all current endpoints
+  ansible.builtin.include_tasks:
+    file: unseal.yml
+    apply:
+      tags: [openbao, bootstrap, authentik-token]
+  tags: [openbao, bootstrap, authentik-token]
+
+- name: Wait for OpenBao pod {{ replica_index }} to become ready
+  kubernetes.core.k8s_info:
+    kind: Pod
+    name: "openbao-{{ replica_index }}"
+    namespace: "{{ openbao_namespace }}"
+    kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+  register: openbao_pod_ready
+  until: >-
+    openbao_pod_ready.resources | length > 0 and
+    (openbao_pod_ready.resources[0].status.conditions | default([]) | selectattr('type', 'equalto', 'Ready') | map(attribute='status') | first | default('False')) == 'True'
+  retries: 60
+  delay: 5
+  tags: [openbao, bootstrap, authentik-token]
