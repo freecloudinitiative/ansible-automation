@@ -36,16 +36,6 @@
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
     context: "{{ context if (context | default('') | length > 0) else omit }}"
 
-# Recreate, not RollingUpdate, for Deployments: every ArgoCD component
-# shares argocd_node_selector, and node-tier=high-memory matches exactly one
-# node (worker-1). RollingUpdate's default maxSurge needs a second pod
-# schedulable alongside the old one for the duration of the rollout — with
-# only one eligible node, that second pod stays Pending forever and the
-# rollout never completes (harmless — the old pod keeps serving — but it
-# never resolves on its own and leaves a stuck ReplicaSet behind). Recreate
-# tears down the old pod before scheduling the new one, so a single node is
-# enough. StatefulSets (argocd-application-controller) already default to
-# one-at-a-time updates and have no `strategy` field to set.
 - name: Patch ArgoCD deployments with nodeSelector and resources
   kubernetes.core.k8s:
     state: patched
@@ -54,7 +44,6 @@
     name: "{{ item.name }}"
     definition:
       spec:
-        strategy: "{{ {'type': 'Recreate'} if item.kind == 'Deployment' else omit }}"
         template:
           spec:
             nodeSelector: "{{ argocd_node_selector }}"
