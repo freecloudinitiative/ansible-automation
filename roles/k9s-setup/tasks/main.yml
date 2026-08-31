@@ -1,4 +1,12 @@
 ---
+# The play this role runs in (`Install K3S Components`) sets `gather_facts:
+# false` for speed, since most of its roles don't need host facts. Guard
+# this one lookup instead of gathering for the whole play.
+- name: Ensure the architecture fact is available
+  ansible.builtin.setup:
+    gather_subset: min
+  when: ansible_facts.architecture is not defined
+
 - name: Determine target architecture
   ansible.builtin.set_fact:
     k9s_arch: "{{ k9s_arch_map[ansible_facts.architecture] | default('amd64') }}"
