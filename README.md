@@ -52,7 +52,6 @@ AUTHENTIK_POSTGRESQL_PASSWORD='...' \
 AUTHENTIK_BOOTSTRAP_PASSWORD='...' \
 AUTHENTIK_GRAFANA_OIDC_SECRET='...' \
 AUTHENTIK_ARGOCD_OIDC_SECRET='...' \
-AUTHENTIK_ZOT_OIDC_SECRET='...' \
 PLATFORM_POSTGRESQL_PASSWORD='...' \
 VALKEY_PASSWORD='...' \
 IAM_POSTGRESQL_PASSWORD='...' \
@@ -71,11 +70,6 @@ STORAGE_INTERNAL_PUBLIC_KEY='...' \
 STORAGE_INTERNAL_SIGNING_KEY='...' \
 GARAGE_STORAGE_SERVICE_ACCESS_KEY='...' \
 GARAGE_STORAGE_SERVICE_SECRET_KEY='...' \
-ZOT_REGISTRY_HTPASSWD='...' \
-ZOT_REGISTRY_PULL_USERNAME='...' \
-ZOT_REGISTRY_PULL_PASSWORD='...' \
-ZOT_REGISTRY_S3_ACCESS_KEY_ID='...' \
-ZOT_REGISTRY_S3_SECRET_ACCESS_KEY='...' \
 GHCR_REGISTRY_USERNAME='...' \
 GHCR_REGISTRY_TOKEN='...' \
 CLOUDFLARED_TUNNEL_TOKEN='...' \
@@ -89,12 +83,12 @@ Minimum lengths and format requirements enforced by the assert task before any w
 | `AUTHENTIK_SECRET_KEY` | >= 50 chars |
 | `AUTHENTIK_POSTGRESQL_PASSWORD`, `PLATFORM_POSTGRESQL_PASSWORD`, `VALKEY_PASSWORD` | >= 24 chars |
 | `IAM_POSTGRESQL_PASSWORD`, `COMPUTE_POSTGRESQL_PASSWORD`, `DATABASE_POSTGRESQL_PASSWORD`, `STORAGE_POSTGRESQL_PASSWORD` | >= 24 chars |
-| `AUTHENTIK_BOOTSTRAP_PASSWORD`, `AUTHENTIK_GRAFANA_OIDC_SECRET`, `AUTHENTIK_ARGOCD_OIDC_SECRET`, `AUTHENTIK_ZOT_OIDC_SECRET`, `GRAFANA_ADMIN_PASSWORD` | >= 16 chars |
+| `AUTHENTIK_BOOTSTRAP_PASSWORD`, `AUTHENTIK_GRAFANA_OIDC_SECRET`, `AUTHENTIK_ARGOCD_OIDC_SECRET`, `GRAFANA_ADMIN_PASSWORD` | >= 16 chars |
 | `*_INTERNAL_PUBLIC_KEY` (5 keys) | valid PEM `BEGIN PUBLIC KEY`, distinct across all issuers |
 | `*_INTERNAL_SIGNING_KEY` (5 keys) | valid PEM `BEGIN PRIVATE KEY` |
 | `GARAGE_STORAGE_SERVICE_ACCESS_KEY`, `GARAGE_STORAGE_SERVICE_SECRET_KEY` | >= 16 chars |
-| `ZOT_REGISTRY_PULL_PASSWORD`, `ZOT_REGISTRY_S3_ACCESS_KEY_ID`, `ZOT_REGISTRY_S3_SECRET_ACCESS_KEY`, `GHCR_REGISTRY_TOKEN` | >= 16 chars |
-| `ZOT_REGISTRY_PULL_USERNAME`, `ZOT_REGISTRY_HTPASSWD`, `GHCR_REGISTRY_USERNAME` | non-empty |
+| `GHCR_REGISTRY_TOKEN` | >= 16 chars |
+| `GHCR_REGISTRY_USERNAME` | non-empty |
 | `CLOUDFLARED_TUNNEL_TOKEN` | >= 32 chars |
 
 - `GRAFANA_ADMIN_PASSWORD`: May instead live in `group_vars/all/secret.yml`. Note that `group_vars` overrides the role default.
@@ -195,7 +189,6 @@ authentik_postgresql_password
 authentik_secret_key
 authentik_grafana_oidc_secret
 authentik_argocd_oidc_secret
-authentik_zot_oidc_secret
 
 cloudflared_tunnel_token
 compute_postgresql_password
@@ -218,12 +211,6 @@ terminal_gateway_internal_public_key
 terminal_gateway_internal_signing_key
 
 valkey_password
-
-zot_registry_htpasswd
-zot_registry_pull_password
-zot_registry_pull_username
-zot_registry_s3_access_key_id
-zot_registry_s3_secret_access_key
 ghcr_registry_username
 ghcr_registry_token
 ```

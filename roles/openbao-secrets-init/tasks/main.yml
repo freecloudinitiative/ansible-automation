@@ -151,7 +151,6 @@
       - valkey_password | length >= 24
       - authentik_grafana_oidc_secret | length >= 16
       - authentik_argocd_oidc_secret | length >= 16
-      - authentik_zot_oidc_secret | length >= 16
       - grafana_admin_password | length >= 16
       # Ed25519 keypairs. Every consumer parses these as PEM at boot and exits
       # on failure; an empty seed is a CrashLoopBackOff with no pointer here.
@@ -188,14 +187,9 @@
       - garage_storage_service_access_key | length >= 16
       - garage_storage_service_secret_key | length >= 16
       # Registry pull credentials. Empty renders auth ":" into
-      # zot-registry-pull-credentials and every FCI pod ImagePullBackOffs.
-      - zot_registry_pull_username | length > 0
-      - zot_registry_pull_password | length >= 16
+      # ghcr-pull-credentials and every FCI pod ImagePullBackOffs.
       - ghcr_registry_username | length > 0
       - ghcr_registry_token | length >= 16
-      - zot_registry_htpasswd | length > 0
-      - zot_registry_s3_access_key_id | length >= 16
-      - zot_registry_s3_secret_access_key | length >= 16
       # Cloudflare tunnel. Empty means nothing is reachable from outside.
       - cloudflared_tunnel_token | length >= 32
     fail_msg: >-
@@ -216,7 +210,7 @@
         AUTHENTIK_SECRET_KEY, AUTHENTIK_POSTGRESQL_PASSWORD,
         AUTHENTIK_BOOTSTRAP_PASSWORD, VALKEY_PASSWORD,
         AUTHENTIK_GRAFANA_OIDC_SECRET, AUTHENTIK_ARGOCD_OIDC_SECRET,
-        AUTHENTIK_ZOT_OIDC_SECRET, GRAFANA_ADMIN_PASSWORD
+        GRAFANA_ADMIN_PASSWORD
 
       Per-service Postgres (>= 24 chars each):
         IAM_POSTGRESQL_PASSWORD, COMPUTE_POSTGRESQL_PASSWORD,
@@ -227,11 +221,6 @@
         GARAGE_STORAGE_SERVICE_ACCESS_KEY, GARAGE_STORAGE_SERVICE_SECRET_KEY
 
       Registry credentials:
-        ZOT_REGISTRY_PULL_USERNAME (non-empty),
-        ZOT_REGISTRY_PULL_PASSWORD (>= 16 chars),
-        ZOT_REGISTRY_HTPASSWD (non-empty),
-        ZOT_REGISTRY_S3_ACCESS_KEY_ID (>= 16 chars),
-        ZOT_REGISTRY_S3_SECRET_ACCESS_KEY (>= 16 chars),
         GHCR_REGISTRY_USERNAME (non-empty),
         GHCR_REGISTRY_TOKEN (>= 16 chars)
 
@@ -389,10 +378,10 @@
         path "secret/metadata/valkey" {
           capabilities = ["read"]
         }
-        path "secret/data/zot-registry" {
+        path "secret/data/ghcr-registry" {
           capabilities = ["read"]
         }
-        path "secret/metadata/zot-registry" {
+        path "secret/metadata/ghcr-registry" {
           capabilities = ["read"]
         }
     status_code: [200, 204]
