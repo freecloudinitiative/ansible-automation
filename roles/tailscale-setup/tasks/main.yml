@@ -31,9 +31,17 @@
     checksum: sha256:805e85ed6f6f81a7ea2e70d52d47e7d5290863299e5c922b2787d71aa312f22e
   when: tailscale_which.rc != 0
 
+# NEEDRESTART_MODE=a: the install script's `apt-get install` starts a new
+# service (tailscaled), which on Ubuntu triggers needrestart's interactive
+# "restart services?" prompt. With no TTY (ansible's non-interactive
+# connection) that prompt just hangs forever instead of failing or timing
+# out -- there's no error, no CPU usage, nothing to point at this. Forcing
+# needrestart's automatic mode skips the prompt entirely.
 - name: Run the Tailscale install script
   ansible.builtin.command:
     argv: [/bin/bash, /tmp/tailscale-install.sh]
+  environment:
+    NEEDRESTART_MODE: a
   when: tailscale_which.rc != 0
   changed_when: true
 
