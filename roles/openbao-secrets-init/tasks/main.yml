@@ -17,13 +17,13 @@
     openbao_endpoint_discovery_attempts: >-
       {{ ((openbao_endpoint_discovery_timeout | int)
           // (openbao_endpoint_discovery_delay | int)) + 2 }}
-  tags: [openbao, bootstrap, authentik-token]
+  tags: [openbao, bootstrap]
 
 - name: Discover and probe current OpenBao health endpoints
   ansible.builtin.include_tasks:
     file: discover-health-endpoint.yml
     apply:
-      tags: [openbao, bootstrap, authentik-token]
+      tags: [openbao, bootstrap]
   loop: "{{ range(0, openbao_endpoint_discovery_attempts | int) | list }}"
   loop_control:
     loop_var: openbao_health_discovery_attempt
@@ -33,7 +33,7 @@
     - >-
       lookup('ansible.builtin.pipe', 'date +%s') | int
       < openbao_discovery_deadline_epoch | int
-  tags: [openbao, bootstrap, authentik-token]
+  tags: [openbao, bootstrap]
 
 - name: Require a reachable OpenBao health endpoint
   ansible.builtin.assert:
@@ -44,12 +44,12 @@
       the shared {{ openbao_endpoint_discovery_timeout }}-second discovery window.
       Each attempt refreshed EndpointSlices and probed every non-terminating
       endpoint from its local inventory node.
-  tags: [openbao, bootstrap, authentik-token]
+  tags: [openbao, bootstrap]
 
 - name: Automate OpenBao initialization if uninitialized or sealed
   ansible.builtin.include_tasks: init.yml
   when: (openbao_health.status | default(0) | int) in [501, 503]
-  tags: [openbao, bootstrap, authentik-token]
+  tags: [openbao, bootstrap]
 
 - name: Ensure OpenBao credentials are loaded
   block:
@@ -66,7 +66,7 @@
         openbao_unseal_keys: "{{ (openbao_keys_file.content | b64decode | from_json).keys_base64 }}"
       no_log: true
   when: openbao_bootstrap_token is not defined or openbao_bootstrap_token | length == 0
-  tags: [openbao, bootstrap, authentik-token]
+  tags: [openbao, bootstrap]
 
 - name: Fetch OpenBao StatefulSet to check HA readiness
   kubernetes.core.k8s_info:
@@ -75,18 +75,18 @@
     namespace: "{{ openbao_namespace }}"
     kubeconfig: "{{ kubeconfig_path | default(omit) }}"
   register: openbao_sts
-  tags: [openbao, bootstrap, authentik-token]
+  tags: [openbao, bootstrap]
 
 - name: Automate HA OpenBao unsealing (Wait for all replicas)
   ansible.builtin.include_tasks:
     file: unseal-replica.yml
     apply:
-      tags: [openbao, bootstrap, authentik-token]
+      tags: [openbao, bootstrap]
   loop: "{{ range(0, openbao_sts.resources[0].spec.replicas | default(3) | int) | list }}"
   loop_control:
     loop_var: replica_index
     label: "openbao-{{ replica_index }}"
-  tags: [openbao, bootstrap, authentik-token]
+  tags: [openbao, bootstrap]
 
 # openbao_secrets references cluster_ca_cert, so the fact must exist before any task templates it.
 - name: Fetch selfsigned-ca-secret from Kubernetes
@@ -116,8 +116,6 @@
 # seeds successfully, the ExternalSecret syncs successfully with that empty
 # value, and the failure surfaces much later as a CrashLoopBackOff or
 # ImagePullBackOff with nothing pointing back at this run.
-# authentik_admin_token is exempt — it is seeded empty on first run and
-# populated in a second run once Authentik bootstrap has completed (PR-02).
 - name: Fail when any seeded value is empty
   ansible.builtin.assert:
     that:
@@ -137,7 +135,6 @@
     {%- endfor -%}
     {{ ns.pairs }}
   no_log: true
-  when: not (item.1.key == 'admin-token' and item.0.path == 'authentik')
   tags: [openbao, bootstrap]
 
 - name: Validate required production application secrets
@@ -148,6 +145,7 @@
       - authentik_postgresql_password | length >= 24
       - platform_postgresql_password | length >= 24
       - authentik_bootstrap_password | length >= 16
+      - authentik_admin_token | length >= 32
       - valkey_password | length >= 24
       - authentik_grafana_oidc_secret | length >= 16
       - authentik_argocd_oidc_secret | length >= 16
@@ -206,11 +204,11 @@
         DATABASE_INTERNAL_PUBLIC_KEY, DATABASE_INTERNAL_SIGNING_KEY,
         STORAGE_INTERNAL_PUBLIC_KEY, STORAGE_INTERNAL_SIGNING_KEY
 
-      Authentik (>= 50 / 24 / 16 chars respectively):
+      Authentik (>= 50 / 24 / 16 / 32 chars respectively):
         AUTHENTIK_SECRET_KEY, AUTHENTIK_POSTGRESQL_PASSWORD,
         AUTHENTIK_BOOTSTRAP_PASSWORD, VALKEY_PASSWORD,
         AUTHENTIK_GRAFANA_OIDC_SECRET, AUTHENTIK_ARGOCD_OIDC_SECRET,
-        GRAFANA_ADMIN_PASSWORD
+        GRAFANA_ADMIN_PASSWORD, AUTHENTIK_ADMIN_TOKEN
 
       Per-service Postgres (>= 24 chars each):
         IAM_POSTGRESQL_PASSWORD, COMPUTE_POSTGRESQL_PASSWORD,
@@ -235,13 +233,13 @@
     openbao_discovery_deadline_epoch: >-
       {{ (lookup('ansible.builtin.pipe', 'date +%s') | int)
          + (openbao_endpoint_discovery_timeout | int) }}
-  tags: [openbao, bootstrap, authentik-token]
+  tags: [openbao, bootstrap]
 
 - name: Discover and probe current active OpenBao endpoints
   ansible.builtin.include_tasks:
     file: discover-active-endpoint.yml
     apply:
-      tags: [openbao, bootstrap, authentik-token]
+      tags: [openbao, bootstrap]
   loop: "{{ range(0, openbao_endpoint_discovery_attempts | int) | list }}"
   loop_control:
     loop_var: openbao_active_discovery_attempt
@@ -251,7 +249,7 @@
     - >-
       lookup('ansible.builtin.pipe', 'date +%s') | int
       < openbao_discovery_deadline_epoch | int
-  tags: [openbao, bootstrap, authentik-token]
+  tags: [openbao, bootstrap]
 
 - name: Require a healthy active OpenBao endpoint
   ansible.builtin.assert:
@@ -262,7 +260,7 @@
       the shared {{ openbao_endpoint_discovery_timeout }}-second discovery window.
       Each attempt refreshed the active Service's EndpointSlices before probing
       candidates.
-  tags: [openbao, bootstrap, authentik-token]
+  tags: [openbao, bootstrap]
 
 - name: Read enabled OpenBao secret engines
   ansible.builtin.uri:
@@ -475,21 +473,3 @@
   no_log: true
   delegate_to: "{{ openbao_api_delegate }}"
   tags: [openbao, bootstrap]
-
-# Authentik admin token — seeded in a separate second run once the Authentik
-# bootstrap admin exists (sync-wave 5). The include is skipped on the first run
-# when authentik_admin_token is empty; --tags authentik-token runs it directly
-# and the assert inside authentik-token.yml fails loudly if the token is absent.
-- name: Seed the Authentik admin token when supplied
-  ansible.builtin.include_tasks: authentik-token.yml
-  when: authentik_admin_token | length > 0
-  tags: [openbao, authentik-token]
-
-- name: Report that the Authentik admin token still needs a second run
-  ansible.builtin.debug:
-    msg: >-
-      AUTHENTIK_ADMIN_TOKEN was not supplied. Bootstrap is complete, but
-      iam-service Authentik user sync is inert until the second run — see
-      README.md. Rerun with --tags authentik-token once Authentik is up.
-  when: authentik_admin_token | length == 0
-  tags: [openbao, authentik-token]

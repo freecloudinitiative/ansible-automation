@@ -33,6 +33,7 @@ AUTHENTIK_SECRET_KEY='at-least-50-random-characters' \
 AUTHENTIK_POSTGRESQL_PASSWORD='at-least-24-random-characters' \
 PLATFORM_POSTGRESQL_PASSWORD='at-least-24-random-characters' \
 AUTHENTIK_BOOTSTRAP_PASSWORD='at-least-16-random-characters' \
+AUTHENTIK_ADMIN_TOKEN='at-least-32-random-characters' \
 VALKEY_PASSWORD='at-least-24-random-characters' \
 OPENBAO_BOOTSTRAP_TOKEN='hvs.example' \
 ansible-playbook playbook.yml
@@ -46,3 +47,9 @@ Generate every value independently with a cryptographically secure password
 manager. `AUTHENTIK_BOOTSTRAP_EMAIL` is optional and defaults to
 `admin@freecloudinitiative.com`. After the first Authentik login, change the
 bootstrap password and enable MFA for the administrator.
+
+`AUTHENTIK_ADMIN_TOKEN` is not read *from* Authentik — it is a value you pick,
+seeded into OpenBao like any other secret. It is also fed to Authentik itself
+as `AUTHENTIK_BOOTSTRAP_TOKEN`, which makes Authentik create the akadmin API
+token with that exact value at boot. Both sides converge on the same value
+without a manual UI step or a second `ansible-playbook` run.
