@@ -8,10 +8,10 @@
 # only when nodes are NOT all on the same network, e.g. a cloud master
 # with a real public/reachable IP.
 k3s_master1_public_ip: ""
-k3s_worker1_public_ip: "44.195.88.218"
-k3s_worker2_public_ip: "16.145.7.95"
-k3s_worker3_public_ip: "18.236.114.60"
-k3s_worker4_public_ip: "35.89.252.94"
+k3s_worker1_public_ip: ""
+k3s_worker2_public_ip: ""
+k3s_worker3_public_ip: ""
+k3s_worker4_public_ip: ""
 k3s_worker5_public_ip: ""
 k3s_worker6_public_ip: ""
 k3s_master2_public_ip: ""

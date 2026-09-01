@@ -14,19 +14,27 @@
     flat: true
   become: true
 
-- name: Determine master public target IP address
+- name: Determine master internal IP address
   ansible.builtin.set_fact:
-    target_master_public_ip: "{{ k3s_master1_public_ip | default(ansible_host | default((ansible_facts.default_ipv4.address if ansible_facts.default_ipv4 is defined else ''))) }}"
+    target_master_internal_ip: >-
+      {{ ansible_facts.default_ipv4.address | default('', true) | trim }}
 
-- name: Replace loopback IP with public master IP in local kubeconfig
+- name: Require a master internal IP for local kubeconfig
+  ansible.builtin.assert:
+    that:
+      - target_master_internal_ip | length > 0
+    fail_msg: >-
+      Could not discover the default IPv4 address of {{ inventory_hostname }}.
+
+- name: Replace loopback IP with master internal IP in local kubeconfig
   ansible.builtin.replace:
     path: "{{ local_kubeconfig_path }}"
     regexp: '127\.0\.0\.1'
-    replace: "{{ target_master_public_ip }}"
+    replace: "{{ target_master_internal_ip }}"
   delegate_to: localhost
   become: false
 
-- name: Enable insecure-skip-tls-verify for public IP access in local kubeconfig
+- name: Enable insecure-skip-tls-verify for internal IP access in local kubeconfig
   ansible.builtin.replace:
     path: "{{ local_kubeconfig_path }}"
     regexp: 'certificate-authority-data:.*'
@@ -172,4 +180,3 @@
       - "Kubeconfig successfully configured at ~/.kube/config"
       - "K9s is installed and ready! Simply execute:"
       - "  k9s"
-

@@ -10,7 +10,8 @@ IGNORE `.github/` and `pi-boot.yml`.
 
 | File | What |
 |---|---|
-| `playbook.yml` | Six plays: all hosts pre-setup, masters, workers, high_memory Kata, first-master components, local k9s. |
+| `playbook.yml` | Master setup, workers, high_memory Kata, first-master components, local k9s. |
+| `reset-k3s.yml` | Destructively uninstall K3s from workers and masters; requires explicit confirmation and does not reinstall anything. |
 | `ssh-config.yml` | Nonprod SSH config. |
 | `thermal-check.yml` | Check node temps. |
 | `ansible.cfg` | `inventory.ini`, vault prompt, `roles_path=./roles`, SSH ControlMaster. |
@@ -43,25 +44,12 @@ Validate required inventory variables before any node modification.
 
 ---
 
-## roles/k3s-pre-setup/
-
-Runs on every master and worker before k3s.
-
-| File | What |
-|---|---|
-| `roles/k3s-pre-setup/tasks/main.yml` | Swap off, fstab comment, stop `dphys-swapfile`, apt, containerd, pip k8s libs. |
-| `roles/k3s-pre-setup/defaults/main.yml` | `k3s_presetup_packages` list. |
-| `roles/k3s-pre-setup/meta/main.yml` | Galaxy metadata. |
-| `roles/k3s-pre-setup/README.md` | Role notes. |
-
----
-
 ## roles/k3s-master-setup/
 
 | File | What |
 |---|---|
-| `roles/k3s-master-setup/tasks/main.yml` | Download `get.k3s.io`. Primary `--cluster-init`. Secondary join. Readyz. Helm + kubectx/kubens/popeye/stern/kube-ps1. |
-| `roles/k3s-master-setup/defaults/main.yml` | `kubeconfig_path`, tool versions. |
+| `roles/k3s-master-setup/tasks/main.yml` | Master prerequisites, swap, APT install, `get.k3s.io`, primary `--cluster-init`, secondary join, readyz and Helm. |
+| `roles/k3s-master-setup/defaults/main.yml` | Master package lists, `kubeconfig_path`, tool versions. |
 | `roles/k3s-master-setup/meta/main.yml` | Galaxy metadata. |
 | `roles/k3s-master-setup/README.md` | Role notes. |
 

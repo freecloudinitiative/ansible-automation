@@ -1,24 +1,48 @@
 ---
-- name: Download k3s install script
-  ansible.builtin.get_url:
-    url: https://get.k3s.io
-    dest: /tmp/k3s-install.sh
-    mode: '0755'
-  become: true
-  register: k3s_script_download
+- name: Disable swap
+  ansible.builtin.command:
+    argv:
+      - swapoff
+      - -a
+  changed_when: ansible_facts.swaptotal_mb | default(0) | int > 0
+
+- name: Disable swap in fstab
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^\s*(\S+)\s+\S+\s+swap\s+.*$'
+    replace: '# \g<0>'
+
+- name: Update apt cache for worker prerequisites
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+    lock_timeout: 300
+
+- name: Install worker prerequisites
+  ansible.builtin.apt:
+    name: "{{ k3s_worker_required_packages }}"
+    state: present
+    lock_timeout: 300
 
 - name: Check if k3s is already installed
   ansible.builtin.stat:
     path: /usr/local/bin/k3s
   register: k3s_binary
 
+- name: Download k3s install script
+  ansible.builtin.get_url:
+    url: https://get.k3s.io
+    dest: /tmp/k3s-install.sh
+    mode: '0755'
+  become: true
+  when: not k3s_binary.stat.exists
+
 # k3s-agent is Type=notify with a ~90s default TimeoutStartSec; on Raspberry
 # Pi hardware, several workers hitting a fresh master's TLS bootstrap at once
 # plus first-boot image pulls can run past that, so k3s-install.sh's
 # `systemctl start` fails even though an uncontended retry succeeds in
-# seconds. `throttle: 1` keeps that concurrent-join load spike small in the
-# first place; the retry/wait-active steps below are the backstop for
-# whatever still fails.
+# seconds. The retry/wait-active steps below are the backstop when concurrent
+# joins still exceed the service startup window.
 - name: Install k3s agent on worker node
   ansible.builtin.command:
     argv:
@@ -29,14 +53,14 @@
       - "--node-name={{ worker_label | default(inventory_hostname) }}"
       - "--node-ip={{ ansible_facts.default_ipv4.address }}"
   become: true
-  when: not k3s_binary.stat.exists or k3s_script_download.changed
+  when: not k3s_binary.stat.exists
   register: k3s_worker_install
   changed_when: "'k3s' in k3s_worker_install.stdout or k3s_worker_install.rc == 0"
   failed_when: false
-  throttle: 1
+  throttle: 5
 
 # k3s-install.sh's own `systemctl start` can fail the way described above
-# even with throttle: 1 (e.g. a still-slow SD card); retry the service
+# during concurrent joins (e.g. a still-slow SD card); retry the service
 # directly rather than re-running the whole installer.
 - name: Retry starting k3s-agent if the installer's start failed
   ansible.builtin.systemd:
