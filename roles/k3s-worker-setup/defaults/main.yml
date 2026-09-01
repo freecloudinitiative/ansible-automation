@@ -1,2 +1,9 @@
 ---
 k3s_embedded_registry: true
+
+k3s_worker_required_packages:
+  - open-iscsi
+  - nfs-common
+  - curl
+  - iptables
+  - ca-certificates

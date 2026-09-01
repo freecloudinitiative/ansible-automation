@@ -1,4 +1,51 @@
 ---
+- name: Disable swap on master
+  ansible.builtin.command:
+    argv:
+      - swapoff
+      - -a
+  changed_when: ansible_facts.swaptotal_mb | default(0) | int > 0
+
+- name: Disable swap in fstab on master
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^\s*(\S+)\s+\S+\s+swap\s+.*$'
+    replace: '# \g<0>'
+
+- name: Gather master service facts
+  ansible.builtin.service_facts:
+
+- name: Disable dphys-swapfile service on master
+  ansible.builtin.service:
+    name: dphys-swapfile
+    enabled: false
+    state: stopped
+  when: >-
+    'dphys-swapfile.service' in ansible_facts.services or
+    'dphys-swapfile' in ansible_facts.services
+
+- name: Update apt cache on master
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+    lock_timeout: 300
+
+- name: Install master prerequisites
+  ansible.builtin.apt:
+    name: "{{ k3s_master_required_packages }}"
+    state: present
+    lock_timeout: 300
+
+- name: Upgrade Kubernetes Python libraries on master
+  ansible.builtin.pip:
+    name:
+      - "kubernetes>=24.2.0"
+      - jsonpatch
+      - PyYAML
+    state: present
+    extra_args: "--break-system-packages --ignore-installed"
+  ignore_errors: true
+
 # k3s_master1_public_ip is the join URL every other node dials
 # (--server=https://<this>:6443). Named "public" from the cloud-only days;
 # for an all-local fleet there's no public IP to give, so an explicit,
@@ -157,12 +204,12 @@
 # - name: Resolve architecture for kubectx/kubens
 #   ansible.builtin.set_fact:
 #     _go_arch: "{{ 'arm64' if ansible_facts.architecture in ['aarch64', 'arm64'] else 'amd64' }}"
-# 
+#
 # - name: Check if kubectx is already installed
 #   ansible.builtin.stat:
 #     path: /usr/local/bin/kubectx
 #   register: kubectx_binary
-# 
+#
 # - name: Download kubectx and kubens
 #   ansible.builtin.get_url:
 #     url: "https://github.com/ahmetb/kubectx/releases/download/{{ kubectx_version }}/{{ item.bin }}_{{ kubectx_version }}_linux_{{ _go_arch }}.tar.gz"
@@ -264,4 +311,4 @@
 #     block: |
 #       source /usr/local/share/kube-ps1/kube-ps1.sh
 #       PS1='$(kube_ps1)'$PS1
-# 
+#

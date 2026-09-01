@@ -1,6 +1,6 @@
 # local-kubeconfig-setup
 
-Fetches the cluster `kubeconfig` from the primary K3s master node, replaces the loopback IP (`127.0.0.1`) with the public IP address of the master, saves it directly to `~/.kube/config` on your local machine, and installs `k9s` via Homebrew on macOS if missing.
+Fetches the cluster `kubeconfig` from the primary K3s master node, discovers the master's default internal IPv4 address, replaces the loopback IP (`127.0.0.1`) with that address, saves it directly to `~/.kube/config` on the local machine, and installs `k9s` via Homebrew on macOS if missing.
 
 ## Role Variables
 
@@ -18,4 +18,3 @@ Fetches the cluster `kubeconfig` from the primary K3s master node, replaces the 
   roles:
     - local-kubeconfig-setup
 ```
-

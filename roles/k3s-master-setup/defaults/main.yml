@@ -2,6 +2,20 @@
 kubeconfig_path: /etc/rancher/k3s/k3s.yaml
 k3s_embedded_registry: true
 
+k3s_master_required_packages:
+  - wireguard-tools
+  - open-iscsi
+  - nfs-common
+  - curl
+  - iptables
+  - ca-certificates
+  - python3-pip
+  - python3-setuptools
+  - python3-packaging
+  - python3-kubernetes
+  - python3-jsonpatch
+  - python3-yaml
+
 kubectx_version: "v0.9.5"
 popeye_version: "v0.22.1"
 stern_version: "v1.31.0"

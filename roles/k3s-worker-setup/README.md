@@ -9,14 +9,15 @@ Ansible role for joining and configuring worker agent nodes to an existing K3s c
 - Binds node IP dynamically using host IPv4 facts (`ansible_default_ipv4.address`).
 - Connects agent nodes to the master node API using `K3S_URL` and `K3S_TOKEN`.
 - Enables K3s Embedded Registry (Spegel) via `--embedded-registry` for peer-to-peer image mirroring.
-- Joins workers one at a time (`throttle: 1`) — on Raspberry Pi hardware the
+- Joins at most five workers concurrently (`throttle: 5`). On Raspberry Pi hardware the
   TLS bootstrap plus first-boot image pulls can outrun `k3s-agent`'s
   (Type=notify) default 90s systemd timeout when every worker joins a fresh
   master at once, which otherwise fails the first `ansible-playbook` run and
-  only succeeds on a rerun. `throttle: 1` keeps that concurrent-join load
-  spike small in the first place. If the installer's own `systemctl start`
-  still fails, the role restarts `k3s-agent` and waits up to four minutes for
-  it to report active before failing loudly.
+  installer can exceed the service startup window during a concurrent join.
+  If its own `systemctl start` fails, the role restarts `k3s-agent` and waits
+  up to four minutes for it to report active before failing loudly.
+- Skips both the installer download and agent installation when K3s is already
+  present, keeping repeated playbook runs idempotent.
 
 ## Requirements
 

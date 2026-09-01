@@ -1,6 +1,0 @@
-- name: Fetch Kubeconfig and Setup Local K9s
-  hosts: "{{ groups['masters'][0] }}"
-  gather_facts: false
-  become: false
-  roles:
-    - local-k9s-setup
