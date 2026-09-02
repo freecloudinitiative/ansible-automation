@@ -58,8 +58,8 @@ Post-play debug prints public URLs. Passwords stay commented out.
 
 | Part | Job |
 |---|---|
-| `playbook.yml` | Ordered master, worker, optional Kata, cluster-component, and local tooling plays. |
-| `ssh-config.yml` | Nonprod SSH config. |
+| `nonprod-ssh-config.yml` | Nonprod (Cloud) SSH config. |
+| `prod-ssh-config.yml` | Prod (Local Pi) SSH config. |
 | `thermal-check.yml` | Check node temps. |
 | `inventory.ini` | Host groups. `masters[0]` is primary. Memory groups drive labels/taints. |
 | `group_vars/all/main.yml` | `ssh_config_cloud`. `k3s_*_public_ip` slots. Empty until filled. |
@@ -76,7 +76,7 @@ Post-play debug prints public URLs. Passwords stay commented out.
 | `k3s-fact-gathering` | 2 | Slurp node-token on `masters[0]`. Set `kubeconfig_path`. |
 | `k3s-worker-setup` | 3 | Installs missing agents only, up to five workers at a time (`throttle: 5`). Uses `--server`, `--token`, and `worker_label`; restarts and re-waits on a failed `systemctl start`. |
 | `kata-containers` | 4 | Static tarball → `/opt/kata`. KVM modules. k3s containerd handler `kata`. RuntimeClass `kata` with `node-tier=high-memory`. Needs `/dev/kvm` (nested virt if the worker is a VM). |
-| `k3s-node-labeling` | 5 | `node-tier=high-memory\|mid-memory\|low-memory`. Taint low-memory `memory=limited:NoSchedule`. Taint masters `node-role.kubernetes.io/master=:NoSchedule`. |
+| `k3s-node-labeling` | 5 | `node-tier=high-memory\|mid-memory\|low-memory`. Taint masters `node-role.kubernetes.io/master=:NoSchedule`. |
 | `openbao-setup` | 5 | Runs before ArgoCD exists. `helm install/upgrade` the `openbao/openbao` chart (values fetched from `k3s-manifests` `infrastructure/openbao/values.yaml`, the single source of truth). Generates OpenBao's own self-signed TLS Secret (`openbao-server-tls`) with `openssl` — no cert-manager yet. Waits for every `openbao-N` pod to reach `Running` (not `Ready` — that needs unsealing, which is the next role's job). |
 | `openbao-secrets-init` | 5 | Refresh OpenBao EndpointSlices and probe every non-terminating health candidate from its local inventory node, preferring health 200/429 over sealed or uninitialized responses. Health and active discovery share one 600-second deadline; Pod probes time out after three seconds. Need `OPENBAO_BOOTSTRAP_TOKEN`. Re-discover until a serving, non-terminating active endpoint returns 200 before enabling KV v2, file audit, Kubernetes auth, and policy `external-secrets-read`. Bind SA `external-secrets-openbao`. Assert all seeded secrets are non-empty and meet length/PEM requirements, including `authentik_admin_token` (>= 32 chars). Seed all paths except `valkey`/`garage`/`platform-postgresql`'s `ca-cert` field (`tags: openbao, bootstrap`) — that field needs cert-manager's CA, which doesn't exist yet at this point; `openbao-ca-secrets` seeds it later. `end_role` if not ready. |
 | `argocd-setup` | 5 | Official install.yaml into `argocd`. Pin Deployments/StatefulSet to `node-tier=high-memory`. Wait ready. Read initial admin secret. |

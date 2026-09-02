@@ -12,9 +12,12 @@
 {% if host_cloud == 'aws' %}
 {% set provider_user = ssh_config_aws_user %}
 {% set provider_identity = ssh_config_aws_identity_file %}
-{% else %}
+{% elif host_cloud == 'gcp' %}
 {% set provider_user = ssh_config_gcp_user %}
 {% set provider_identity = ssh_config_gcp_identity_file %}
+{% else %}
+{% set provider_user = ssh_config_local_user | default('pi') %}
+{% set provider_identity = ssh_config_local_identity_file | default('~/.ssh/id_ed25519') %}
 {% endif %}
 {% if host_data is mapping %}
 {% set ssh_user = host_data.user | default(provider_user) %}
@@ -24,7 +27,15 @@
 {% set ssh_identity = provider_identity %}
 {% endif %}
 {% if host_address %}
-Host {{ host_name }}
+{% set host_aliases = [host_name] %}
+{% if host_data is mapping and host_data.aliases is defined %}
+{% if host_data.aliases is string %}
+{% set host_aliases = host_aliases + (host_data.aliases.split(' ') | select | list) %}
+{% else %}
+{% set host_aliases = host_aliases + (host_data.aliases | list) %}
+{% endif %}
+{% endif %}
+Host {{ host_aliases | unique | join(' ') }}
     HostName {{ host_address }}
     User {{ ssh_user }}
     IdentityFile {{ ssh_identity }}

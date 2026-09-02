@@ -45,16 +45,6 @@
   delegate_to: "{{ groups['masters'][0] }}"
   run_once: true
 
-- name: Taint low-memory nodes
-  ansible.builtin.command:
-    cmd: "kubectl taint node {{ item }} memory=limited:NoSchedule --overwrite"
-  environment:
-    KUBECONFIG: "{{ kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
-  loop: "{{ groups['low_memory'] | default([]) | map('regex_replace', '\\..*', '') | list }}"
-  when: item in cluster_nodes
-  delegate_to: "{{ groups['masters'][0] }}"
-  run_once: true
-
 - name: Taint master nodes
   ansible.builtin.command:
     cmd: "kubectl taint node {{ item }} node-role.kubernetes.io/master=:NoSchedule --overwrite"

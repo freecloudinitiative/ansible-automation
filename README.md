@@ -9,7 +9,7 @@ Plays run in this order:
 1. **Masters** — `k3s-master-setup` handles system prerequisites and installs K3s, then `k3s-fact-gathering` reads the node token. First host in `masters` runs `k3s server --cluster-init`. Traefik and ServiceLB stay off (GitOps owns ingress and LB). Embedded registry on. Kubeconfig copied to `~/.kube/config` and Helm installed.
 2. **Workers** — `k3s-worker-setup` handles worker prerequisites and joins `https://{{ k3s_master1_public_ip }}:6443` with that token.
 3. **high_memory workers** — `kata-containers`. Official static tarball into `/opt/kata`. Registers CRI runtime `kata` with k3s containerd. Applies RuntimeClass `kata` (`node-tier=high-memory`). Needs `/dev/kvm` (nested virt if the worker is a VM). ~3 GB disk. Re-run with `--tags kata`.
-4. **First master only** — `k3s-node-labeling`, `openbao-setup`, `openbao-secrets-init`, `argocd-setup`, `argocd-bootstrap`, `openbao-ca-secrets`. Labels `node-tier`. Taints `low_memory` and masters. Installs OpenBao itself (Helm, self-signed TLS) and seeds it — fully ready — *before* installing Argo CD and applying `root-app` pointing at `k3s-manifests`. `openbao-ca-secrets` runs last, once cert-manager has synced, to seed the 3 secrets that need its CA.
+4. **First master only** — `k3s-node-labeling`, `openbao-setup`, `openbao-secrets-init`, `argocd-setup`, `argocd-bootstrap`, `openbao-ca-secrets`. Labels `node-tier`. Taints masters. Installs OpenBao itself (Helm, self-signed TLS) and seeds it — fully ready — *before* installing Argo CD and applying `root-app` pointing at `k3s-manifests`. `openbao-ca-secrets` runs last, once cert-manager has synced, to seed the 3 secrets that need its CA.
 5. **Local k9s** — `local-k9s-setup`. Fetch kubeconfig and configure k9s on the control node.
 
 OpenBao install **is** in this playbook (`openbao-setup`) — deliberately not GitOps-managed. Installing and seeding it before ArgoCD ever runs means `external-secrets-config`'s `ClusterSecretStore` finds a fully configured OpenBao on its very first sync, instead of racing ArgoCD's startup. See [ROLES.md](ROLES.md) for why.
@@ -256,11 +256,14 @@ Add the generated keys to `group_vars/all/secret.yml` before running the playboo
 ## Folder Where
 
 ```
-playbook.yml                 Cluster bootstrap.
-ssh-config.yml               Nonprod SSH config.
+playbook.yml                 Prod cluster bootstrap.
+nonprod-playbook.yml         Nonprod cluster bootstrap.
+nonprod-ssh-config.yml       Nonprod (Cloud) SSH config.
+prod-ssh-config.yml          Prod (Local Pi) SSH config.
 thermal-check.yml            Check node temps.
 ansible.cfg                  Inventory, vault prompt, SSH multiplexing.
-inventory.ini                masters / workers / high_memory / mid_memory / low_memory.
+inventory.ini                Prod inventory: masters / workers.
+nonprod-inventory.ini        Nonprod inventory: masters / workers.
 group_vars/all/              Shared vars. secret.yml is Ansible Vault.
 collections/requirements.yml kubernetes.core and friends.
 roles/                       Roles playbook.yml calls. See FILES.md.

@@ -11,11 +11,14 @@ IGNORE `.github/` and `pi-boot.yml`.
 | File | What |
 |---|---|
 | `playbook.yml` | Master setup, workers, high_memory Kata, first-master components, local k9s. |
+| `nonprod-playbook.yml` | Nonprod cluster playbook setup. |
 | `reset-k3s.yml` | Destructively uninstall K3s from workers and masters; requires explicit confirmation and does not reinstall anything. |
-| `ssh-config.yml` | Nonprod SSH config. |
+| `nonprod-ssh-config.yml` | Nonprod (Cloud) SSH config setup (~/.ssh/config.d/nonprod.conf). |
+| `prod-ssh-config.yml` | Prod (Local Pi) SSH config setup (~/.ssh/config.d/prod.conf). |
 | `thermal-check.yml` | Check node temps. |
 | `ansible.cfg` | `inventory.ini`, vault prompt, `roles_path=./roles`, SSH ControlMaster. |
 | `inventory.ini` | Groups `masters`, `workers`, `high_memory`, `mid_memory`, `low_memory`. |
+| `nonprod-inventory.ini` | Nonprod inventory with AWS nodes and SSH variables. |
 | `collections/requirements.yml` | `kubernetes.core`, `community.general`, `ansible.posix`, `community.grafana`. |
 | `requirements.txt` | `ansible` pip pin for the control node. |
 | `.ansible-lint` | Lint skip/warn. Excludes `.github`. |
@@ -96,7 +99,7 @@ Installs Kata Containers on `high_memory` workers. Needs `/dev/kvm`.
 
 | File | What |
 |---|---|
-| `roles/k3s-node-labeling/tasks/main.yml` | Label by inventory group. Taint low-memory and masters. |
+| `roles/k3s-node-labeling/tasks/main.yml` | Label by inventory group. Taint masters. |
 | `roles/k3s-node-labeling/defaults/main.yml` | Label/taint maps (tasks use groups + kubectl, not this map). |
 | `roles/k3s-node-labeling/meta/main.yml` | Galaxy metadata. |
 | `roles/k3s-node-labeling/README.md` | Role notes. |
