@@ -23,7 +23,7 @@ Available variables are listed below, along with default values (see `defaults/m
 | `node_labels.high_memory` | `{'node-tier': 'high-memory'}`                                        | Labels applied to nodes in the `high_memory` inventory group. |
 | `node_labels.mid_memory`  | `{'node-tier': 'mid-memory'}`                                         | Labels applied to nodes in the `mid_memory` inventory group.  |
 | `node_labels.low_memory`  | `{'node-tier': 'low-memory'}`                                         | Labels applied to nodes in the `low_memory` inventory group.  |
-| `node_taints.low_memory`  | `[{'key': 'memory', 'value': 'limited', 'effect': 'NoSchedule'}]`     | Taints applied to `low_memory` nodes.                         |
+| `node_taints.low_memory`  | `[]`                                                                  | Taints applied to `low_memory` nodes (default empty).         |
 | `node_taints.master`      | `[{'key': 'node-role.kubernetes.io/master', 'effect': 'NoSchedule'}]` | Taints applied to control plane / master nodes.               |
 
 ## Dependencies

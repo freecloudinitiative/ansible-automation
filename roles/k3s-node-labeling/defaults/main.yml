@@ -8,10 +8,7 @@ node_labels:
     node-tier: low-memory
 
 node_taints:
-  low_memory:
-    - key: memory
-      value: limited
-      effect: NoSchedule
+  low_memory: []
   master:
     - key: node-role.kubernetes.io/master
       effect: NoSchedule

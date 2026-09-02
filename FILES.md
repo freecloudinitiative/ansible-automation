@@ -98,7 +98,7 @@ Installs Kata Containers on `high_memory` workers. Needs `/dev/kvm`.
 
 | File | What |
 |---|---|
-| `roles/k3s-node-labeling/tasks/main.yml` | Label by inventory group. Taint low-memory and masters. |
+| `roles/k3s-node-labeling/tasks/main.yml` | Label by inventory group. Taint masters. |
 | `roles/k3s-node-labeling/defaults/main.yml` | Label/taint maps (tasks use groups + kubectl, not this map). |
 | `roles/k3s-node-labeling/meta/main.yml` | Galaxy metadata. |
 | `roles/k3s-node-labeling/README.md` | Role notes. |
