@@ -2,8 +2,8 @@
 - name: Validate ssh_config_cloud
   ansible.builtin.assert:
     that:
-      - ssh_config_cloud | default('') in (ssh_config_clouds | default(['gcp', 'aws']))
-    fail_msg: "ssh_config_cloud must be one of {{ ssh_config_clouds | default(['gcp', 'aws']) }}."
+      - ssh_config_cloud | default('') in (ssh_config_clouds | default(['gcp', 'aws', 'local']))
+    fail_msg: "ssh_config_cloud must be one of {{ ssh_config_clouds | default(['gcp', 'aws', 'local']) }}."
 
 - name: Select SSH hosts that have a non-empty address
   ansible.builtin.set_fact:
@@ -24,8 +24,8 @@
 - name: Validate per-host SSH cloud
   ansible.builtin.assert:
     that:
-      - (item.value.cloud | default(ssh_config_cloud)) in (ssh_config_clouds | default(['gcp', 'aws']))
-    fail_msg: "Host {{ item.key }} cloud must be one of {{ ssh_config_clouds | default(['gcp', 'aws']) }}."
+      - (item.value.cloud | default(ssh_config_cloud)) in (ssh_config_clouds | default(['gcp', 'aws', 'local']))
+    fail_msg: "Host {{ item.key }} cloud must be one of {{ ssh_config_clouds | default(['gcp', 'aws', 'local']) }}."
   loop: "{{ ssh_hosts_active }}"
   when: item.value is mapping and item.value.cloud is defined
 

@@ -15,11 +15,13 @@ Available variables and their default values (see `defaults/main.yml`):
 
 | Variable | Default Value | Description |
 |---|---|---|
-| `ssh_config_cloud` | `"gcp"` | Global cloud. `gcp` or `aws`. Set in `group_vars/all/main.yml`. |
+| `ssh_config_cloud` | `"aws"` | Global cloud. `gcp`, `aws`, or `local`. Set in `group_vars/all/main.yml`. |
 | `ssh_config_gcp_user` | `"entelektuelmaganda"` | SSH user when cloud is `gcp`. From vault. |
 | `ssh_config_gcp_identity_file` | `"~/.ssh/gcp_k3s"` | SSH key when cloud is `gcp`. From vault. |
 | `ssh_config_aws_user` | `"ubuntu"` | SSH user when cloud is `aws`. From vault. |
-| `ssh_config_aws_identity_file` | `"~/.ssh/ansible_keypair.pem"` | SSH key when cloud is `aws`. From vault. |
+| `ssh_config_aws_identity_file` | `"~/.ssh/fci_keypair.pem"` | SSH key when cloud is `aws`. From vault. |
+| `ssh_config_local_user` | `"pi"` | SSH user when cloud is `local`. |
+| `ssh_config_local_identity_file` | `"~/.ssh/id_ed25519"` | SSH key when cloud is `local`. |
 | `ssh_config_identities_only` | `"yes"` | `IdentitiesOnly` on generated host blocks |
 | `ssh_config_dir` | `"{{ '~/.ssh' \| expanduser }}"` | Path to local SSH configuration directory |
 | `ssh_config_file` | `"{{ '~/.ssh/config' \| expanduser }}"` | Path to local `config` file |

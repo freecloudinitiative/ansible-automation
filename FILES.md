@@ -11,11 +11,13 @@ IGNORE `.github/` and `pi-boot.yml`.
 | File | What |
 |---|---|
 | `playbook.yml` | Master setup, workers, high_memory Kata, first-master components, local k9s. |
+| `nonprod-playbook.yml` | Nonprod cluster playbook setup. |
 | `reset-k3s.yml` | Destructively uninstall K3s from workers and masters; requires explicit confirmation and does not reinstall anything. |
-| `ssh-config.yml` | Nonprod SSH config. |
+| `ssh-config.yml` | Nonprod/AWS SSH config setup with host aliases. |
 | `thermal-check.yml` | Check node temps. |
 | `ansible.cfg` | `inventory.ini`, vault prompt, `roles_path=./roles`, SSH ControlMaster. |
 | `inventory.ini` | Groups `masters`, `workers`, `high_memory`, `mid_memory`, `low_memory`. |
+| `nonprod-inventory.ini` | Nonprod inventory with AWS nodes and SSH variables. |
 | `collections/requirements.yml` | `kubernetes.core`, `community.general`, `ansible.posix`, `community.grafana`. |
 | `requirements.txt` | `ansible` pip pin for the control node. |
 | `.ansible-lint` | Lint skip/warn. Excludes `.github`. |

@@ -9,30 +9,38 @@
     ssh_hosts:
       master-1:
         hostname: "{{ k3s_master1_public_ip }}"
+        aliases:
+          - master1
         cloud: aws
-      #master-2:
-      #  hostname: "{{ k3s_master2_public_ip }}"
-      #  cloud: aws
-      #master-3:
-      #  hostname: "{{ k3s_master3_public_ip }}"
-      #  cloud: aws
       worker-1:
         hostname: "{{ k3s_worker1_public_ip }}"
+        aliases:
+          - worker1
         cloud: aws
       worker-2:
         hostname: "{{ k3s_worker2_public_ip }}"
+        aliases:
+          - worker2
         cloud: aws
       worker-3:
         hostname: "{{ k3s_worker3_public_ip }}"
+        aliases:
+          - worker3
         cloud: aws
       worker-4:
         hostname: "{{ k3s_worker4_public_ip }}"
+        aliases:
+          - worker4
         cloud: aws
       worker-5:
         hostname: "{{ k3s_worker5_public_ip }}"
+        aliases:
+          - worker5
         cloud: aws
       worker-6:
         hostname: "{{ k3s_worker6_public_ip }}"
+        aliases:
+          - worker6
         cloud: aws
 
   roles:

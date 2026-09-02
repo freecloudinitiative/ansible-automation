@@ -3,11 +3,14 @@ ssh_config_cloud: aws
 ssh_config_clouds:
   - gcp
   - aws
+  - local
 
 ssh_config_gcp_user: "entelektuelmaganda"
 ssh_config_gcp_identity_file: "~/.ssh/gcp_k3s"
 ssh_config_aws_user: "ubuntu"
 ssh_config_aws_identity_file: "~/.ssh/fci_keypair.pem"
+ssh_config_local_user: "pi"
+ssh_config_local_identity_file: "~/.ssh/id_ed25519"
 ssh_config_identities_only: "yes"
 
 ssh_config_dir: "{{ '~/.ssh' | expanduser }}"

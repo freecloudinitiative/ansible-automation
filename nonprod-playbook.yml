@@ -1,0 +1,39 @@
+---
+- name: Setup K3s master nodes
+  hosts: masters
+  become: true
+  gather_facts: true
+  roles:
+    - k3s-master-setup
+    - k3s-fact-gathering
+
+- name: Setup K3s worker nodes
+  hosts: workers
+  become: true
+  gather_facts: true
+  vars:
+    k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
+  roles:
+    - k3s-worker-setup
+
+- name: Install K3S Components
+  hosts: "{{ groups['masters'][0] }}"
+  become: true
+  gather_facts: false
+  vars:
+    k3s_node_token: "{{ hostvars[groups['masters'][0]]['k3s_node_token']['content'] | b64decode | trim }}"
+  roles:
+    - k3s-node-labeling
+    - openbao-setup
+    - openbao-secrets-init
+    - argocd-setup
+    - argocd-bootstrap
+    - openbao-ca-secrets
+    - k9s-setup
+
+- name: Fetch Kubeconfig and Setup Local K9s
+  hosts: "{{ groups['masters'][0] }}"
+  gather_facts: false
+  become: false
+  roles:
+    - local-k9s-setup
