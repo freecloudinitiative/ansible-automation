@@ -256,11 +256,14 @@ Add the generated keys to `group_vars/all/secret.yml` before running the playboo
 ## Folder Where
 
 ```
-playbook.yml                 Cluster bootstrap.
-ssh-config.yml               Nonprod SSH config.
+playbook.yml                 Prod cluster bootstrap.
+nonprod-playbook.yml         Nonprod cluster bootstrap.
+nonprod-ssh-config.yml       Nonprod (Cloud) SSH config.
+prod-ssh-config.yml          Prod (Local Pi) SSH config.
 thermal-check.yml            Check node temps.
 ansible.cfg                  Inventory, vault prompt, SSH multiplexing.
-inventory.ini                masters / workers / high_memory / mid_memory / low_memory.
+inventory.ini                Prod inventory: masters / workers.
+nonprod-inventory.ini        Nonprod inventory: masters / workers.
 group_vars/all/              Shared vars. secret.yml is Ansible Vault.
 collections/requirements.yml kubernetes.core and friends.
 roles/                       Roles playbook.yml calls. See FILES.md.

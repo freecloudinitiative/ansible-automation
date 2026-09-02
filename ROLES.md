@@ -58,8 +58,8 @@ Post-play debug prints public URLs. Passwords stay commented out.
 
 | Part | Job |
 |---|---|
-| `playbook.yml` | Ordered master, worker, optional Kata, cluster-component, and local tooling plays. |
-| `ssh-config.yml` | Nonprod SSH config. |
+| `nonprod-ssh-config.yml` | Nonprod (Cloud) SSH config. |
+| `prod-ssh-config.yml` | Prod (Local Pi) SSH config. |
 | `thermal-check.yml` | Check node temps. |
 | `inventory.ini` | Host groups. `masters[0]` is primary. Memory groups drive labels/taints. |
 | `group_vars/all/main.yml` | `ssh_config_cloud`. `k3s_*_public_ip` slots. Empty until filled. |

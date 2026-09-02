@@ -72,7 +72,7 @@ The pre-commit hook refuses an unencrypted `secret.yml`.
 
 ## Example Usage
 
-### Playbook (`ssh-config.yml`)
+### Playbooks (`nonprod-ssh-config.yml` / `prod-ssh-config.yml`)
 
 ```yaml
 ---
