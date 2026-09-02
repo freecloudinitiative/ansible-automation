@@ -5,42 +5,50 @@
   become: false
 
   vars:
+    ssh_config_env: nonprod
     ssh_config_clean_known_hosts: true
     ssh_hosts:
-      master-1:
+      nonprod-master-1:
         hostname: "{{ k3s_master1_public_ip }}"
         aliases:
-          - master1
+          - nonprod-master1
+          - np-master1
         cloud: aws
-      worker-1:
+      nonprod-worker-1:
         hostname: "{{ k3s_worker1_public_ip }}"
         aliases:
-          - worker1
+          - nonprod-worker1
+          - np-worker1
         cloud: aws
-      worker-2:
+      nonprod-worker-2:
         hostname: "{{ k3s_worker2_public_ip }}"
         aliases:
-          - worker2
+          - nonprod-worker2
+          - np-worker2
         cloud: aws
-      worker-3:
+      nonprod-worker-3:
         hostname: "{{ k3s_worker3_public_ip }}"
         aliases:
-          - worker3
+          - nonprod-worker3
+          - np-worker3
         cloud: aws
-      worker-4:
+      nonprod-worker-4:
         hostname: "{{ k3s_worker4_public_ip }}"
         aliases:
-          - worker4
+          - nonprod-worker4
+          - np-worker4
         cloud: aws
-      worker-5:
+      nonprod-worker-5:
         hostname: "{{ k3s_worker5_public_ip }}"
         aliases:
-          - worker5
+          - nonprod-worker5
+          - np-worker5
         cloud: aws
-      worker-6:
+      nonprod-worker-6:
         hostname: "{{ k3s_worker6_public_ip }}"
         aliases:
-          - worker6
+          - nonprod-worker6
+          - np-worker6
         cloud: aws
 
   roles:

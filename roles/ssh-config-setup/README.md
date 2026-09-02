@@ -23,13 +23,17 @@ Available variables and their default values (see `defaults/main.yml`):
 | `ssh_config_local_user` | `"pi"` | SSH user when cloud is `local`. |
 | `ssh_config_local_identity_file` | `"~/.ssh/id_ed25519"` | SSH key when cloud is `local`. |
 | `ssh_config_identities_only` | `"yes"` | `IdentitiesOnly` on generated host blocks |
+| `ssh_config_env` | `"nonprod"` | Target environment (`prod` or `nonprod`). Determines config file name in `~/.ssh/config.d/`. |
+| `ssh_config_use_include` | `true` | When true, manages `~/.ssh/config.d/<env>.conf` and ensures `Include ~/.ssh/config.d/*` in main `~/.ssh/config`. |
 | `ssh_config_dir` | `"{{ '~/.ssh' \| expanduser }}"` | Path to local SSH configuration directory |
-| `ssh_config_file` | `"{{ '~/.ssh/config' \| expanduser }}"` | Path to local `config` file |
+| `ssh_config_file` | `"{{ '~/.ssh/config' \| expanduser }}"` | Path to local main `config` file |
+| `ssh_config_d_dir` | `"{{ '~/.ssh/config.d' \| expanduser }}"` | Path to local `config.d` directory |
+| `ssh_config_dest_file` | `"{{ ssh_config_d_dir ~ '/' ~ ssh_config_env ~ '.conf' }}"` | Target configuration file written |
 | `ssh_known_hosts_file` | `"{{ '~/.ssh/known_hosts' \| expanduser }}"` | Path to local `known_hosts` file |
 | `ssh_config_clean_known_hosts` | `false` | Purges old keys for target host IPs using `ssh-keygen -R` |
 | `ssh_config_scan_known_hosts` | `true` | Auto-scans host keys using `ssh-keyscan` to pre-trust target servers |
 | `ssh_config_strict_host_key_checking` | `"no"` | Configures `StrictHostKeyChecking` in SSH config so first connections never prompt |
-| `ssh_hosts` | `{}` | Map of hostname to IP string or `{hostname, cloud, user, identity_file}`. Empty IP (`""`) skipped. |
+| `ssh_hosts` | `{}` | Map of hostname to IP string or `{hostname, cloud, user, identity_file, aliases}`. Empty IP (`""`) skipped. |
 | `ssh_config_custom_hosts` | `[]` | Additional custom SSH host blocks (e.g. `github.com`) |
 
 ## Vault: read or change SSH user and key path

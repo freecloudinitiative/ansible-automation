@@ -5,6 +5,9 @@ ssh_config_clouds:
   - aws
   - local
 
+ssh_config_env: "nonprod"
+ssh_config_use_include: true
+
 ssh_config_gcp_user: "entelektuelmaganda"
 ssh_config_gcp_identity_file: "~/.ssh/gcp_k3s"
 ssh_config_aws_user: "ubuntu"
@@ -15,6 +18,8 @@ ssh_config_identities_only: "yes"
 
 ssh_config_dir: "{{ '~/.ssh' | expanduser }}"
 ssh_config_file: "{{ '~/.ssh/config' | expanduser }}"
+ssh_config_d_dir: "{{ '~/.ssh/config.d' | expanduser }}"
+ssh_config_dest_file: "{{ (ssh_config_d_dir ~ '/' ~ ssh_config_env ~ '.conf') if (ssh_config_use_include | bool) else ssh_config_file }}"
 ssh_known_hosts_file: "{{ '~/.ssh/known_hosts' | expanduser }}"
 
 ssh_config_clean_known_hosts: false

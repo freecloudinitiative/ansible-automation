@@ -35,6 +35,31 @@
     state: directory
     mode: "0700"
 
+- name: Ensure SSH config.d directory exists
+  ansible.builtin.file:
+    path: "{{ ssh_config_d_dir }}"
+    state: directory
+    mode: "0700"
+  when: ssh_config_use_include | bool
+
+- name: Ensure main SSH config file exists
+  ansible.builtin.file:
+    path: "{{ ssh_config_file }}"
+    state: touch
+    mode: "0600"
+    modification_time: preserve
+    access_time: preserve
+  when: ssh_config_use_include | bool
+
+- name: Ensure Include directive is present at top of main SSH config
+  ansible.builtin.lineinfile:
+    path: "{{ ssh_config_file }}"
+    line: "Include ~/.ssh/config.d/*"
+    insertbefore: BOF
+    state: present
+    mode: "0600"
+  when: ssh_config_use_include | bool
+
 - name: Ensure known_hosts file exists
   ansible.builtin.file:
     path: "{{ ssh_known_hosts_file }}"
@@ -71,10 +96,10 @@
   changed_when:
     - "'updated' in (ssh_keygen_host_result.stderr | default('')) or 'found' in (ssh_keygen_host_result.stdout | default(''))"
 
-- name: Generate local SSH configuration file
+- name: Generate SSH configuration file
   ansible.builtin.template:
     src: config.j2
-    dest: "{{ ssh_config_file }}"
+    dest: "{{ ssh_config_dest_file }}"
     mode: "0600"
 
 - name: Automatically scan and add host public keys to known_hosts (by IP and Hostname)

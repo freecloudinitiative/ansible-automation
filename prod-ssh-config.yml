@@ -1,0 +1,51 @@
+---
+- name: Configure Local SSH for Prod (Raspberry Pi) Nodes
+  hosts: localhost
+  connection: local
+  become: false
+
+  vars:
+    ssh_config_env: prod
+    ssh_config_cloud: local
+    ssh_config_clean_known_hosts: false
+    ssh_config_scan_known_hosts: false
+    ssh_hosts:
+      master-1:
+        hostname: master1.local
+        aliases:
+          - master1
+          - master1.local
+        cloud: local
+      worker-1:
+        hostname: worker1.local
+        aliases:
+          - worker1
+          - worker1.local
+        cloud: local
+      worker-2:
+        hostname: worker2.local
+        aliases:
+          - worker2
+          - worker2.local
+        cloud: local
+      worker-3:
+        hostname: worker3.local
+        aliases:
+          - worker3
+          - worker3.local
+        cloud: local
+      worker-4:
+        hostname: worker4.local
+        aliases:
+          - worker4
+          - worker4.local
+        cloud: local
+      worker-5:
+        hostname: worker5.local
+        aliases:
+          - worker5
+          - worker5.local
+        cloud: local
+
+  roles:
+    - ssh-config-setup
