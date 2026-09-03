@@ -75,7 +75,7 @@ Post-play debug prints public URLs. Passwords stay commented out.
 | `k3s-master-setup` | 1 | Master prerequisites, swap off, `get.k3s.io` server, readyz wait, Helm + CLI tools. |
 | `k3s-fact-gathering` | 2 | Slurp node-token on `masters[0]`. Set `kubeconfig_path`. |
 | `k3s-worker-setup` | 3 | Installs missing agents only, up to five workers at a time (`throttle: 5`). Uses `--server`, `--token`, and `worker_label`; restarts and re-waits on a failed `systemctl start`. |
-| `kata-containers` | 4 | Static tarball → `/opt/kata`. KVM modules. k3s containerd handler `kata`. RuntimeClass `kata` with `node-tier=high-memory`. Needs `/dev/kvm` (nested virt if the worker is a VM). |
+| `kata-containers` | 4 | Static tarball → `/opt/kata`. KVM modules. k3s containerd handler `kata`. RuntimeClass `kata-qemu` with `node-tier=high-memory`, nodes labelled `fci.io/runtime=kata` — both names are what compute-service looks for before it offers dedicated instances. Needs `/dev/kvm` (nested virt if the worker is a VM). |
 | `k3s-node-labeling` | 5 | `node-tier=high-memory\|mid-memory\|low-memory`. Taint masters `node-role.kubernetes.io/master=:NoSchedule`. |
 | `openbao-setup` | 5 | Runs before ArgoCD exists. `helm install/upgrade` the `openbao/openbao` chart (values fetched from `k3s-manifests` `infrastructure/openbao/values.yaml`, the single source of truth). Generates OpenBao's own self-signed TLS Secret (`openbao-server-tls`) with `openssl` — no cert-manager yet. Waits for every `openbao-N` pod to reach `Running` (not `Ready` — that needs unsealing, which is the next role's job). |
 | `openbao-secrets-init` | 5 | Refresh OpenBao EndpointSlices and probe every non-terminating health candidate from its local inventory node, preferring health 200/429 over sealed or uninitialized responses. Health and active discovery share one 600-second deadline; Pod probes time out after three seconds. Need `OPENBAO_BOOTSTRAP_TOKEN`. Re-discover until a serving, non-terminating active endpoint returns 200 before enabling KV v2, file audit, Kubernetes auth, and policy `external-secrets-read`. Bind SA `external-secrets-openbao`. Assert all seeded secrets are non-empty and meet length/PEM requirements, including `authentik_admin_token` (>= 32 chars). Seed all paths except `valkey`/`garage`/`platform-postgresql`'s `ca-cert` field (`tags: openbao, bootstrap`) — that field needs cert-manager's CA, which doesn't exist yet at this point; `openbao-ca-secrets` seeds it later. `end_role` if not ready. |
@@ -110,7 +110,7 @@ Post-play debug prints public URLs. Passwords stay commented out.
 
 **Labels and taints before Argo CD.** Argo CD pinned to `high-memory`. Masters and low-memory nodes do not take that load.
 
-**Kata only on `high_memory`.** Needs KVM. RuntimeClass `kata` selects `node-tier=high-memory` so mid/low workers never get those pods. Restart `k3s-agent` happens before Argo CD is scheduled onto that node.
+**Kata only on `high_memory`.** Needs KVM. RuntimeClass `kata-qemu` selects `node-tier=high-memory` so mid/low workers never get those pods. Restart `k3s-agent` happens before Argo CD is scheduled onto that node.
 
 **No OpenBao token in Kubernetes.** External Secrets uses a ServiceAccount. Blast radius stays a 10-minute Vault token.
 
