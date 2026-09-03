@@ -34,13 +34,28 @@ kata_default_vcpus: 1
 
 kata_require_kvm: true
 kata_apply_runtimeclass: true
-kata_runtimeclass_name: kata
+
+# The next three values are a contract with compute-service, not free choices.
+# Its instancetype.Checker refuses to offer the dedicated instance type unless
+# it finds BOTH a RuntimeClass by this exact name AND at least one Ready node
+# carrying this exact label, and its projection pins dedicated pods to that
+# same label. Getting either wrong does not fail loudly: the dedicated type
+# simply never appears in the API, with nothing in any log to say why.
+#
+#   compute-service/internal/instancetype/types.go       kataRuntimeClass
+#   compute-service/internal/instancetype/capability.go  kataNodeSelector
+#   compute-service/internal/projection/project.go       kataNodeLabel
+#
+# The RuntimeClass *name* is separate from kata_runtime_handler above, which
+# names the containerd runtime section this class dispatches to and stays
+# "kata" to match what this role writes into containerd's config.
+kata_runtimeclass_name: kata-qemu
 
 # Matches k3s-node-labeling: only high_memory workers get Kata.
 kata_runtimeclass_node_selector:
   node-tier: high-memory
 
-kata_node_label_key: katacontainers.io/kata-runtime
-kata_node_label_value: "true"
+kata_node_label_key: fci.io/runtime
+kata_node_label_value: kata
 
 kubeconfig_path: /etc/rancher/k3s/k3s.yaml
