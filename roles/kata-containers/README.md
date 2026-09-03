@@ -90,12 +90,17 @@ kind: Pod
 metadata:
   name: kata-smoke
 spec:
-  runtimeClassName: kata
+  runtimeClassName: kata-qemu
   containers:
     - name: uname
       image: alpine:3.20
       command: ["uname", "-a"]
 ```
+
+The name must match `kata_runtimeclass_name`; a pod naming a class that does not exist stays
+`Pending` with no scheduling event to explain it. No `nodeSelector` is needed here — the
+RuntimeClass carries `node-tier=high-memory` in its own `scheduling` block and admission merges it
+into the pod.
 
 Guest kernel differs from the host kernel. That is the isolation boundary.
 
